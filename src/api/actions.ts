@@ -1,0 +1,88 @@
+/* Game actions: Cosmos SDK transactions (SIGN_MODE_DIRECT), signed in the browser.
+ *
+ * The Guild API has no write path today, so the official webapp signs and broadcasts over the
+ * chain's RPC. This site asks the Guild API first (REQ-TX-1/2/3: account sequence, broadcast,
+ * result) so a player's browser only ever talks to their guild, and falls back to the chain's LCD.
+ * Proto encoding: src/wallet/{proto,encode,schema.gen}.ts, from structs-xyz. */
+import { endpoints } from '../config';
+import { wallet } from '../wallet/wallet';
+import { Writer, any, coin } from '../wallet/proto';
+import { encodeAny, typeUrlOf, type Msg, type MsgValue } from '../wallet/encode';
+import { signBytes, toB64, type KeyPair } from '../wallet/keys';
+import { ApiError, get, post } from './http';
+import { fellBack, isMissing, markMissing } from './requirements';
+
+const FEE = { amount: [{ denom: 'ualpha', amount: '0' }], gas: 500_000 };
+
+async function viaGuild<T>(req: string, run: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
+  if (!isMissing(req)) {
+    try { return await run(); } catch (e) { if (!(e instanceof ApiError) || e.code !== 'missing') throw e; markMissing(req); }
+  }
+  fellBack(req);
+  return fallback();
+}
+
+async function lcd<T>(path: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(endpoints.lcd + path, init);
+  const body = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(body?.message || `LCD ${r.status}`);
+  return body as T;
+}
+
+let chainIdP: Promise<string> | null = null;
+const chainId = () => (chainIdP ??= lcd<{ default_node_info: { network: string } }>('/cosmos/base/tendermint/v1beta1/node_info').then((r) => r.default_node_info.network));
+
+interface Account { account_number: string; sequence: string }
+const account = (address: string) => viaGuild<Account>('REQ-TX-1',
+  () => get<Account>(`account/${address}`),
+  async () => { const r = await lcd<{ account: Account & { base_account?: Account } }>(`/cosmos/auth/v1beta1/accounts/${address}`); return r.account.base_account || r.account; });
+
+const broadcastBytes = (tx: Uint8Array) => viaGuild<{ txhash: string; code: number; raw_log: string }>('REQ-TX-2',
+  () => post('tx/broadcast', { tx_bytes: toB64(tx) }),
+  async () => (await lcd<{ tx_response: { txhash: string; code: number; raw_log: string } }>('/cosmos/tx/v1beta1/txs', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tx_bytes: toB64(tx), mode: 'BROADCAST_MODE_SYNC' }),
+  })).tx_response);
+
+export const txResult = (hash: string) => viaGuild<{ code: number; height: string } | null>('REQ-TX-3',
+  () => get(`tx/${hash}`),
+  async () => (await lcd<{ tx_response: { code: number; height: string } }>(`/cosmos/tx/v1beta1/txs/${hash}`).catch(() => null))?.tx_response ?? null);
+
+function signTx(key: KeyPair, msgs: Msg[], chain: string, acc: Account): Uint8Array {
+  const body = new Writer();
+  for (const m of msgs) body.msg(1, encodeAny(m), true);
+  const bodyBytes = body.finish();
+  const pk = any('/cosmos.crypto.secp256k1.PubKey', new Writer().bytes(1, key.pubKey).finish());
+  const signerInfo = new Writer().msg(1, pk).msg(2, new Writer().msg(1, new Writer().uint(1, 1), true), true).uint(3, BigInt(acc.sequence));
+  const fee = new Writer();
+  for (const c of FEE.amount) fee.msg(1, coin(c), true);
+  fee.uint(2, FEE.gas);
+  const auth = new Writer().msg(1, signerInfo, true).msg(2, fee, true).finish();
+  const doc = new Writer().bytes(1, bodyBytes).bytes(2, auth).string(3, chain).uint(4, BigInt(acc.account_number)).finish();
+  const sig = signBytes(key.privKey, doc);
+  const raw = new Writer().bytes(1, bodyBytes).bytes(2, auth);
+  raw.bytes(3, sig);
+  return raw.finish();
+}
+
+/** Sign and broadcast one Structs message as the commander (or a replicant by HD index). */
+export async function act(name: string, value: MsgValue, index = 0): Promise<string> {
+  const key = wallet.key(index);
+  const [chain, acc] = await Promise.all([chainId(), account(key.address)]);
+  const r = await broadcastBytes(signTx(key, [{ typeUrl: typeUrlOf(name), value: { creator: key.address, ...value } }], chain, acc));
+  if (r.code) throw new Error(r.raw_log || `체인 오류 ${r.code}`);
+  return r.txhash;
+}
+
+export const actions = {
+  structActivate: (structId: string) => act('MsgStructActivate', { structId }),
+  structDeactivate: (structId: string) => act('MsgStructDeactivate', { structId }),
+  /** capacity in mW, duration in blocks; the whole capacity × rate × duration is escrowed now. */
+  agreementOpen: (providerId: string, capacity: number, duration: number) => act('MsgAgreementOpen', { providerId, capacity: String(capacity), duration: String(duration) }),
+  agreementClose: (agreementId: string) => act('MsgAgreementClose', { agreementId }),
+  agreementExtend: (agreementId: string, blocks: number) => act('MsgAgreementDurationIncrease', { agreementId, durationIncrease: String(blocks) }),
+  providerCreate: (p: { substationId: string; rate: { denom: string; amount: string }; accessPolicy: 'openMarket' | 'guildMarket' | 'closedMarket'; capacityMinimum: number; capacityMaximum: number; durationMinimum: number; durationMaximum: number; providerCancellationPenalty: string; consumerCancellationPenalty: string }) =>
+    act('MsgProviderCreate', { ...p, capacityMinimum: String(p.capacityMinimum), capacityMaximum: String(p.capacityMaximum), durationMinimum: String(p.durationMinimum), durationMaximum: String(p.durationMaximum) }),
+};
+
+/** ~6 s blocks (structs-ai: charge grows about one a block, every 6 s). */
+export const BLOCKS_PER_DAY = 14_400;

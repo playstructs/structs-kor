@@ -1,0 +1,28 @@
+.tscreen { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 48px 24px; text-align: center;
+  background-image: repeating-linear-gradient(0deg, rgba(67, 205, 182, .06) 0 1px, transparent 1px 4px); }
+.ttrain { display: flex; flex-direction: column; flex: 1 1 auto; }
+.thud { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; background: var(--bg-raised); border-bottom: 1px solid var(--line); align-items: center; }
+.hudb { position: relative; background: var(--surface); border: 1px solid var(--line); padding: 6px 12px; color: var(--text); text-align: left; cursor: pointer; min-height: 44px; }
+.hudb small { display: block; font-size: 11px; color: var(--text-dim); } .hudb b { font: 600 15px var(--f-mono); }
+.tlane { display: grid; grid-template-columns: 44px repeat(4, minmax(0, 1fr)); gap: 6px; }
+.tlane.two { grid-template-columns: 44px repeat(2, minmax(0, 1fr)); }
+.tlane > span { display: flex; align-items: center; justify-content: center; background: var(--bg-raised); font-size: 12px; color: var(--text-dim); }
+.tslot { position: relative; min-height: 64px; padding: 8px 10px; text-align: left; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; cursor: pointer; color: #fff; }
+.tslot b { font-size: 14px; } .tslot span { font: 11px var(--f-mono); }
+.s-mine { background: var(--cheong-bg); border: 1px solid var(--cheong-mid); } .s-mine span { color: var(--cheong-hi); }
+.s-enemy { background: var(--jeok-bg); border: 1px solid var(--jeok-deep); } .s-enemy span { color: var(--jeok-hi); }
+.s-empty { background: var(--bg-raised); border: 1px dashed var(--line); color: var(--text-faint); } .s-empty span { color: var(--text-faint); }
+.s-dead { background: var(--bg-raised); border: 1px dashed var(--jeok-strong); color: var(--text-dim); } .s-dead span { color: var(--jeok); }
+.s-build { background: var(--hwang-bg); border: 1px solid var(--hwang-line); } .s-build span { color: var(--hwang); }
+.tgt { outline: 3px solid var(--hwang); outline-offset: 3px; animation: tpulse 1s ease-in-out infinite; z-index: 2; }
+.tgt::after { content: '▼'; position: absolute; top: -30px; left: 50%; transform: translateX(-50%); color: var(--hwang); font-size: 20px; line-height: 1; animation: tbob .6s ease-in-out infinite alternate; pointer-events: none; }
+@keyframes tpulse { 0%, 100% { outline-color: #EBAA49; } 50% { outline-color: #FFE3A8; } }
+@keyframes tbob { from { margin-top: 0; } to { margin-top: -6px; } }
+/* The narrator and the action bar stay on screen however tall the board gets (phones stack it). */
+.tnarr { position: fixed; left: 16px; right: 16px; z-index: 30; display: flex; justify-content: center; pointer-events: none; }
+.tnarr.bottom { bottom: 88px; } .tnarr.top { top: 132px; }
+.tactions { position: sticky; bottom: 0; z-index: 20; }
+.tnarr > div { pointer-events: auto; width: 100%; max-width: 760px; background: var(--sunken); border: 2px solid var(--cheong); box-shadow: 8px 8px 0 var(--cheong-bg); display: flex; gap: 16px; padding: 16px; align-items: flex-start; }
+.tph { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 0; background: transparent; color: var(--text-dim); font-size: 14px; text-align: left; cursor: pointer; width: 100%; min-height: 44px; }
+.tph span { width: 22px; height: 22px; flex: 0 0 22px; display: flex; align-items: center; justify-content: center; font: 11px var(--f-mono); border: 1px solid currentColor; }
+.tph.done { color: var(--cheong-hi); } .tph.now { background: var(--cheong-bg); color: #fff; font-weight: 700; box-shadow: inset 3px 0 0 var(--cheong); }
