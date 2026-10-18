@@ -6,7 +6,7 @@
 import type { Dashboard } from '../api/planned';
 import type { StructRow, ActivityRow, PlayerRow } from '../api/guild';
 import type { AttackDetail, ShotRow } from '../sim/chain';
-import { TYPES_BY_ID, type Ambit } from '../data/catalogue';
+import { TYPES_BY_ID, AMBITS, AMBIT_FLAG, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
 import { rngFor } from '../core/util';
 import { STRUCT_TYPE } from '../i18n/ko';
 import { fits, unitId, type Unit } from '../sim/fleets';
@@ -21,7 +21,7 @@ export interface DemoStruct { id: string; type: number; ambit: Ambit; slot: numb
 function creditInner(byId: Record<string, number>): { id: string; type: number; rank: number; name?: string }[] {
   const up: { id: string; type: number; rank: number; name?: string }[] = [];
   for (const x of s.structs) {
-    const k = byId[x.id]; if (!k) continue;
+    const k = byId[x.id]; if (!finite(k) || k <= 0) continue;
     const before = vetRank(x.kills); x.kills = (x.kills ?? 0) + k;
     if (vetRank(x.kills) > before) up.push({ id: x.id, type: x.type, rank: vetRank(x.kills), name: x.name });
   }
@@ -186,7 +186,7 @@ export const DOCTRINE_SWITCH = 40;
 const doc = (id: DoctrineId) => s.doctrine === id;
 /** Bonuses on power sold, applied as each block is paid (so they follow the doctrine and guild you hold now). */
 const sellBonus = () => 1 + (inGuild('gold') ? 0.05 : 0) + (doc('trade') ? 0.12 : 0) + (holds('relay') ? 0.05 : 0);
-export const RATE = { maxDealKw: 4, marketDepthKw: 10, mine: 0.6, refine: 0.35, alphaPerOre: 1, baseKw: 3, genKw: 2, raidEvery: 30, raidEta: 6, price: 0.042 };
+export const RATE = { maxTerm: 10_000, maxDealKw: 4, marketDepthKw: 10, mine: 0.6, refine: 0.35, alphaPerOre: 1, baseKw: 3, genKw: 2, raidEvery: 30, raidEta: 6, price: 0.042 };
 const lv = (t: TechId) => s.tech?.[t] ?? 0;
 const rivalWorth = (r: Rival) => r.alpha + r.ore * 0.6 + r.fleet * 4;
 const rivals = () => { s.rivals ??= RIVALS(); for (const r of s.rivals) r.fleet = Math.min(r.fleet, 10); return s.rivals; };
@@ -208,16 +208,63 @@ function fresh(): State {
     height: 1_482_200, ore: 12, alpha: 4.5, infusedKw: 0, vein: 18_400, shield: 72,
     structs: [
       S('5-901', 1, 'space', 0, 'fleet'), S('5-902', 3, 'space', 0, 'fleet'), S('5-903', 12, 'water', 0, 'fleet'), S('5-904', 9, 'land', 1, 'fleet'),
-      S('5-910', 14, 'land', 0, 'planet'), S('5-911', 15, 'land', 1, 'planet', false), S('5-912', 20, 'air', 0, 'planet'), S('5-913', 16, 'space', 0, 'planet'),
+      S('5-910', 14, 'land', 0, 'planet'), S('5-911', 15, 'land', 1, 'planet', false), S('5-912', 20, 'water', 0, 'planet'), S('5-913', 16, 'space', 0, 'planet'),
     ],
     raid: null, nextRaid: 18, contracts: [], log: [], seq: 0, raidsRepelled: 0, raidsLost: 0, earned: 0, chronicle: [],
     priceHist: Array.from({ length: 40 }, (_, i) => RATE.price * (0.8 + 0.25 * Math.sin(i / 5) + i / 160)),
   };
 }
 
+/** Every amount an order takes must be a real number (NaN and ±Infinity slip past `<` and `<=`). */
+const finite = (...xs: number[]) => xs.every((x) => typeof x === 'number' && Number.isFinite(x));
+/** A contract's term: whole blocks, at least one, at most RATE.maxTerm. */
+const goodTerm = (b: number) => Number.isInteger(b) && b > 0 && b <= RATE.maxTerm;
+/** Can this type stand in that place? (Not the command ship, nor the late-game plants the bridge doesn't offer.) */
+function placeable(type: number, ambit: Ambit, slot: number, cat: 'planet' | 'fleet'): boolean {
+  const t = TYPES_BY_ID[type];
+  return !!t && t.category === cat && AMBITS.includes(ambit) && (t.possibleAmbit & AMBIT_FLAG[ambit]) !== 0 && Number.isInteger(slot) && slot >= 0 && slot <= 3;
+}
+
+/** A save is untrusted: JSON writes NaN and ±Infinity as null, and an older or edited save can hold
+ * anything. Numbers that must be real fall back to a fresh base's, broken contracts are dropped, and a
+ * struct standing where its type can't (the old Field Generator in the air) moves to a legal free slot. */
+export function sanitise(st: State): State {
+  const f = fresh();
+  const num = (x: unknown, d: number) => (typeof x === 'number' && Number.isFinite(x) ? x : d);
+  for (const k of ['height', 'ore', 'alpha', 'infusedKw', 'vein', 'shield', 'nextRaid', 'seq', 'raidsRepelled', 'raidsLost', 'earned'] as const) st[k] = num(st[k], f[k]);
+  st.ore = Math.max(0, st.ore); st.infusedKw = Math.max(0, st.infusedKw);
+  if (!Array.isArray(st.log)) st.log = [];
+  st.priceHist = Array.isArray(st.priceHist) ? st.priceHist.filter((x) => num(x, 0) > 0) : [];
+  if (!st.priceHist.length) st.priceHist = f.priceHist;
+  st.contracts = Array.isArray(st.contracts) ? st.contracts.filter((c) => c && num(c.kw, 0) > 0 && num(c.rate, -1) >= 0 && goodTerm(c.left)) : [];
+  st.structs = Array.isArray(st.structs) ? st.structs.filter((x) => x && TYPES_BY_ID[x.type]) : f.structs;
+  for (const x of st.structs) {
+    const t = TYPES_BY_ID[x.type];
+    x.max = Math.max(1, num(x.max, t.maxHealth)); x.hp = Math.min(x.max, Math.max(0, num(x.hp, x.max)));
+    if (x.building != null) x.building = Math.min(1, Math.max(0, num(x.building, 0)));
+    x.buildBlocks = Math.max(1, num(x.buildBlocks, 3));
+    if (x.cat !== 'planet' && x.cat !== 'fleet') x.cat = t.category;
+  }
+  // The command ship holds no slot; anything else out of place moves to the first legal free one,
+  // searched from the water up (so the old generator lands where a fresh base keeps it).
+  const taken = (y: DemoStruct, ambit: Ambit, slot: number) => st.structs.some((x) => x !== y && x.type !== COMMAND_SHIP_ID && x.cat === y.cat && x.ambit === ambit && x.slot === slot);
+  st.structs = st.structs.filter((x) => {
+    if (x.type === COMMAND_SHIP_ID || placeable(x.type, x.ambit, x.slot, x.cat)) return true;
+    for (const a of [...AMBITS].reverse()) for (let sl = 0; sl < 4; sl++) if (placeable(x.type, a, sl, x.cat) && !taken(x, a, sl)) { x.ambit = a; x.slot = sl; return true; }
+    return false;
+  });
+  if (st.engine) { st.engine.stage = Math.min(ENGINE.length, Math.max(0, Math.floor(num(st.engine.stage, 0)))); st.engine.paid = Math.max(0, num(st.engine.paid, 0)); }
+  if (st.guild) { st.guild.xp = Math.max(0, num(st.guild.xp, 0)); st.guild.donated = Math.max(0, num(st.guild.donated, 0)); }
+  if (st.loan && !(finite(st.loan.owed, st.loan.due) && st.loan.owed >= 0)) st.loan = null;
+  if (st.stakes) for (const [id, g] of Object.entries(st.stakes)) if (!(num(g, 0) > 0)) delete st.stakes[id];
+  for (const k of ['dividends', 'tribute'] as const) if (st[k] != null) st[k] = num(st[k], 0);
+  for (const r of st.rivals ?? []) { const d = RIVALS().find((x) => x.id === r.id); r.alpha = num(r.alpha, d?.alpha ?? 0); r.ore = num(r.ore, d?.ore ?? 0); r.fleet = num(r.fleet, d?.fleet ?? 2); r.growth = num(r.growth, d?.growth ?? 0.3); }
+  return st;
+}
+
 // The base persists in this browser across visits; it keeps producing while you are away.
 let on = (() => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } })();
-let s: State = (() => { try { return JSON.parse(localStorage.getItem(KEY + '.state') || 'null') ?? fresh(); } catch { return fresh(); } })();
+let s: State = (() => { try { const st = JSON.parse(localStorage.getItem(KEY + '.state') || 'null'); return st ? sanitise(st) : fresh(); } catch { return fresh(); } })();
 let catching = false;
 
 /* Several tabs, one base: the tab holding a fresh heartbeat runs the blocks; every tab adopts the
@@ -244,7 +291,7 @@ function adoptStored(): boolean {
     if (!raw) return false;
     const st = JSON.parse(raw) as State;
     if ((st.savedAt ?? 0) <= (s.savedAt ?? 0)) return false;
-    s = st;
+    s = sanitise(st);
     return true;
   } catch { return false; }
 }
@@ -286,7 +333,7 @@ if (typeof window !== 'undefined') {
     if (e.key === KEY && e.newValue === '1' && !on) { on = true; adoptStored(); demo.run(); for (const f of changeFns) f(); return; }
     if (e.key !== KEY + '.state' || !e.newValue || !on) return;
     let st: State;
-    try { st = JSON.parse(e.newValue); } catch { return; }
+    try { st = sanitise(JSON.parse(e.newValue)); } catch { return; }
     // A save from behind us (a tab that hadn't caught up) would replay blocks: keep ours.
     if (st.height < s.height) return;
     const newBlock = st.height !== s.height;
@@ -586,6 +633,7 @@ function covert(id: string, op: OpId): { ok: boolean; text: string } | string {
   if (!r) return '세력을 찾을 수 없습니다';
   if (r.vassal != null) return '속국에는 공작을 하지 않습니다';
   const o = OPS[op];
+  if (!o) return '알 수 없는 공작입니다';
   if ((r.opUntil ?? 0) > s.height) return `${r.name}의 경계가 높습니다 · ${r.opUntil! - s.height}블록 뒤에`;
   if (op === 'sabotage' && (r.sabotaged ?? 0) > s.height) return '이미 사보타주가 진행 중입니다';
   if (s.alpha < o.cost) return `공작 자금 ${o.cost} g 필요`;
@@ -924,7 +972,7 @@ function decide(i: number): string | null {
     s.decision = null; persist(); for (const f of changeFns) f();
     return `${r.name}의 상황이 바뀌어 결단이 무효가 되었습니다`;
   }
-  const c = choicesOf(d.id, r).choices[i];
+  const c = Number.isInteger(i) ? choicesOf(d.id, r).choices[i] : undefined;
   if (!c) return '없는 선택지입니다';
   if (c.ok === false) return '조건이 맞지 않습니다';
   let note = '';
@@ -1198,6 +1246,13 @@ export const demo = {
     adoptStored(); // another tab may have moved on: act on the newest base
     const t = TYPES_BY_ID[type];
     if (!t) return '알 수 없는 구조체';
+    // The command ship is the fleet's own; the power plant and the World Engine aren't built from the bridge.
+    if (type === COMMAND_SHIP_ID || type > 20) return '건설할 수 없는 구조체입니다';
+    if (cat !== 'planet' && cat !== 'fleet') return '알 수 없는 슬롯입니다';
+    if (!Number.isInteger(slot) || slot < 0 || slot > 3) return '슬롯은 1–4번뿐입니다';
+    if (!AMBITS.includes(ambit)) return '알 수 없는 영역입니다';
+    if (t.category !== cat) return cat === 'planet' ? '행성 슬롯에는 행성 구조체만 지을 수 있습니다' : '함대 슬롯에는 함선만 지을 수 있습니다';
+    if (!placeable(type, ambit, slot, cat)) return `${STRUCT_TYPE[type] ?? t.type}은(는) 이 영역에 지을 수 없습니다`;
     // The command ship rides with the fleet but holds no slot (as in battle).
     const inSlot = (x: DemoStruct) => x.ambit === ambit && x.slot === slot && x.cat === cat && x.type !== 1;
     if (s.structs.some((x) => inSlot(x) && x.hp > 0)) return '이미 사용 중인 슬롯입니다';
@@ -1258,6 +1313,8 @@ export const demo = {
   },
   sell(kw: number, blocks: number): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
+    if (!finite(kw) || kw <= 0) return '수량을 확인하세요';
+    if (!goodTerm(blocks)) return `기간은 1–${RATE.maxTerm}블록입니다`;
     if (structsKw() + soldKw() + kw > ownKw()) return '판매할 여유 전력이 없습니다 (구매한 전력은 되팔 수 없습니다)';
     // The market is only so deep: buyers take a few kW per contract and so much in all.
     if (kw > RATE.maxDealKw) return `한 계약은 최대 ${RATE.maxDealKw} kW입니다`;
@@ -1277,7 +1334,8 @@ export const demo = {
   /** Hire (pay once) or dismiss a replicant. */
   hire(id: RepId): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
-    const r = REPS.find((x) => x.id === id)!;
+    const r = REPS.find((x) => x.id === id);
+    if (!r) return '알 수 없는 레플리칸트입니다';
     if (s.reps?.[id]) { s.reps[id] = false; repNote(`${r.role} ${r.name} 해고`); persist(); for (const f of changeFns) f(); return null; }
     if (s.alpha < r.hire) return `계약금 ${r.hire} g 필요`;
     s.alpha -= r.hire; s.reps = { ...s.reps, [id]: true };
@@ -1292,6 +1350,7 @@ export const demo = {
     adoptStored();
     if (!s.raid) return '다가오는 습격이 없습니다';
     if (s.raid.eta === 0) return '이미 교전 중입니다';
+    if (st !== 'intercept' && st !== 'entrench') return '알 수 없는 전술입니다';
     s.raid.stance = st;
     persist(); for (const f of changeFns) f();
     return null;
@@ -1304,7 +1363,8 @@ export const demo = {
     const r = rivals().find((x) => x.id === id);
     if (!r) return '없는 세력입니다';
     if (id === '1-666') return '붉은 연합은 외부 자본을 받지 않습니다';
-    if (g <= 0 || s.alpha < g) return `알파 ${g} g 필요`;
+    if (!finite(g) || g <= 0) return '금액을 확인하세요';
+    if (s.alpha < g) return `알파 ${g} g 필요`;
     const have = s.stakes?.[id] ?? 0;
     if (have + g > INVEST.max) return `한 세력에 최대 ${INVEST.max} g`;
     s.alpha -= g; s.stakes = { ...s.stakes, [id]: have + g };
@@ -1395,8 +1455,9 @@ export const demo = {
   /** Use a commander ability (`rank` is the commander's rank index). */
   useAbility(id: AbilityId, rank: number): string | null {
     adoptStored();
-    const a = ABILITIES.find((x) => x.id === id)!;
-    if (rank < a.rank) return '계급이 부족합니다';
+    const a = ABILITIES.find((x) => x.id === id);
+    if (!a) return '알 수 없는 능력입니다';
+    if (!finite(rank) || rank < a.rank) return '계급이 부족합니다';
     const left = Math.max(0, (s.cd?.[id] ?? 0) - s.height);
     if (left) return `${a.name} 재사용까지 ${left}블록`;
     if (id === 'surge') {
@@ -1425,6 +1486,7 @@ export const demo = {
   /** Why this hull can't take that refit now (null = it can). */
   refitBlocked(id: string, mod: RefitId): string | null {
     const x = s.structs.find((y) => y.id === id);
+    if (!REFITS[mod]) return '알 수 없는 개장입니다';
     if (!x || x.cat !== 'fleet') return '함대 함선만 개장할 수 있습니다';
     if (x.hp <= 0) return '파괴된 함선은 개장할 수 없습니다';
     if (x.building != null) return '건조가 끝나야 개장할 수 있습니다';
@@ -1450,7 +1512,7 @@ export const demo = {
     adoptStored();
     const x = s.structs.find((y) => y.id === id);
     if (!x || vetRank(x.kills) < 1) return '베테랑 함선만 이름을 붙일 수 있습니다';
-    const n = name.trim().slice(0, 12);
+    const n = String(name ?? '').trim().slice(0, 12);
     x.name = n || undefined;
     persist(); for (const f of changeFns) f();
     return null;
@@ -1487,7 +1549,8 @@ export const demo = {
   /** Send the fleet at an outpost: pay the sortie, roll against its defenders. */
   claimOutpost(id: OutpostId): { ok: boolean; text: string } | string {
     adoptStored();
-    const o = outposts()[id], d = OUTPOSTS.find((x) => x.id === id)!;
+    const o = outposts()[id], d = OUTPOSTS.find((x) => x.id === id);
+    if (!o || !d) return '없는 거점입니다';
     if (o.owner === DEMO_ID) return '이미 장악한 거점입니다';
     if (!warships()) return '출격할 전함이 없습니다';
     if (s.alpha < OUTPOST.claim) return `출격 비용 ${OUTPOST.claim} g 필요`;
@@ -1515,6 +1578,7 @@ export const demo = {
   fortify(id: OutpostId): string | null {
     adoptStored();
     const o = outposts()[id];
+    if (!o || !OUTPOSTS.some((x) => x.id === id)) return '없는 거점입니다';
     if (o.owner !== DEMO_ID) return '장악한 거점만 요새화할 수 있습니다';
     if (o.garrison >= OUTPOST.maxGarrison) return '수비대가 최대입니다';
     if (s.alpha < OUTPOST.fortify) return `알파 ${OUTPOST.fortify} g 필요`;
@@ -1558,6 +1622,7 @@ export const demo = {
   /** Join (or switch to) a guild. Switching costs the XP you built with the old one. */
   joinGuild(id: GuildId): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
+    if (!GUILDS.some((g) => g.id === id)) return '없는 길드입니다';
     if (s.guild?.id === id) return '이미 가입한 길드입니다';
     if (s.guild && s.alpha < 5) return '길드를 옮기려면 알파 5 g가 필요합니다';
     if (s.guild) s.alpha -= 5;
@@ -1569,7 +1634,8 @@ export const demo = {
   donate(g: number): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
     if (!s.guild) return '먼저 길드에 가입하세요';
-    if (g <= 0 || s.alpha < g) return '알파가 부족합니다';
+    if (!finite(g) || g <= 0) return '금액을 확인하세요';
+    if (s.alpha < g) return '알파가 부족합니다';
     const before = guildLevel();
     s.alpha -= g; s.guild.xp += g; s.guild.donated += g; raceAdd(g * 4);
     log('guild', `기부 ${g} g`);
@@ -1584,7 +1650,7 @@ export const demo = {
     adoptStored(); // another tab may have moved on: act on the newest base
     const st = engineStage();
     if (st >= ENGINE.length) return '월드 엔진이 이미 가동 중입니다';
-    if (g <= 0) return '금액을 확인하세요';
+    if (!finite(g) || g <= 0) return '금액을 확인하세요';
     s.engine ??= { stage: 0, paid: 0 };
     const need = ENGINE.slice(0, st + 1).reduce((a, x) => a + x.cost, 0) - s.engine.paid;
     // Only what the stage still needs is charged.
@@ -1641,6 +1707,7 @@ export const demo = {
   /** Take up a doctrine (free the first time). */
   adopt(id: DoctrineId): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
+    if (!DOCTRINES.some((d) => d.id === id)) return '없는 교리입니다';
     if (s.doctrine === id) return '이미 따르는 교리입니다';
     if (s.doctrine && s.alpha < DOCTRINE_SWITCH) return `교리 전환에 알파 ${DOCTRINE_SWITCH} g 필요`;
     if (s.doctrine) s.alpha -= DOCTRINE_SWITCH;
@@ -1660,7 +1727,8 @@ export const demo = {
   /** Buy power from the market: capacity now, alpha every block, at the ask (price + 5%). */
   buy(kw: number, blocks: number): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
-    if (kw <= 0 || blocks <= 0) return '수량을 확인하세요';
+    if (!finite(kw) || kw <= 0) return '수량을 확인하세요';
+    if (!goodTerm(blocks)) return `기간은 1–${RATE.maxTerm}블록입니다`;
     const rate = s.priceHist[s.priceHist.length - 1] * (inGuild('gold') ? 1.02 : 1.05);
     if (s.alpha < kw * rate * 3) return '알파가 부족합니다 (최소 3블록치)';
     s.contracts.push({ id: `11-${300 + s.seq}`, kw, rate, left: blocks, buyer: ['3-15', '1-77', '3-88'][s.seq % 3], dir: 'buy' });
@@ -1736,7 +1804,7 @@ export const demo = {
     busy++;
     try {
     const promoted = creditInner(kills);
-    for (const x of s.structs) if (x.id in hp) {
+    for (const x of s.structs) if (x.id in hp && finite(hp[x.id])) {
       // The battle engine caps a hull at its type's maximum; armour above that rides along and
       // comes home with a ship that survives.
       const extra = Math.max(0, x.hp - TYPES_BY_ID[x.type].maxHealth);
@@ -1786,6 +1854,7 @@ export const demo = {
   level: (t: TechId) => lv(t),
   /** Alpha won outside the base (a campaign clear): straight into the treasury, written in the chronicle. */
   grant(g: number, why: string) {
+    if (!finite(g) || g <= 0) return;
     adoptStored(); // another tab may have moved on: act on the newest base
     s.alpha += g;
     chronicle('cheong', `${why} · +${g} α`);
@@ -1795,7 +1864,7 @@ export const demo = {
   /** Pay alpha for something outside the base (scouting); false when short. */
   spend(g: number): boolean {
     adoptStored(); // another tab may have moved on: act on the newest base
-    if (s.alpha < g) return false;
+    if (!finite(g) || g < 0 || s.alpha < g) return false;
     s.alpha -= g;
     persist(); for (const f of changeFns) f();
     return true;
@@ -1803,10 +1872,11 @@ export const demo = {
   /** Buy the next level of a technology. `rank` is the commander's rank index. */
   research(t: TechId, rank: number): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
-    const tech = TECH.find((x) => x.id === t)!;
+    const tech = TECH.find((x) => x.id === t);
+    if (!tech) return '알 수 없는 연구입니다';
     const l = lv(t);
     if (l >= tech.max) return '이미 최고 단계입니다';
-    if (rank < tech.rank) return `계급이 부족합니다`;
+    if (!finite(rank) || rank < tech.rank) return `계급이 부족합니다`;
     const c = tech.cost[l];
     if (s.alpha < c) return `알파 ${c} g 필요`;
     s.alpha -= c;

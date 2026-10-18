@@ -2,13 +2,14 @@
  * and the attack-animation plan. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { demo, TECH, EVENTS } from '../src/game/demo';
+import { demo, TECH, EVENTS, RATE, sanitise } from '../src/game/demo';
 import { advise } from '../src/game/advisor';
 import { MISSIONS, missionUnits } from '../src/game/campaign';
 import { validate, chainSetup, YOU, CPU } from '../src/sim/fleets';
 import { Chain, type AttackDetail } from '../src/sim/chain';
 import { Ai } from '../src/sim/ai';
 import { planAttack, type Known } from '../src/game/map/plan';
+import { TYPES_BY_ID, AMBIT_FLAG } from '../src/data/catalogue';
 
 test('campaign fleets are legal battle layouts', () => {
   for (const m of MISSIONS) assert.equal(validate(missionUnits(m)), null, m.id);
@@ -872,4 +873,100 @@ test('raid stance: chosen while the raid approaches, locked once it lands', () =
   assert.equal(demo.raid!.stance, 'intercept');
   demo.state.raid!.eta = 0;
   assert.match(demo.setStance('entrench') ?? '', /교전/);
+});
+
+/* ── The demo API trusts nothing it's handed (chaos-profile findings B3, B4). ── */
+const legal = (x: { type: number; ambit: keyof typeof AMBIT_FLAG }) => x.type === 1 || (TYPES_BY_ID[x.type].possibleAmbit & AMBIT_FLAG[x.ambit]) !== 0;
+
+test('demo base: every starting struct stands in an ambit its type allows', () => {
+  demo.reset();
+  for (const x of demo.state.structs) assert.ok(legal(x), `${x.id} (type ${x.type}) in ${x.ambit}`);
+  assert.deepEqual((({ ambit, slot }) => ({ ambit, slot }))(demo.state.structs.find((x) => x.id === '5-912')!), { ambit: 'water', slot: 0 });
+});
+
+test('demo save: an old Field Generator in the air moves to a legal free slot', () => {
+  demo.reset();
+  const old = structuredClone(demo.state);
+  const gen = old.structs.find((x) => x.id === '5-912')!;
+  gen.ambit = 'air';
+  const st = sanitise(structuredClone(old));
+  assert.deepEqual((({ ambit, slot }) => ({ ambit, slot }))(st.structs.find((x) => x.id === '5-912')!), { ambit: 'water', slot: 0 });
+  // Water 0 already built on: the next free legal slot.
+  const busy = structuredClone(old);
+  busy.structs.push({ ...structuredClone(gen), id: '5-999', type: 18, ambit: 'water', slot: 0 });
+  const st2 = sanitise(busy);
+  const moved = st2.structs.find((x) => x.id === '5-912')!;
+  assert.ok(legal(moved));
+  assert.ok(!st2.structs.some((x) => x !== moved && x.cat === 'planet' && x.ambit === moved.ambit && x.slot === moved.slot), 'no slot shared');
+});
+
+test('demo save: non-finite numbers (JSON nulls) are repaired on load', () => {
+  demo.reset();
+  const st = JSON.parse(JSON.stringify({ ...demo.state, alpha: NaN, ore: -Infinity, shield: Infinity, contracts: [{ id: '11-1', kw: NaN, rate: 0.04, left: 999999999991, buyer: '3-15' }, { id: '11-2', kw: 1, rate: 0.04, left: 30, buyer: '3-15' }], priceHist: [NaN, 0.04] }));
+  assert.equal(st.alpha, null, 'JSON wrote NaN as null');
+  const ok = sanitise(st);
+  for (const k of ['alpha', 'ore', 'shield'] as const) assert.ok(Number.isFinite(ok[k]), k);
+  assert.deepEqual(ok.contracts.map((c) => c.id), ['11-2']);
+  assert.deepEqual(ok.priceHist, [0.04]);
+});
+
+test('demo build: refuses illegal ambits, wrong categories, bad slots and unbuildable types', () => {
+  demo.reset();
+  const s = demo.state; s.alpha = 1000; s.infusedKw = 100; s.nextRaid = 9999;
+  const n = s.structs.length;
+  assert.ok(demo.build(20, 'air', 1, 'planet'), 'Field Generator cannot stand in the air');
+  assert.ok(demo.build(3, 'space', 1, 'planet'), 'a Starfighter is not a planet struct');
+  assert.ok(demo.build(14, 'land', 2, 'fleet'), 'an Extractor is not a ship');
+  for (const slot of [-1, 4, 1.5, NaN, Infinity]) assert.ok(demo.build(14, 'land', slot, 'planet'), `slot ${slot}`);
+  assert.ok(demo.build(22, 'land', 2, 'planet'), 'World Engine');
+  assert.ok(demo.build(21, 'land', 2, 'planet'), 'Continental Power Plant');
+  assert.ok(demo.build(1, 'space', 2, 'fleet'), 'Command Ship');
+  assert.ok(demo.build(14, 'moon' as never, 2, 'planet'), 'unknown ambit');
+  assert.ok(demo.build(14, 'land', 2, 'base' as never), 'unknown category');
+  assert.equal(s.structs.length, n, 'nothing was built');
+  assert.equal(demo.build(20, 'water', 1, 'planet'), null, 'a legal build still works');
+});
+
+test('demo orders: NaN, Infinity and negative amounts are refused and leave the base whole', () => {
+  demo.reset();
+  const s = demo.state; s.alpha = 500; s.infusedKw = 20; s.nextRaid = 9999;
+  assert.equal(demo.joinGuild('blue'), null);
+  const bad = [NaN, Infinity, -Infinity, -1, 0];
+  for (const x of bad) {
+    assert.ok(demo.sell(x, 30), `sell kw ${x}`);
+    assert.ok(demo.buy(x, 30), `buy kw ${x}`);
+    assert.ok(demo.infuse(x), `infuse ${x}`);
+    assert.ok(demo.donate(x), `donate ${x}`);
+    assert.ok(demo.borrow(x), `borrow ${x}`);
+    assert.ok(demo.invest('1-313', x), `invest ${x}`);
+    assert.ok(demo.buildEngine(x), `buildEngine ${x}`);
+    assert.equal(demo.spend(x), x === 0, `spend ${x}`);
+    demo.grant(x, 'test');
+  }
+  for (const b of [NaN, Infinity, -5, 0, 2.5, RATE.maxTerm + 1, 999999999991]) {
+    assert.ok(demo.sell(1, b), `sell blocks ${b}`);
+    assert.ok(demo.buy(1, b), `buy blocks ${b}`);
+  }
+  assert.equal(s.alpha, 500);
+  assert.equal(s.contracts.length, 0);
+  assert.ok(demo.research('guns', NaN), 'a NaN rank does not pass the rank gate');
+  assert.ok(demo.useAbility('strike', NaN));
+  demo.step();
+  for (const k of ['alpha', 'ore', 'shield', 'infusedKw'] as const) assert.ok(Number.isFinite(s[k]), k);
+});
+
+test('demo orders: unknown ids are refused, not thrown', () => {
+  demo.reset();
+  demo.state.alpha = 500;
+  assert.ok(typeof demo.claimOutpost('nowhere' as never) === 'string');
+  assert.ok(demo.fortify('nowhere' as never));
+  assert.ok(demo.adopt('anarchy' as never));
+  assert.equal(demo.doctrine, null);
+  assert.ok(demo.joinGuild('nobody' as never));
+  assert.ok(demo.hire('ghost' as never));
+  assert.ok(demo.research('alchemy' as never, 99));
+  assert.ok(demo.useAbility('nuke' as never, 99));
+  assert.ok(demo.refit('5-901', 'wings' as never));
+  assert.ok(typeof demo.covert('1-313', 'bribe' as never) === 'string');
+  assert.equal(demo.state.alpha, 500);
 });
