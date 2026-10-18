@@ -363,7 +363,7 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .scout { display: flex; flex-direction: column; gap: 4px; padding: 10px; background: var(--sunken); border: 1px solid var(--cheong-mid); }
 .scout-u { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .scout-u span { flex: 1 1 auto; color: var(--white); }
-.ev-chip { padding: 3px 10px; font-weight: 700; border: 2px solid; animation: alert-pulse 1.4s steps(2) infinite; }
+.ev-chip { padding: 3px 10px; font-weight: 700; text-decoration: none; border: 2px solid; animation: alert-pulse 1.4s steps(2) infinite; }
 .ev-chip.jeok { color: #fff; background: var(--jeok-deep); border-color: var(--jeok-strong); }
 .ev-chip.cheong { color: #fff; background: var(--cheong-mid); border-color: var(--cheong); }
 .ev-chip.hwang { color: #2A1F05; background: var(--hwang); border-color: var(--warn); }

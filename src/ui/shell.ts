@@ -152,8 +152,8 @@ export function shell(root: HTMLElement) {
   const demoBar = root.querySelector<HTMLElement>('#demo-bar')!;
   const paintDemo = () => {
     // A signed-in commander is on the real chain: the demo base stays out of sight.
-    const ev = demo.event;
-    demoBar.innerHTML = demo.on && session.status.state !== 'in' ? `<div class="demo-bar"><b>데모 함교</b>${ev ? `<span class="ev-chip ${ev.tone}" title="${esc(ev.text)}">${esc(ev.name)} · ${ev.left}블록</span>` : ''}<span>가상의 기지가 실시간으로 돌아갑니다. 실제 체인과 무관합니다.</span><a class="btn primary" href="${href('/start')}" style="min-height:32px">진짜 사령관으로 입대</a><button class="btn ghost" style="min-height:32px" type="button" id="demo-off">데모 종료</button></div>` : '';
+    const ev = demo.event, bm = demo.on ? demo.black : null;
+    demoBar.innerHTML = demo.on && session.status.state !== 'in' ? `<div class="demo-bar"><b>데모 함교</b>${ev ? `<span class="ev-chip ${ev.tone}" title="${esc(ev.text)}">${esc(ev.name)} · ${ev.left}블록</span>` : ''}${bm?.offers.length ? `<a class="ev-chip hwang" href="${href('/market')}" title="거래소에서 한 번씩만 파는 거래">밀수선 입항 · ${bm.left}블록</a>` : ''}<span>가상의 기지가 실시간으로 돌아갑니다. 실제 체인과 무관합니다.</span><a class="btn primary" href="${href('/start')}" style="min-height:32px">진짜 사령관으로 입대</a><button class="btn ghost" style="min-height:32px" type="button" id="demo-off">데모 종료</button></div>` : '';
     demoBar.querySelector('#demo-off')?.addEventListener('click', () => { demo.stop(); location.assign(href('/')); });
   };
   demo.onChange(paintDemo);
