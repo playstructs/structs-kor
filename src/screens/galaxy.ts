@@ -371,7 +371,7 @@ async function realGalaxy(root: HTMLElement, pid: string): Promise<() => void> {
     launch: (el: HTMLElement) => {
       if (!fleet) return;
       const to = el.dataset.to!;
-      if (!confirm(`체인에 서명합니다: 함대 ${fleet.id}를 행성 ${to}(으)로 보냅니다. 도착하면 습격이 시작되고, 방어자와 교전합니다. 출격할까요?`)) return;
+      if (!confirm(`체인에 서명합니다: 함대 ${fleet.id}을(를) 행성 ${to}(으)로 보냅니다. 도착하면 습격이 시작되고, 방어자와 교전합니다. 출격할까요?`)) return;
       (el as HTMLButtonElement).disabled = true;
       void actions.fleetMove(fleet.id, to)
         .then((h) => { sfx.play('alarm'); notify('출격', `함대 ${fleet!.id} → ${to} · ${h.slice(0, 10)}…`, 'jeok', null); if (!pow.running) pow.start(); fleet = { ...fleet!, status: 'away', location_id: to }; paint(); })

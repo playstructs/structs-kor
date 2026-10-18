@@ -731,7 +731,7 @@ export const BLACK = { every: 180, stays: 30, scrapRate: 0.9, scrapMax: 40, brib
 export const BLACK_DEALS: Record<BlackId, { name: string; what: string }> = {
   shield: { name: '방어막 충전기', what: '방어막 즉시 100%' },
   bribe: { name: '습격 정보 매수', what: `다음 습격 ${BLACK.bribe}블록 지연` },
-  scrap: { name: '광석 처분', what: `광석 최대 ${BLACK.scrapMax}를 개당 ${BLACK.scrapRate} α에 즉시 매각` },
+  scrap: { name: '광석 처분', what: `광석 최대 ${BLACK.scrapMax} 단위를 개당 ${BLACK.scrapRate} α에 즉시 매각` },
   cool: { name: '밀수 부품', what: '지휘관 능력 재사용 대기 초기화' },
   patch: { name: '응급 수리반', what: '손상된 구조체 전부 수리 (파괴된 것 제외)' },
 };
