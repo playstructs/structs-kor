@@ -133,6 +133,7 @@ export function demoExchange(root: HTMLElement): () => void {
       { label: '알파 매터', value: '', num: Number(d.player.alpha) / 1e6, fmt: (v) => n(v, 2) + ' g', tone: 'var(--hwang)', delta: `+${demo.rates().alpha.toFixed(2)}/블록` },
       { label: '여유 전력', value: `${free().toFixed(2)} kW`, tone: 'var(--cheong-hi)' },
       { label: '전력 시세', value: `${demo.price.toFixed(4)} α` },
+      ...(() => { const ids = Object.keys(demo.state.stakes ?? {}); if (!ids.length) return []; const per = ids.reduce((a, id) => a + demo.stake(id).perBlock, 0); return [{ label: '배당', value: `+${per.toFixed(3)} α/블록`, tone: 'var(--hwang)', href: '/galaxy' }]; })(),
     ]);
   };
   const handlers = {
