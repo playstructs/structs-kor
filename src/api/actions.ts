@@ -130,6 +130,46 @@ export const actions = {
   agreementExtend: (agreementId: string, blocks: number) => act('MsgAgreementDurationIncrease', { agreementId, durationIncrease: String(blocks) }),
   providerCreate: (p: { substationId: string; rate: { denom: string; amount: string }; accessPolicy: 'openMarket' | 'guildMarket' | 'closedMarket'; capacityMinimum: number; capacityMaximum: number; durationMinimum: number; durationMaximum: number; providerCancellationPenalty: string; consumerCancellationPenalty: string }) =>
     act('MsgProviderCreate', { ...p, capacityMinimum: String(p.capacityMinimum), capacityMaximum: String(p.capacityMaximum), durationMinimum: String(p.durationMinimum), durationMaximum: String(p.durationMaximum) }),
+  providerWithdraw: (providerId: string, destinationAddress: string) => act('MsgProviderWithdrawBalance', { providerId, destinationAddress }),
+  providerDelete: (providerId: string) => act('MsgProviderDelete', { providerId }),
+  providerAccess: (providerId: string, accessPolicy: 'openMarket' | 'guildMarket' | 'closedMarket') => act('MsgProviderUpdateAccessPolicy', { providerId, accessPolicy }),
+  agreementCapacity: (agreementId: string, delta: number) => delta >= 0
+    ? act('MsgAgreementCapacityIncrease', { agreementId, capacityIncrease: String(delta) })
+    : act('MsgAgreementCapacityDecrease', { agreementId, capacityDecrease: String(-delta) }),
+
+  /** Send alpha (ualpha) or a guild token from one of this wallet's accounts to any address. */
+  playerSend: (toAddress: string, amount: { denom: string; amount: string }, index = 0) =>
+    act('MsgPlayerSend', { from_address: wallet.key(index).address, to_address: toAddress, amount }, index),
+  playerName: (playerId: string, name: string, index = 0) => act('MsgPlayerUpdateName', { playerId, name }, index),
+  playerPfp: (playerId: string, pfp: string, index = 0) => act('MsgPlayerUpdatePfp', { playerId, pfp }, index),
+  planetName: (planetId: string, name: string) => act('MsgPlanetUpdateName', { planetId, name }),
+
+  /* Guild membership: a request waits for an officer; a join goes straight in when the guild allows it. */
+  guildRequest: (guildId: string, playerId: string, substationId = '', index = 0) => act('MsgGuildMembershipRequest', { guildId, playerId, substationId }, index),
+  guildRequestRevoke: (guildId: string, playerId: string) => act('MsgGuildMembershipRequestRevoke', { guildId, playerId }),
+  guildRequestApprove: (guildId: string, playerId: string, substationId = '') => act('MsgGuildMembershipRequestApprove', { guildId, playerId, substationId }),
+  guildRequestDeny: (guildId: string, playerId: string) => act('MsgGuildMembershipRequestDeny', { guildId, playerId }),
+  guildInvite: (guildId: string, playerId: string, substationId = '') => act('MsgGuildMembershipInvite', { guildId, playerId, substationId }),
+  guildInviteRevoke: (guildId: string, playerId: string) => act('MsgGuildMembershipInviteRevoke', { guildId, playerId }),
+  guildInviteApprove: (guildId: string, playerId: string, substationId = '') => act('MsgGuildMembershipInviteApprove', { guildId, playerId, substationId }),
+  guildInviteDeny: (guildId: string, playerId: string) => act('MsgGuildMembershipInviteDeny', { guildId, playerId }),
+  guildKick: (guildId: string, playerId: string) => act('MsgGuildMembershipKick', { guildId, playerId }),
+  guildRank: (guildId: string, playerId: string, guildRank: number) => act('MsgPlayerUpdateGuildRank', { guildId, playerId, guildRank: String(guildRank) }),
+  guildEntryRank: (guildId: string, newEntryRank: number) => act('MsgGuildUpdateEntryRank', { guildId, newEntryRank: String(newEntryRank) }),
+  guildName: (guildId: string, name: string) => act('MsgGuildUpdateName', { guildId, name }),
+  guildEndpoint: (guildId: string, endpoint: string) => act('MsgGuildUpdateEndpoint', { guildId, endpoint }),
+  guildEntrySubstation: (guildId: string, entrySubstationId: string) => act('MsgGuildUpdateEntrySubstationId', { guildId, entrySubstationId }),
+  guildJoinMinimum: (guildId: string, joinInfusionMinimum: number) => act('MsgGuildUpdateJoinInfusionMinimum', { guildId, joinInfusionMinimum: String(joinInfusionMinimum) }),
+  /** Guild bank: lock alpha as collateral and mint the guild's token, or burn tokens for alpha back. */
+  bankMint: (guildId: string, amountAlpha: number, amountToken: number) => act('MsgGuildBankMint', { guildId, amountAlpha: String(amountAlpha), amountToken: String(amountToken) }),
+  bankRedeem: (denom: string, amountToken: number, minAmountAlpha = 0) => act('MsgGuildBankRedeem', { amountToken: { denom, amount: String(amountToken) }, minAmountAlpha: String(minAmountAlpha) }),
+  bankConvert: (guildId: string, amountAlpha: number, minAmountToken = 0) => act('MsgGuildBankConvert', { guildId, amountAlpha: String(amountAlpha), minAmountToken: String(minAmountToken) }),
+
+  /* Reactors: stake alpha for energy (infuse), take it back (defuse, which takes time). */
+  reactorInfuse: (validatorAddress: string, ualpha: number, index = 0) => act('MsgReactorInfuse', { delegator_address: wallet.key(index).address, validator_address: validatorAddress, amount: { denom: 'ualpha', amount: String(ualpha) } }, index),
+  reactorDefuse: (validatorAddress: string, ualpha: number, index = 0) => act('MsgReactorDefuse', { delegator_address: wallet.key(index).address, validator_address: validatorAddress, amount: { denom: 'ualpha', amount: String(ualpha) } }, index),
+  substationConnect: (substationId: string, playerId: string, index = 0) => act('MsgSubstationPlayerConnect', { substationId, playerId }, index),
+  stealth: (structId: string, on: boolean) => act(on ? 'MsgStructStealthActivate' : 'MsgStructStealthDeactivate', { structId }),
 };
 
 export { BLOCKS_PER_DAY } from './rates';

@@ -1,0 +1,103 @@
+/* Social layer: sheets (in-game dialogs), object cards, situation cards, sharing, sending alpha and
+ * object pages. Same 단청 palette as the frame — 청 for ours, 적 for danger, 황 for alpha and money. */
+
+/* ── Sheets ── */
+.sheet-back { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(14, 13, 28, .72); backdrop-filter: blur(2px); animation: sheet-in .14s ease-out; }
+.sheet-back.out { opacity: 0; transition: opacity .14s; }
+@keyframes sheet-in { from { opacity: 0; } }
+.sheet { width: min(520px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: var(--surface); border: 2px solid var(--cheong); box-shadow: 8px 8px 0 var(--cheong-bg), 0 0 0 4px #0E0D1C; animation: sheet-pop .16s cubic-bezier(.2, 1.4, .4, 1); }
+.sheet.wide { width: min(820px, 100%); }
+.sheet.hwang { border-color: var(--hwang); box-shadow: 8px 8px 0 var(--hwang-bg), 0 0 0 4px #0E0D1C; }
+.sheet.jeok { border-color: var(--jeok-strong); box-shadow: 8px 8px 0 var(--jeok-deep), 0 0 0 4px #0E0D1C; }
+@keyframes sheet-pop { from { transform: translateY(12px) scale(.97); } }
+.sheet-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--p-body); border-bottom: 2px solid #0E0D1C; }
+.sheet.hwang .sheet-head { background: var(--hwang-bg); }
+.sheet.jeok .sheet-head { background: var(--jeok-bg); }
+.sheet-head h2 { flex: 1 1 auto; font-size: 20px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-kicker { color: var(--p-text-hi); font: 700 11px var(--f-pix); letter-spacing: 2px; }
+.sheet.hwang .sheet-kicker { color: var(--hwang); }
+.sheet-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.sheet-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.linkish { background: none; border: 0; padding: 0; color: var(--cheong-hi); text-decoration: underline; cursor: pointer; font: inherit; }
+
+/* ── Object cards ── */
+.ref-card { --rc: var(--cheong); position: relative; display: flex; flex-direction: column; gap: 8px; max-width: 420px; padding: 10px 12px 10px 14px; background: linear-gradient(180deg, #1F2A3A, var(--surface)); border: 1px solid var(--line); border-left: 4px solid var(--rc); box-shadow: 3px 3px 0 #0E0D1C; }
+.ref-card.player { --rc: var(--cheong-hi); } .ref-card.planet { --rc: #80B2FF; } .ref-card.struct { --rc: #B3A38C; } .ref-card.fleet { --rc: #94A4E4; }
+.ref-card.guild { --rc: var(--hwang); } .ref-card.provider { --rc: var(--hwang); } .ref-card.substation, .ref-card.reactor { --rc: var(--warn); }
+.ref-card.compact { padding: 8px 10px 8px 12px; gap: 6px; }
+.ref-top { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
+.ref-top:hover b { color: var(--cheong-hi); }
+.ref-name { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.ref-name b { color: var(--white); font: 700 15px var(--f-pix); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-name small { color: var(--text-dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-glyph { flex: 0 0 auto; width: 40px; height: 40px; display: grid; place-items: center; background: var(--sunken); border: 2px solid var(--rc); color: var(--rc); font-size: 22px; }
+.compact .ref-glyph { width: 34px; height: 34px; font-size: 18px; }
+.ref-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px 12px; margin: 0; }
+.ref-rows div { display: flex; flex-direction: column; min-width: 0; }
+.ref-rows dt { font: 400 11px var(--f-pix); color: var(--text-faint); }
+.ref-rows dd { margin: 0; color: var(--white); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-meter { height: 6px; }
+.ref-acts { display: flex; flex-wrap: wrap; gap: 4px; }
+.ref-act { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 10px; background: var(--p-body); color: var(--p-text-hi); border: 1px solid var(--cheong-mid); font: 700 12px var(--f-pix); cursor: pointer; }
+.ref-act:hover { background: var(--cheong-mid); color: #fff; }
+.ref-act.ghost { background: transparent; border-color: var(--line); color: var(--text-dim); }
+.ref-act .si { font-size: 14px; }
+.ref-slot { display: flex; flex-direction: column; gap: 4px; max-width: 420px; }
+.ref-chip { display: inline-block; padding: 0 5px; font: 600 .92em var(--f-mono); color: var(--cheong-hi); background: var(--cheong-bg); border: 1px solid var(--cheong-mid); text-decoration: none; }
+.ref-chip:hover { background: var(--cheong-mid); color: #fff; }
+.ref-chip.guild, .ref-chip.provider { color: var(--hwang); background: var(--hwang-bg); border-color: var(--hwang-line); }
+.ref-chip.planet { color: #A9C8FF; }
+
+/* ── Situation cards ── */
+.sit-card { --sc: var(--cheong); position: relative; display: flex; flex-direction: column; gap: 8px; max-width: 480px; padding: 12px 14px; background: repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 2px, transparent 2px 5px), var(--surface); border: 2px solid var(--sc); box-shadow: 4px 4px 0 #0E0D1C; }
+.sit-card.jeok { --sc: var(--jeok-strong); } .sit-card.hwang { --sc: var(--hwang); }
+.sit-card header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sit-kind { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; background: var(--sc); color: #0E0D1C; font: 700 12px var(--f-pix); letter-spacing: 1px; }
+.sit-card header small { color: var(--text-faint); font-size: 11px; }
+.sit-card h3 { font-size: 22px; line-height: 1.25; }
+.sit-card p { margin: 0; color: var(--text); font-size: 14px; line-height: 1.6; }
+.sit-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.sit-card dl div { padding: 6px 8px; background: var(--sunken); border: 1px solid var(--line); min-width: 0; }
+.sit-card dt { font: 400 11px var(--f-pix); color: var(--text-faint); }
+.sit-card dd { margin: 0; color: var(--white); font-size: 14px; overflow-wrap: anywhere; }
+.sit-go { align-self: flex-start; min-height: 34px; }
+
+/* ── Share sheet ── */
+.share-preview { display: flex; justify-content: center; }
+.share-preview > * { width: 100%; }
+.share-to { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.share-to .field { flex: 1 1 220px; }
+.share-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.share-row .btn { flex: 1 1 auto; }
+.share-link { font-size: 11px; overflow-wrap: anywhere; margin: 0; }
+.share-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ── Send alpha ── */
+.pay-party { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--sunken); border: 1px solid var(--line); }
+.pay-party > div { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.pay-party b { color: var(--white); font: 700 15px var(--f-pix); }
+.pay-party small { color: var(--text-dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pay-party .label { color: var(--text-faint); letter-spacing: 1px; font-size: 11px; }
+.pay-arrow { text-align: center; color: var(--hwang); font-size: 18px; }
+.pay-recent { display: flex; gap: 6px; flex-wrap: wrap; }
+.pay-recent .pill { min-height: 32px; font-size: 13px; }
+.pay-done { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.pay-done .si { font-size: 44px; color: var(--cheong); }
+.quote-box { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 14px; background: var(--sunken); border: 1px solid var(--hwang-line); }
+.quote-box b { font-size: 22px; }
+input[type=range] { width: 100%; accent-color: var(--cheong); }
+
+/* ── Object pages ── */
+.obj-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; align-items: start; }
+.obj-main, .obj-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.obj-side .ref-card { max-width: none; }
+.obj-board { overflow: hidden; min-height: 240px; }
+.obj-structs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.obj-struct { display: flex; flex-direction: column; padding: 6px 8px; background: var(--sunken); border: 1px solid var(--line); border-left: 3px solid var(--cheong); color: inherit; text-decoration: none; }
+.obj-struct.enemy { border-left-color: var(--jeok-strong); }
+.obj-struct b { color: var(--white); font: 700 13px var(--f-pix); }
+.obj-struct small { color: var(--text-dim); font-size: 11px; }
+.obj-log li.hot b { color: var(--jeok-hi); }
+.obj-watch { display: grid; gap: 8px; }
+.obj-stats .stat strong { font-size: 18px; }
+@media (max-width: 900px) { .obj-wrap { grid-template-columns: 1fr; } .obj-side { order: -1; } }

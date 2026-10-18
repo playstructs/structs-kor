@@ -2,6 +2,8 @@ import './styles/app.css';
 import './styles/game.css';
 import './styles/structicons.css';
 import './styles/sui.css';
+import './styles/social.css';
+import './styles/chat.css';
 import './game/sfx';
 import './game/keys';
 import './game/music';
@@ -15,8 +17,12 @@ import { shell } from './ui/shell';
 import { session } from './api/session';
 import { wallet } from './wallet/wallet';
 import { startDesktop } from './core/desktop';
+import { installRefActions } from './social/actions';
+import { startBackgroundComms } from './chat/background';
 
 shell(document.getElementById('app')!);
+installRefActions();
+startBackgroundComms();
 onRoute((path) => applySeo(path, SITE_URL, href('')));
 retireDemo();
 
@@ -37,6 +43,8 @@ route('/chat', () => import('./screens/chat'));
 route('/tutorial', () => import('./screens/tutorial'));
 route('/codex', () => import('./screens/codex'));
 route('/profile', () => import('./screens/profile'));
+route('/o', () => import('./screens/object'), { nested: true });
+route('/s', () => import('./screens/object'), { nested: true });
 route('/404', () => import('./screens/notfound'));
 
 // A device-sealed vault opens itself, then the guild session resumes, then the screen renders.

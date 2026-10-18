@@ -44,6 +44,8 @@ export const PAGES: Record<string, PageSeo> = {
   '/chat': { title: '통신', description: '길드 채널과 교신 기록. Matrix 기반 실시간 길드 채팅.', priority: 0.5, changefreq: 'daily' },
   '/record': { title: '전적', description: '사령관 계급과 경력, 훈장, 작전 목표.', priority: 0.5, changefreq: 'weekly' },
   '/profile': { title: '사령관 프로필', description: '사령관 프로필.', hidden: true },
+  '/o': { title: '객체 카드', description: '플레이어, 행성, 구조체, 함대, 길드, 공급자 — 구조체의 모든 객체를 실시간 카드로.', hidden: true },
+  '/s': { title: '공유된 상황', description: '사령관이 공유한 전장 상황. 습격, 전투 예측, 거래 제안을 한 장의 카드로.', hidden: true },
   '/404': { title: '찾을 수 없는 좌표', description: '요청한 페이지를 찾을 수 없습니다.', hidden: true },
 };
 
@@ -51,7 +53,7 @@ export const PAGES: Record<string, PageSeo> = {
 export const pageFor = (path: string): PageSeo => {
   if (PAGES[path]) return PAGES[path];
   const top = '/' + path.split('/')[1];
-  return top !== path && (top === '/daily' || top === '/sim') ? { ...PAGES[top], canonical: top, hidden: true } : PAGES['/404'];
+  return top !== path && (top === '/daily' || top === '/sim' || top === '/o' || top === '/s') ? { ...PAGES[top], canonical: top, hidden: true } : PAGES['/404'];
 };
 export const fullTitle = (path: string, p = pageFor(path)) => (path === '/' ? p.title : `${p.title} | ${SITE_NAME}`);
 

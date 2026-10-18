@@ -44,7 +44,22 @@ function signup(body: { primary_address?: string; username?: string }) {
 }
 const byId = (id: string) => Object.values(accounts()).find((x) => x.id === id);
 
-const ROUTES: [RegExp, (m: RegExpMatchArray) => unknown][] = [
+/* /objects?ids=…: structs, fleets, substations, reactors and providers by id (object cards). */
+function objects(ids: string): { id: string; type: string; object: Record<string, unknown> }[] {
+  const out: { id: string; type: string; object: Record<string, unknown> }[] = [];
+  for (const id of ids.split(',').filter(Boolean)) {
+    const s = [...STRUCTS, ...RAIDERS].find((x) => x.id === id);
+    if (s) { out.push({ id, type: 'struct', object: s }); continue; }
+    const k = id.split('-')[0];
+    if (k === '9') { const owner = id === '9-9' ? '1-9' : '1-' + id.split('-')[1]; out.push({ id, type: 'fleet', object: { id, owner, status: id === '9-9' && RAID ? 'away' : 'onStation', location_id: id === '9-9' && RAID ? PLANET : PLAYERS[owner]?.planet_id ?? PLANET, command_struct: id === '9-9' ? '5-2001' : '5-1001' } }); }
+    else if (k === '4') out.push({ id, type: 'substation', object: { id, owner: '1-7', name: '서울 변전소' } });
+    else if (k === '3') out.push({ id, type: 'reactor', object: { id, guild_id: '0-5', validator: 'structsvaloper1mock000000000000', default_commission: '0.03' } });
+    else if (k === '6') out.push({ id, type: 'allocation', object: { power: 2e6 } });
+  }
+  return out;
+}
+
+const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] = [
   [/^block$/, () => ({ height: 2_955_801, tip_height: 2_955_801, lag_blocks: 0, status: 'ok', updated_at: now })],
   [/^player\/(1-\d+)$/, (m) => PLAYERS[m[1]] ?? (byId(m[1]) ? { ...player(m[1], byId(m[1])!.name, '2-' + m[1].split('-')[1], 5, 0), alpha: 5e6 } : null)],
   [/^timestamp$/, () => ({ unix_timestamp: Math.floor(Date.now() / 1000) })],
@@ -52,7 +67,7 @@ const ROUTES: [RegExp, (m: RegExpMatchArray) => unknown][] = [
   [/^auth\/logout$/, () => null],
   [/^player\/(1-\d+)\/power$/, (m) => { const p = PLAYERS[m[1]]; if (!p) return null; return { player_id: p.id, username: p.username, capacity: p.capacity, connection_capacity: p.connection_capacity, load: p.load, structs_load: p.structs_load, total_load: p.load + p.structs_load, total_capacity: p.capacity + p.connection_capacity, margin: 0, connection_capacity_is_player_share: true }; }],
   [/^planet\/count$/, () => ({ count: 1840 })],
-  [/^planet\/(2-\d+)$/, (m) => ({ id: m[1], owner: ME, name: '테스트 행성', space_slots: 4, air_slots: 4, land_slots: 4, water_slots: 4, undiscovered_ore: 12_400 })],
+  [/^planet\/(2-\d+)$/, (m) => ({ id: m[1], owner: Object.values(PLAYERS).find((p) => p.planet_id === m[1])?.id ?? ME, name: m[1] === PLANET ? '테스트 행성' : `${Object.values(PLAYERS).find((p) => p.planet_id === m[1])?.username ?? '무명'}의 행성`, space_slots: 4, air_slots: 4, land_slots: 4, water_slots: 4, undiscovered_ore: 12_400 })],
   [/^planet\/(2-\d+)\/shield\/health$/, () => ({ health: 64 })],
   [/^planet\/(2-\d+)\/raid\/active$/, () => (RAID ? { planet_id: PLANET, fleet_id: '9-9', status: 'ongoing', updated_at: now, fleet_owner: '1-9' } : null)],
   [/^fleet\/player\//, () => ({ id: '9-42', owner: ME, location_type: 'planet', location_id: PLANET, status: 'onStation', command_struct: '5-1001' })],
@@ -64,7 +79,7 @@ const ROUTES: [RegExp, (m: RegExpMatchArray) => unknown][] = [
   [/^infusion\/list\/player\//, () => [{ destination_id: '3-15', address: '', destination_type: 'reactor', player_id: ME, fuel: 5e6, defusing: 0, power: 5e6, ratio: 1, commission: 3 }]],
   [/^allocation\/source\//, () => [{ id: '6-77', allocation_type: 'provider-agreement', source_id: ME, index: 0, destination_id: '1-9', creator: ME, controller: ME, created_at: now, updated_at: now }]],
   [/^allocation\/destination\//, () => []],
-  [/^objects$/, () => [{ id: '6-77', type: 'allocation', object: { power: 2e6 } }]],
+  [/^objects$/, (_m, q) => objects(q.get('ids') ?? '')],
   [/^grid\/object\//, () => [{ attribute_type: 'connectionCount', object_id: '4-7', val: 12 }]],
   [/^player\/list\/substation\//, () => []],
   [/^provider\/market$/, () => [{ id: '10-3', substation_id: '4-7', guild_id: '0-5', rate_denom: 'ualpha', rate_amount: '2', access_policy: 'openMarket', capacity_minimum: 1e6, capacity_maximum: 20e6, duration_minimum: 14400, duration_maximum: 201600, consumer_cancellation_penalty: '0.1', provider_cancellation_penalty: '0.1', owner: '1-7' }]],
@@ -89,7 +104,7 @@ const ROUTES: [RegExp, (m: RegExpMatchArray) => unknown][] = [
 export function mock<T>(path: string, init: RequestInit = {}): Envelope<T> | null {
   const bare = path.replace(/^\/+/, '').split('?')[0];
   if (bare === 'auth/signup' && init.method === 'POST') { try { signup(JSON.parse(String(init.body ?? '{}'))); } catch { /* bad body */ } return { success: true, errors: [], data: null as T }; }
-  for (const [re, f] of ROUTES) { const m = bare.match(re); if (m) return { success: true, errors: [], data: f(m) as T }; }
+  for (const [re, f] of ROUTES) { const m = bare.match(re); if (m) return { success: true, errors: [], data: f(m, new URLSearchParams(path.split('?')[1] ?? '')) as T }; }
   return null;
 }
 export const MOCK_PLAYER = ME;

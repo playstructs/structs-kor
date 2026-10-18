@@ -594,15 +594,6 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .rep-card p { margin: 0; font-size: 13px; line-height: 1.5; }
 .rep-card .tech-top small { display: block; }
 
-/* Demo comms */
-.comms-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 420px; overflow-y: auto; }
-.cm { display: grid; grid-template-columns: 32px 1fr; gap: 8px; align-items: start; }
-.cm p { margin: 2px 0 0; font-size: 14px; }
-.cm.me b { color: var(--cheong-hi); }
-.cm.rival b { color: var(--jeok-hi); }
-.cm.guild b { color: var(--hwang); }
-.comms-send { display: flex; gap: 8px; }
-.comms-send .input { flex: 1; }
 
 /* Hegemony title on the commander plate */
 .plate-title { margin-left: 6px; padding: 0 5px; font: 600 10px/16px var(--f-mono); color: #2A1F05; background: var(--hwang); vertical-align: middle; white-space: nowrap; }

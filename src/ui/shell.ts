@@ -13,6 +13,8 @@ import { roll, notes } from '../game/fx';
 import { NAV_KEYS } from '../game/keys';
 import { portraitHtml, myPfp, onPfp } from '../game/portrait';
 import { guildApi } from '../api/guild';
+import { matrix } from '../chat/matrix';
+import { onUnread } from '../chat/background';
 
 export const LOGO = `<svg class="pix" width="30" height="30" viewBox="0 0 9 9" aria-hidden="true"><rect width="9" height="9" fill="#133546"/><rect x="1" y="1" width="3" height="3" fill="#43CDB6"/><rect x="5" y="1" width="3" height="3" fill="#EE7D69"/><rect x="1" y="5" width="3" height="3" fill="#EBAA49"/><rect x="5" y="5" width="3" height="3" fill="#C5D7D9"/></svg>`;
 
@@ -65,6 +67,7 @@ export function shell(root: HTMLElement) {
         <a class="plate" id="plate" href="${href('/record')}" aria-label="전적 · 사령관 계급"></a>
         <button class="hud-btn" id="snd" type="button" data-silent aria-label="소리"></button>
         <button class="hud-btn" id="mus" type="button" aria-label="음악"></button>
+        <a class="hud-btn bell" id="comms-btn" href="${href('/chat')}" aria-label="통신"></a>
         <button class="hud-btn bell" id="bell" type="button" aria-label="알림 기록" aria-expanded="false"></button>
         <span id="who" class="hud-who"></span>
         <button class="hud-btn menu-btn" id="menu-btn" type="button" aria-label="메뉴 (F10)" aria-expanded="false" title="메뉴 (F10)"><i class="si icon-menu"></i></button>
@@ -107,7 +110,7 @@ export function shell(root: HTMLElement) {
     document.documentElement.dataset.route = p.slice(1) || 'home';
     document.documentElement.dataset.mode = mode;
     setMenu(false);
-    winTitle.textContent = NAV.find((n) => n.path === p)?.label ?? NAV_KEYS.find((n) => n.path === p)?.label ?? ({ '/record': '전적', '/profile': '내 정보' } as Record<string, string>)[p] ?? '';
+    winTitle.textContent = NAV.find((n) => n.path === p)?.label ?? NAV_KEYS.find((n) => n.path === p)?.label ?? ({ '/record': '전적', '/profile': '내 정보' } as Record<string, string>)[p] ?? (p.startsWith('/o') ? '객체 카드' : p.startsWith('/s/') ? '공유된 상황' : '');
     for (const a of rail.querySelectorAll<HTMLAnchorElement>('a[data-path]')) a.classList.toggle('on', a.dataset.path === p);
   });
 
@@ -172,6 +175,18 @@ export function shell(root: HTMLElement) {
   document.addEventListener('keydown', (e) => { if (logOpen && e.key === 'Escape') { logOpen = false; paintBell(); } });
   notes.onChange(paintBell);
   paintBell();
+  /* 통신: unread across rooms (amber when someone named me). */
+  const commsBtn = root.querySelector<HTMLElement>('#comms-btn')!;
+  const paintComms = () => {
+    const u = matrix.unread;
+    commsBtn.innerHTML = I('<path d="M4 5h16v11H9l-5 4z"/>') + (u.n ? `<span class="bell-n ${u.hi ? 'hi' : ''}">${Math.min(99, u.n)}</span>` : '');
+    commsBtn.setAttribute('aria-label', u.n ? `통신 · 읽지 않음 ${u.n}` : '통신');
+    commsBtn.title = '통신 (K)';
+    commsBtn.hidden = session.status.state !== 'in';
+  };
+  onUnread(paintComms);
+  session.onChange(paintComms);
+  paintComms();
   root.querySelector('#kbd')!.addEventListener('click', () => document.dispatchEvent(new KeyboardEvent('keydown', { key: '?' })));
 
   const who = root.querySelector<HTMLElement>('#who')!;
