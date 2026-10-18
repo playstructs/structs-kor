@@ -35,6 +35,28 @@ The build writes `404.html` and `_redirects`, so every screen path (`/console`, 
 
 `.github/workflows/pages.yml` builds and publishes to GitHub Pages on every push to `main` (Settings › Pages › Source: GitHub Actions). Repository variables override the `VITE_*` values; `VITE_BASE` and `VITE_SITE_URL` otherwise follow the Pages site (`/` on a custom domain, `/structs-kor/` on github.io).
 
+## Parity with Structs Desktop
+
+The English desktop client (structs-universe) is the reference; this client matches it as a web game with its own look:
+
+| Structs Desktop | Here |
+|---|---|
+| Comms: channels, tabs, refs → cards, slash commands, Tab completion, reactions, pins, presence/typing, search, people, rent from a provider card, sim challenge rows | `/chat` (src/chat, src/screens/chat.ts) |
+| Shared cards (player, guild, provider, planet, struct, fleet), share into Comms, deep links | `src/social/refs.ts` cards everywhere, `/o/<id>`, share sheet with situations (`/s/…`), PNG cards |
+| Pay window | `src/social/transfer.ts` (send alpha or guild tokens, from the commander or any replicant) |
+| Energy market, book, banks, guild tokens | `/market` |
+| Armada roster, replication window, loops and doctrine | `/replicants` with standing orders (`src/game/orders.ts`) |
+| Guild directory and membership | `/guild` |
+| ⌘K palette and command grammar | `src/ui/palette.ts` (Korean words, English aliases, 초성) |
+| Game Stats | `/stats` |
+| War: targets, grudges, vetoes, incidents, live raids | `/war` |
+| Map Viewer (watch any planet) | `/o/<planet>` on the battle board |
+| Native notifications per channel | 내 정보 → 시스템 알림 (`src/game/native.ts`) |
+
+What stays desktop-only: GPU hashing, the MCP server for AI agents, the sound designer, and loops that run while the app is closed (here, standing orders run while the tab is open).
+
+Dev: `?mock=1` also brings up a pretend Matrix homeserver (`src/chat/mockserver.ts`) with seeded rooms, guildmates who type and answer, and an invite.
+
 ## Search and sharing
 
 - `src/seo.ts` holds every screen's title and description. The build writes one HTML file per screen (`console.html` → `/console`) with its own title, description, canonical, Open Graph/Twitter tags and JSON-LD (`WebSite`, `VideoGame`, `WebPage`), plus `sitemap.xml` and a fully permissive `robots.txt`; all absolute URLs use `VITE_SITE_URL`. In the browser the same tags follow the router.
@@ -70,16 +92,19 @@ SUI art (`public/img/sui/`), the Structicons icon font, and DirectiveZero/Extrem
 | `/login` | Enlist, log in, unlock | `/auth/signup`, `/auth/login`, `/auth/player-address/…` |
 | `/console` | Command console | REQ-AGG-1, GRASS `structs.grid.player.*`, `structs.planet.*` |
 | `/energy` | Power grid, brownout what-if, struct power | REQ-EN-1/2, `MsgStructActivate`/`Deactivate` |
-| `/market` | Energy exchange, contracts, provider, guild bank | `/provider/market`, `/agreement/owner/…/market`, `/guild-bank`, REQ-MKT-* |
-| `/replicants` | Replicants, replication, standing orders (demo: hire a watch officer, mechanic or trader with alpha to run the base for a wage) | REQ-REP-*, `/auth/signup` per HD index |
+| `/market` | 알파 거래소: offers (also in comparable alpha), contracts (extend, capacity ±, close), selling and my providers (access, withdraw, delete), guild banks (convert, redeem, mint), wallet; every offer shareable | `/provider/market`, `/provider/owner/…`, `/agreement/owner/…/market`, `/guild-bank`, REQ-MKT-*, REQ-WAL-1, `MsgAgreement*`, `MsgProvider*`, `MsgGuildBank*`, `MsgPlayerSend` |
+| `/replicants` | 레플리칸트 (armada): replication console with the 4 kW energy gate and batch replicate; roster cards (role, power battery, alpha, ore) with filter, sort, select, bulk roles, sweep all/one, send from any; squads by role; standing orders run in the browser (auto-sweep, auto-replicate) with a duty log | REQ-REP-*, `/auth/signup` per HD index, `MsgPlayerSend` from each replicant |
 | `/sim` | Battle simulator (local copy of structsd combat) | REQ-SIM-1 for the daily ladder |
-| `/chat` | Comms (Matrix); on the demo, the guild channel (guildmates react to raids, the Void Fleet and the guild race, and answer you) and a log of every rival transmission | `/auth/matrix` → homeserver `/sync` |
+| `/chat` | 통신 (Matrix): rooms by 고정 · 초대 · 다이렉트 · 로컬 넷 · 갤럭시 넷, tabs, channel finder; object ids unfurl as live cards, shared situations and battle links as cards; replies, edits, two-click delete, game-icon reactions, pins, typing, read receipts, history on scroll, search, people (DM, pay), slash commands, Tab completion; keeps running in the background for the HUD badge and DM/mention notices | `/auth/matrix` → homeserver `/sync`, `/send`, `/redact`, `/messages`, `/search`, `/createRoom` |
 | `/tutorial` | Combat Training (tutorial-attempt-1 flow, in Korean) on the battle board | REQ-TUT-1 to save completion |
 | `/research` | 연구소 (demo base) | — |
 | `/galaxy` | 은하 지도: demo rivals, or the guild's top commanders with fleet launch | `/leaderboard/player`, `/player/:id`, `/planet/count`, `MsgFleetMove` |
 | `/campaign` | 작전: ten missions, played in `/sim?mission=` | — (local) |
-| `/guild` | 길드: real roster and bank, or demo NPC guilds | `/guild/:id`, `/guild/:id/roster`, `/guild-bank` |
+| `/guild` | 길드: overview and recruiting card, roster (ranks, kick), join requests and invites, guild directory with join requests, owner settings | `/guild/:id`, `/guild/:id/roster`, `/guild/directory`, `/guild-bank`, REQ-GLD-1, `MsgGuildMembership*`, `MsgGuildUpdate*`, `MsgPlayerUpdateGuildRank` |
 | `/codex` | 교본: every system on one page, its numbers read from the game's own constants, each linked to where it's played (X) | — (local) |
+| `/o/<id>` | 객체 카드: any object's live card and page (a planet watched on the battle board with its battle log and 통신방; a player's record; a guild's roster); `/s/<code>` a shared situation | `/player`, `/planet`, `/objects`, `/guild`, `/provider/market` |
+| `/stats` | 은하 통계: universe figures, chain liveness, leaderboards (commanders, guilds, reactors, providers) | `/leaderboard/*`, counts, `/block` |
+| `/war` | 작전 상황실: scored target board, grudges / priority guilds / never-attack, planet incidents, live raids | `/leaderboard/player`, `/planet/:id/raid/active`, `/planet-activity` |
 | `/record` | 전적: the 제국 연대기 (empire chronicle: titles, vassals, rebellions, World Engine stages, eras, bounties, kept across eras); portrait, rank, medals, objectives | — (local) |
 
 ## Proof of work in the browser (`src/pow`)
