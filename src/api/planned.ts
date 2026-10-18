@@ -12,7 +12,13 @@ import {
 
 async function planned<T>(req: string, path: string, fallback: () => Promise<T>, q?: Record<string, string | number | undefined>): Promise<T> {
   if (!isMissing(req)) {
-    try { return await get<T>(path, q); } catch (e) {
+    try {
+      const v = await get<T>(path, q);
+      // A route that answers with no data is some other route matching the path (e.g.
+      // `player-address/:address` taking "resolve" as an address): treat it as not built yet.
+      if (v != null) return v;
+      markMissing(req);
+    } catch (e) {
       if (!(e instanceof ApiError) || e.code !== 'missing') throw e;
       markMissing(req);
     }
