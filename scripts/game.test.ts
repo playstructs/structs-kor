@@ -777,6 +777,21 @@ test('coalition: a dominant empire draws two-house raids with more escorts', () 
   for (let i = 0; i < 20; i++) { t.raid = null; t.nextRaid = 1; demo.step(); assert.ok(demo.raid, 'a raid came'); assert.equal(demo.raid!.partner, undefined, 'not for a small power'); }
 });
 
+test('grudge: a house you rob comes for you more often, and the grudge fades', () => {
+  demo.reset();
+  const s = demo.state;
+  const rv = demo.rivals().find((x) => x.id === '1-87')!;
+  const count = () => { let n = 0; for (let i = 0; i < 120; i++) { s.raid = null; s.nextRaid = 1; s.rebel = null; demo.step(); if (demo.raid?.owner === rv.id) n++; } return n; };
+  const before = count();
+  for (let i = 0; i < 5; i++) { rv.ore = 50; demo.settleRaid(rv.id, true, {}); }
+  assert.equal(rv.grudge, 5);
+  const after = count();
+  assert.ok(after > before, `raids from the robbed house: ${before} → ${after}`);
+  while (s.height % 100 !== 99) demo.step();
+  s.raid = null; s.nextRaid = 999; demo.step();
+  assert.ok(rv.grudge! < 5, 'fading');
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);

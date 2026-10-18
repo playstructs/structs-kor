@@ -63,8 +63,11 @@ export const TECH: Tech[] = [
   { id: 'diplo', name: '제국 관료제', desc: (l) => `공물 +${l * 15}% · 반란 확률 −${l * 30}%`, max: 2, cost: [40, 120], rank: 9, icon: 1 },
 ];
 
-export interface Rival { id: string; name: string; tag: string; alpha: number; ore: number; fleet: number; growth: number; raided: number; /** Height it bent the knee, while it pays tribute. */ vassal?: number | null; /** Sabotaged: growth halved until this height. */ sabotaged?: number; /** No covert operation against it before this height. */ opUntil?: number }
+export interface Rival { id: string; name: string; tag: string; alpha: number; ore: number; fleet: number; growth: number; raided: number; /** Height it bent the knee, while it pays tribute. */ vassal?: number | null; /** Sabotaged: growth halved until this height. */ sabotaged?: number; /** No covert operation against it before this height. */ opUntil?: number; /** 원한: raids you won against it, fading one every GRUDGE.fade blocks. */ grudge?: number }
 /* ── Temperament: how each rival behaves, not just how it talks. `raid` weights who comes for you. ── */
+/** 원한: a house you raid wants it back. Each won raid adds one (up to `max`); each point makes it
+ * `per` likelier to be the one that comes for you. One fades every `fade` blocks. */
+export const GRUDGE = { max: 5, per: 0.25, fade: 100 };
 export const TEMPER: Record<string, { name: string; raid: number; note: string }> = {
   '1-666': { name: '호전적', raid: 3, note: '가장 자주 습격해 옵니다' },
   '1-313': { name: '계산적', raid: 2, note: '강할 때만 움직입니다' },
@@ -423,6 +426,7 @@ function blockInner() {
     const gain = r.growth * (0.4 + rnd() * 0.6) * (1 + 0.2 * (s.era ?? 0)) * ((r.sabotaged ?? 0) > s.height ? 0.5 : 1);
     r.alpha += gain; r.ore += r.growth * 0.6;
     if (s.height % 150 === 0 && r.fleet < 10) r.fleet++;
+    if (r.grudge && s.height % GRUDGE.fade === 0) r.grudge--;
     if (r.vassal == null) continue;
     // A vassal's tribute comes out of its own growth, every block.
     const t = gain * DOMINION.tribute * (doc('trade') ? 1.25 : 1) * (1 + 0.15 * lv('diplo')) * (ev('summit') ? 1.5 : 1);
@@ -953,7 +957,7 @@ function raidStep() {
     // Vassals and allies don't raid you; a rebel strikes first.
     const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height) && x.id !== allyId());
     // Who comes is weighted by temperament (and a calculating rival only when it's the stronger).
-    const weight = (x: Rival) => (TEMPER[x.id]?.raid ?? 2) * (x.id === '1-313' && rivalWorth(x) < demo.netWorth() ? 0.3 : 1) * (x.id === '1-87' && s.ore > 50 ? 1.5 : 1);
+    const weight = (x: Rival) => (TEMPER[x.id]?.raid ?? 2) * (1 + GRUDGE.per * (x.grudge ?? 0)) * (x.id === '1-313' && rivalWorth(x) < demo.netWorth() ? 0.3 : 1) * (x.id === '1-87' && s.ore > 50 ? 1.5 : 1);
     const total = free.reduce((a, x) => a + weight(x), 0);
     let roll = rnd() * total, pick = free[free.length - 1];
     for (const x of free) { roll -= weight(x); if (roll <= 0) { pick = x; break; } }
@@ -1689,7 +1693,7 @@ export const demo = {
     if (won && r) {
       loot = { ore: Math.min(Math.floor(r.ore), Math.floor(r.ore * 0.6 * (inGuild('iron') ? 1.25 : 1) * (doc('war') ? 1.3 : 1) * (rev ? REVENGE.bonus : 1))), alpha: 0 };
       if (rev) { chronicle('cheong', `보복 성공 · ${r.name} 약탈 ${loot.ore}`); s.revengeWins = (s.revengeWins ?? 0) + 1; }
-      r.ore -= loot.ore; r.fleet = Math.max(2, r.fleet - 1); r.raided++;
+      r.ore -= loot.ore; r.fleet = Math.max(2, r.fleet - 1); r.raided++; r.grudge = Math.min(GRUDGE.max, (r.grudge ?? 0) + 1);
       s.ore += loot.ore;
       log('raid_status', `${r.name} 약탈 +${loot.ore}`);
     } else log('raid_status', `${r?.name ?? rivalId} 습격 실패`);

@@ -12,7 +12,7 @@ import { pow } from '../pow/engine';
 import { errorCard, loading } from '../ui/gate';
 import { needSession } from '../ui/gate';
 import { setTiles } from '../ui/shell';
-import { demo, DEMO_ID, DOMINION, TEMPER, OPS, OUTPOST, opOdds, withAllies, ALLY, type Rival, type OpId, type OutpostId, REVENGE } from '../game/demo';
+import { demo, DEMO_ID, DOMINION, TEMPER, OPS, OUTPOST, opOdds, withAllies, ALLY, type Rival, type OpId, type OutpostId, REVENGE, GRUDGE } from '../game/demo';
 import { hegemonyMeter, powerChart } from '../game/meter';
 import { hash32, mulberry } from '../core/util';
 import { layout } from '../sim/fleets';
@@ -212,6 +212,7 @@ const screen: Screen = {
           <div class="stat"><small>함대</small><strong>${r.fleet}기</strong></div>
         </div>
         ${TEMPER[r.id] ? html`<p class="note"><span class="chip ${TEMPER[r.id].raid >= 3 ? 'jeok' : TEMPER[r.id].raid === 1 ? 'hwang' : 'cheong'}">${TEMPER[r.id].name}</span> ${TEMPER[r.id].note}</p>` : ''}
+        ${r.grudge ? html`<p class="note grudge"><span class="mono c-jeok" aria-label="원한 ${r.grudge} / ${GRUDGE.max}">${'●'.repeat(r.grudge)}${'○'.repeat(GRUDGE.max - r.grudge)}</span> 원한 · 당신을 노릴 확률 +${Math.round(GRUDGE.per * r.grudge * 100)}% · ${GRUDGE.fade}블록마다 하나씩 사라짐</p>` : ''}
         ${sc ? html`<div class="scout"><span class="label c-cheong">정찰 보고 · 다음 교전 함대</span>${fleet.map((u) => html`<div class="scout-u">${pixel(u.type)}<span>${STRUCT_TYPE[u.type]}</span><small class="mono">${AMBIT[u.ambit]}</small></div>`)}</div>
           ${demo.ally?.id === r.id ? '' : oddsChip(r)}`
           : html`<button class="btn ghost" data-act="scout" style="justify-content:space-between">정찰기 파견 <span class="mono c-hwang">1 g · <kbd>S</kbd></span></button>`}
