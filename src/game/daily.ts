@@ -18,6 +18,7 @@ const ORDERS: Order[] = [
   { id: 'tribute', title: '공물 5 α 받기', target: 5, demoOnly: true, value: () => (demo.on ? demo.tributeTotal : 0) },
   { id: 'black', title: '암시장 거래 1회', target: 1, demoOnly: true, value: () => (demo.on ? demo.black.deals : 0) },
   { id: 'revenge', title: '보복 출격 1회 성공', target: 1, demoOnly: true, value: () => (demo.on ? demo.state.revengeWins ?? 0 : 0) },
+  { id: 'dividend', title: '배당 1 α 받기', target: 1, demoOnly: true, value: () => (demo.on ? demo.dividends : 0) },
   { id: 'refit', title: '함선 1척 개장', target: 1, demoOnly: true, value: () => (demo.on ? demo.state.refits ?? 0 : 0) },
   { id: 'jobs', title: '의뢰 1회 완수', target: 1, demoOnly: true, value: () => (demo.on ? demo.jobs?.done ?? 0 : 0) },
 ];
