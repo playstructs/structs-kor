@@ -958,6 +958,8 @@ function fileReport(r: DemoRaid, won: boolean) {
   const promoted = creditInner(tl.kills);
   s.report = { h: s.height, won, name: r.name, stance: r.stance, odds: r.odds, blocked: tl.blocked, hits: tl.hits, seized: r.seized, promoted,
     kills: Object.entries(tl.kills).map(([id, n]) => { const x = s.structs.find((y) => y.id === id); return { id, type: x?.type ?? 0, n, name: x?.name }; }).sort((a, z) => z.n - a.n) };
+  // An upset is worth remembering.
+  if (won && r.odds != null && r.odds < 0.3) chronicle('hwang', `역전승 · ${r.name} (예상 승률 ${Math.round(r.odds * 100)}%)`);
   if (promoted.length) emit('promote', promoted.map((x) => `${x.name ? `「${x.name}」` : STRUCT_TYPE[x.type] ?? TYPES_BY_ID[x.type].type} ${'★'.repeat(x.rank)}`).join(' · '));
 }
 /** Who may come for you next, and how heavily each is weighted: vassals, pacts and allies don't;
