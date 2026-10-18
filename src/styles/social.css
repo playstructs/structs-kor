@@ -282,3 +282,4 @@ tr.me td { background: var(--cheong-bg); }
 .alloc-form { display: grid; grid-template-columns: 1.4fr 1fr 0.8fr auto; gap: 8px; align-items: end; margin-top: 10px; }
 @media (max-width: 700px) { .alloc-form, .inf-form { grid-template-columns: 1fr; } }
 .coins .rank { min-width: 22px; text-align: center; color: var(--text-faint); }
+.stream { max-height: 420px; overflow-y: auto; } .stream li.war b { color: var(--jeok-hi); } .stream li.econ b { color: var(--hwang); } .stream li.build b { color: var(--cheong-hi); }
