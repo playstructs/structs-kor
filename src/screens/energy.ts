@@ -200,7 +200,7 @@ const screen: Screen = {
       allocPower: (el: HTMLElement) => { const v = Number(prompt('새 전력 (kW)')); if (v > 0) sign(actions.allocationUpdate(el.dataset.id!, Math.round(v * 1e6)), '전력을 바꿨습니다'); },
       allocConn: (el: HTMLElement) => { const to = (prompt('연결할 변전소 ID', dist.subs[0]?.id ?? p.substation_id) || '').trim(); if (/^4-\d+$/.test(to)) sign(actions.allocationConnect(el.dataset.id!, to), `${to}에 연결했습니다`); },
       allocDisc: (el: HTMLElement) => sign(actions.allocationDisconnect(el.dataset.id!), '연결을 끊었습니다'),
-      allocDel: (el: HTMLElement) => { if (confirm(`할당 ${el.dataset.id}을(를) 삭제할까요? 받던 쪽이 전력을 잃습니다.`)) sign(actions.allocationDelete(el.dataset.id!), '할당을 삭제했습니다'); },
+      allocDel: (el: HTMLElement) => { sign(actions.allocationDelete(el.dataset.id!), '할당을 삭제했습니다'); },
       subNew: (el: HTMLElement) => sign(actions.substationCreate(pid, el.dataset.id!), '변전소를 만들었습니다'),
       subName: (el: HTMLElement) => { const nm = (prompt('변전소 이름') || '').trim(); if (nm) sign(actions.substationName(el.dataset.id!, nm), '이름을 바꿨습니다'); },
       subJoin: (el: HTMLElement) => sign(actions.substationConnect(el.dataset.id!, pid), '변전소에 연결했습니다'),

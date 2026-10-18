@@ -106,19 +106,16 @@ const screen: Screen = {
             if (mode === 'defend' && panel?.kind === 'struct' && id !== panel.id) {
               const me = panel.id;
               mode = null; markRaiders();
-              if (!confirm(`체인에 서명합니다: ${STRUCT_TYPE[d?.structs.find((x) => x.id === me)?.type ?? 0] ?? me} ${me} → ${STRUCT_TYPE[board!.get(id)?.typeId ?? 0] ?? ''} ${id} 방어. 보낼까요?`)) { paint(); return; }
               signOnce(`guard|${me}`, () => actions.defenseSet(me, id)); paint(); return;
             }
             mode = null; enemyPick = null;
             panel = { kind: 'struct', id }; board!.select(id); markRaiders(); paint(); return;
           }
-          const enemy = STRUCT_TYPE[board!.get(id)?.typeId ?? 0] ?? '';
           // 공격 targeting, during a real raid: the selected struct fires on the clicked raider.
           if (mode === 'attack' && !isDemo && liveRaiders.length && panel?.kind === 'struct') {
-            const me = panel.id, mine = STRUCT_TYPE[d?.structs.find((x) => x.id === me)?.type ?? 0] ?? me;
+            const me = panel.id;
             if (wallet.state !== 'unlocked') { toast('공격하려면 지갑 잠금을 해제하세요', 3000); return; }
             mode = null; markRaiders(); paint();
-            if (!confirm(`체인에 서명합니다: ${mine} ${me} → ${enemy} ${id} 공격 (주무기). 보낼까요?`)) return;
             signOnce(`attack|${me}`, () => actions.attack(me, id));
             return;
           }
@@ -290,7 +287,7 @@ const screen: Screen = {
     const buildTime = (difficulty: number) => {
       if (isDemo) return `${Math.max(3, Math.round(difficulty / 140))}블록`;
       const b = estimateBlocks(difficulty, pow.rate || 2e6), min = Math.round((b * BLOCK_SECONDS) / 60);
-      return `약 ${n(b)}블록 (${min >= 60 ? `${(min / 60).toFixed(1)}시간` : `${min}분`}) · 작업 증명`;
+      return min >= 60 ? `약 ${(min / 60).toFixed(1)}시간` : `약 ${Math.max(1, min)}분`;
     };
     const actionChunk = (): Safe => {
       if (!d) return html``;
@@ -367,7 +364,7 @@ const screen: Screen = {
             <span title="남은 광맥"><i class="si icon-undiscovered-ore"></i><b>${n(d.planet?.undiscovered_ore)}</b></span>
           </div>
           <div class="ab-btns">
-            ${!isDemo && !d.player.planet_id ? sbtn({ act: 'explore', label: '탐사', icon: 'undiscovered-ore', tone: 'gold', sub: '첫 행성', title: '행성 탐사: 정착할 행성을 받습니다 (체인 거래)' }) : ''}
+            ${!isDemo && !d.player.planet_id ? sbtn({ act: 'explore', label: '탐사', icon: 'undiscovered-ore', tone: 'gold', sub: '첫 행성', title: '행성 탐사: 정착할 행성을 찾습니다' }) : ''}
             ${sbtn({ act: 'buildNext', label: '건설', key: 'E', icon: 'deploy', sub: '빈 슬롯' })}
             ${sbtn({ act: 'refineAll', label: '정제', key: 'Q', icon: 'refine', tone: 'gold', sub: isDemo ? `+${demo.rates().alpha.toFixed(2)}α` : '알파' })}
             ${sbtn({ act: 'infuse', label: '주입', key: 'I', icon: 'send-alpha', sub: isDemo ? '1g→1kW' : '리액터' })}
@@ -539,7 +536,7 @@ const screen: Screen = {
     // One signature in flight per struct and order: a double click must not sign the same move twice.
     const inFlight = new Set<string>();
     const signOnce = (key: string, send: () => Promise<string>) => { if (inFlight.has(key)) return; inFlight.add(key); void sign(send()).finally(() => inFlight.delete(key)); };
-    const sign = (p: Promise<string>) => p.then((h) => { sfx.play('confirm'); toast(`전송됨 · ${h.slice(0, 10)}…`); }).catch((e) => { sfx.play('error'); toast('실패: ' + (e as Error).message, 5000); });
+    const sign = (p: Promise<string>) => p.then(() => { sfx.play('confirm'); toast('명령을 내렸습니다'); }).catch((e) => { sfx.play('error'); toast('실패: ' + (e as Error).message, 5000); });
 
     const firstEmpty = (): Panel => {
       if (!d) return null;
@@ -585,10 +582,9 @@ const screen: Screen = {
       explore: (el: HTMLElement) => {
         if (isDemo || !d || d.player.planet_id) return;
         if (wallet.state !== 'unlocked') { sfx.play('error'); toast('탐사하려면 지갑 잠금을 해제하세요', 3000); return; }
-        if (!confirm('체인에 서명합니다: 행성 탐사 · 정착할 첫 행성을 받습니다. 보낼까요?')) return;
         (el as HTMLButtonElement).disabled = true;
         void actions.planetExplore(pid)
-          .then((h) => { sfx.play('confirm'); notify('탐사 전송', `새 행성을 찾는 중 · ${h.slice(0, 10)}…`, 'cheong', null); void load(); })
+          .then(() => { sfx.play('confirm'); notify('탐사 시작', '정착할 행성을 찾는 중입니다', 'cheong', null); void load(); })
           .catch((e) => { sfx.play('error'); toast('탐사 실패: ' + (e as Error).message, 5000); (el as HTMLButtonElement).disabled = false; });
       },
       power: (el: HTMLElement) => {
@@ -649,10 +645,9 @@ const screen: Screen = {
         if (!isDemo) {
           if (wallet.state !== 'unlocked') { sfx.play('error'); toast('착공하려면 지갑 잠금을 해제하세요', 3000); return; }
           const type = Number(el.dataset.type);
-          if (!confirm(`체인에 서명합니다: ${STRUCT_TYPE[type] ?? type} 건설 · ${AMBIT[p.ambit]} ${p.slot + 1} · ${buildTime(TYPES_BY_ID[type]?.buildDifficulty ?? 0)}. 보낼까요?`)) return;
           (el as HTMLButtonElement).disabled = true;
           void actions.structBuild(pid, type, p.ambit, p.slot)
-            .then((h) => { sfx.play('build'); notify('착공 전송', `${STRUCT_TYPE[type]} · ${AMBIT[p.ambit]} ${p.slot + 1} · ${h.slice(0, 10)}…`, 'cheong', null); panel = null; if (!pow.running) pow.start(); void load(); })
+            .then(() => { sfx.play('build'); notify('착공', `${STRUCT_TYPE[type]} · ${AMBIT[p.ambit]} ${p.slot + 1} · ${buildTime(TYPES_BY_ID[type]?.buildDifficulty ?? 0)}`, 'cheong', null); panel = null; if (!pow.running) pow.start(); void load(); })
             .catch((e) => { sfx.play('error'); toast('착공 실패: ' + (e as Error).message, 5000); (el as HTMLButtonElement).disabled = false; });
           return;
         }
