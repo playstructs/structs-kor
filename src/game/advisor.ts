@@ -35,6 +35,8 @@ export function advise(rank = 99): Tip[] {
   if (raid?.partner && raid.eta > 0) tips.push({ pri: 99, tone: 'jeok', text: `연합 전선 · ${raid.name} 함대 ${raid.structs.length}기. 평소보다 ${COALITION.extra}척 많습니다 · 방어막 과충전과 총동원을 아끼지 마세요.`, go: '/console', cta: '함교' });
   const sore = demo.rivals().filter((x) => (x.grudge ?? 0) >= 3 && x.vassal == null && demo.ally?.id !== x.id).sort((a, z) => (z.grudge ?? 0) - (a.grudge ?? 0))[0];
   if (sore && !raid) tips.push({ pri: 52, tone: 'jeok', text: `${sore.name}의 원한 ${sore.grudge} · 다음 습격은 이 세력일 가능성이 큽니다. 광석을 정제해 두거나, 동맹·복속으로 달래세요.`, go: '/galaxy', cta: '은하 지도' });
+  // Idle treasure: a stake in a quiet house earns while you wait (not the one you mean to rob).
+  if (!raid && st.alpha >= 150 && !Object.keys(st.stakes ?? {}).length) { const pick = demo.rivals().filter((x) => x.id !== '1-666' && x.vassal == null && !x.grudge).sort((a, z) => z.alpha - a.alpha)[0]; if (pick) tips.push({ pri: 38, tone: 'cheong', text: `알파 ${Math.floor(st.alpha)} g가 놀고 있습니다. ${pick.name}에 투자하면 그 금고에서 블록마다 배당이 나옵니다 (약탈하면 지분을 잃습니다).`, go: '/galaxy', cta: '투자' }); }
   const rv = demo.revenge;
   if (rv && !raid && demo.ally?.id !== rv.rival) tips.push({ pri: 90, tone: 'hwang', text: `${rv.name} 함대가 방금 무너졌습니다 · ${rv.left}블록 안에 보복 출격하면 노획 +${Math.round((REVENGE.bonus - 1) * 100)}%.`, go: `/sim?raid=${rv.rival}`, cta: '보복' });
   const bm = demo.black;
