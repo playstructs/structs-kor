@@ -3,11 +3,12 @@
  * hidden again after a minute or on leaving the screen. */
 import type { Screen } from '../router';
 import { href, go } from '../router';
-import { html, mount, toast, type Safe } from '../ui/dom';
+import { html, mount, toast, raw, type Safe } from '../ui/dom';
 import { wallet } from '../wallet/wallet';
 import { session } from '../api/session';
 import { GUILD_ID } from '../config';
-import { simulate } from '../api/actions';
+import { simulate, actions } from '../api/actions';
+import { portraitHtml, myPfp } from '../game/portrait';
 import { guildApi } from '../api/guild';
 import { MOCK } from '../api/http';
 import { CHANNELS, prefs, setPrefs, enable, supported, permission, type Channel } from '../game/native';
@@ -45,6 +46,14 @@ const screen: Screen = {
             ${wallet.state !== 'unlocked' ? html`<small class="dim">지갑 잠금을 해제해야 서명할 수 있습니다.</small>` : MOCK ? html`<small class="dim">모의 모드에서는 꺼져 있습니다.</small>` : ''}
           </section>
           <section class="chain-check">
+            <div class="card-head"><h2 style="font-size:20px">사령관 신원</h2><span class="end note">체인에 기록 · 모두에게 보임</span></div>
+            <div class="ident-row">${raw(portraitHtml(myPfp(), 64))}<div class="ident-forms">
+              <form class="invite-form" data-act="rename" data-on="submit"><input class="input" name="name" maxlength="24" placeholder="새 호출부호" required><button class="btn ghost sm" ${wallet.state === 'unlocked' && c.playerId && !MOCK ? '' : 'disabled'}>이름 변경</button></form>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost sm" data-act="pfp" ${wallet.state === 'unlocked' && c.playerId && !MOCK ? '' : 'disabled'}>이 초상화를 체인에 저장</button><a class="btn ghost sm" href="${href('/record')}">초상화 꾸미기</a></div>
+            </div></div>
+            <p class="note">이름과 초상화는 플레이어 카드, 통신, 길드 명단 어디서나 이것으로 보입니다.</p>
+          </section>
+          <section class="chain-check">
             <div class="card-head"><h2 style="font-size:20px">시스템 알림</h2><span class="end note">${!supported() ? '이 환경은 지원하지 않음' : permission() === 'denied' ? '브라우저에서 차단됨' : prefs().on ? '켜짐' : '꺼짐'}</span></div>
             <p class="note">탭이 뒤에 있을 때 운영체제 알림으로 알려줍니다. 채널마다 끌 수 있습니다.</p>
             ${prefs().on ? html`<div class="notify-list">${CHANNELS.map((c) => html`<div class="order-row"><div><b class="c-white">${c.label}</b><br><span class="dim" style="font-size:12px">${c.hint}</span></div><button class="sw" aria-pressed="${prefs().channels[c.id]}" aria-label="${c.label} 알림" data-act="chan" data-id="${c.id}"></button></div>`)}
@@ -80,6 +89,17 @@ const screen: Screen = {
     };
     const paint = () => { if (root.isConnected) mount(root, view(), handlers); };
     const handlers = {
+      rename: (el: HTMLElement) => {
+        const name = String(new FormData(el as HTMLFormElement).get('name') || '').trim();
+        const pid = wallet.commander?.playerId;
+        if (!name || !pid) return;
+        void actions.playerName(pid, name).then((h) => toast(`이름 변경 · ${h.slice(0, 10)}…`)).catch((e) => toast('실패: ' + (e as Error).message, 5000));
+      },
+      pfp: () => {
+        const pid = wallet.commander?.playerId;
+        if (!pid) return;
+        void actions.playerPfp(pid, myPfp()).then((h) => toast(`초상화 저장 · ${h.slice(0, 10)}…`)).catch((e) => toast('실패: ' + (e as Error).message, 5000));
+      },
       notifyOn: () => { void enable().then((ok) => { toast(ok ? '알림을 켰습니다.' : '브라우저가 알림을 허용하지 않았습니다.'); paint(); }); },
       notifyOff: () => { setPrefs({ on: false }); paint(); },
       chan: (el: HTMLElement) => { const id = el.dataset.id as Channel; const p = prefs(); setPrefs({ channels: { ...p.channels, [id]: !p.channels[id] } }); paint(); },

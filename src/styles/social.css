@@ -240,3 +240,6 @@ tr.me td { background: var(--cheong-bg); }
 .tagbox { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; background: var(--sunken); border: 1px solid var(--line); font: 13px var(--f-mono); }
 .tag button { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 15px; }
+.ident-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.ident-forms { display: flex; flex-direction: column; gap: 8px; flex: 1 1 260px; }
+.planet-name { max-width: 520px; }

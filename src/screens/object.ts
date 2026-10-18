@@ -4,7 +4,7 @@
  * /s/<code>: a shared situation (a frozen moment), with the objects it names as live cards. */
 import type { Screen } from '../router';
 import { current, href } from '../router';
-import { html, mount, raw, n, micro, esc, type Safe } from '../ui/dom';
+import { html, mount, raw, n, micro, esc, toast, type Safe } from '../ui/dom';
 import { guildApi, type ActivityRow, type StructRow } from '../api/guild';
 import { session } from '../api/session';
 import { MOCK } from '../api/http';
@@ -16,6 +16,8 @@ import { Board, type BoardStruct } from '../game/map/board';
 import { TYPES_BY_ID, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
 import { portraitHtml, seededPfp } from '../game/portrait';
 import { setTiles } from '../ui/shell';
+import { actions } from '../api/actions';
+import { wallet } from '../wallet/wallet';
 
 const ONLINE = 4, DESTROYED = 32;
 const base = () => href('');
@@ -76,6 +78,7 @@ const screen: Screen = {
     const handlers = {
       share: () => share({ kind: 'object', id }),
       watch: () => { toggleWatch(id); paint(); },
+      rename: (el: HTMLElement) => { const name = String(new FormData(el as HTMLFormElement).get('name') || '').trim(); if (name) void actions.planetName(id, name).then((h) => toast(`행성 이름 변경 · ${h.slice(0, 10)}…`)).catch((e) => toast('실패: ' + (e as Error).message, 5000)); },
     };
     const paint = () => {
       if (!root.isConnected) return;
@@ -100,7 +103,8 @@ const screen: Screen = {
       }
       board?.setStructs([...toBoard(here, 'defender'), ...toBoard(attackers, 'attacker')]);
       board?.setFog(!attackers.length);
-      extra = html`<section class="card game-panel"><div class="card-head"><h2>구조체</h2><span class="end mono dim">${n(here.length)} 아군${attackers.length ? ` · ${n(attackers.length)} 습격` : ''}</span></div>
+      const mineP = p.owner === me;
+      extra = html`${mineP ? html`<form class="invite-form planet-name" data-act="rename" data-on="submit"><input class="input" name="name" maxlength="24" value="${p.name}" placeholder="행성 이름" aria-label="행성 이름"><button class="btn ghost sm" ${wallet.state === 'unlocked' && !MOCK ? '' : 'disabled'}>행성 이름 변경</button></form>` : ''}<section class="card game-panel"><div class="card-head"><h2>구조체</h2><span class="end mono dim">${n(here.length)} 아군${attackers.length ? ` · ${n(attackers.length)} 습격` : ''}</span></div>
         <div class="obj-structs">${[...here, ...attackers].slice(0, 24).map((s) => html`<a class="obj-struct ${attackers.includes(s) ? 'enemy' : ''}" href="${href(`/o/${s.id}`)}"><b>${STRUCT_TYPE[s.type] ?? s.type}</b><small class="mono">${s.id} · ♥${s.health}</small></a>`)}</div></section>`;
     };
     const loadPlayer = async () => {
