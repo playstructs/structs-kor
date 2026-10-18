@@ -48,6 +48,8 @@ const screen: Screen = {
           ['속국', `${demo.rivals().filter((r) => r.vassal != null).length}곳`], ['누적 공물', `${demo.tributeTotal.toFixed(1)} α`],
           ['현상금', `${demo.state.bountiesClaimed ?? 0}회`], ['공허 함대 격파', `${demo.state.voidKills ?? 0}회`],
           ['길드 전 우승', `${demo.state.raceWins ?? 0}회`], ['결단', `${demo.state.decided ?? 0}회`],
+          ['보복 성공', `${demo.state.revengeWins ?? 0}회`], ['연합 함대 격퇴', `${demo.state.coalitionWins ?? 0}회`],
+          ['암시장 거래', `${demo.black.deals}회`], ['누적 배당', `${demo.dividends.toFixed(1)} α`],
         ] as [string, string][] : [])] as [string, string][]).map(([k, v]) => html`<div class="stat"><small>${k}</small><strong>${v}</strong></div>`)}</div>
       ${demo.on ? html`<section class="card game-panel"><div class="card-head"><h2>제국 연대기</h2><span class="end label c-hwang">CHRONICLE</span></div>
         ${demo.chronicle.length ? html`<ol class="chron">${[...demo.chronicle].reverse().map((c) => html`<li class="${c.tone}"><span class="mono faint">제${c.era + 1}시대 · #${n(c.h)}</span><b>${c.text}</b></li>`)}</ol>`
