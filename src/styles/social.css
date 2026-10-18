@@ -321,3 +321,7 @@ tr.me td { background: var(--cheong-bg); }
 .sp-hit { fill: transparent; }
 .sp-hit:hover { fill: rgba(255,255,255,.06); }
 .sp-range { font-size: 10px; }
+.ledger { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; max-height: 420px; overflow-y: auto; }
+.ledger li { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 5px 8px; background: var(--sunken); border-left: 3px solid var(--cheong); font-size: 13px; }
+.ledger li.out { border-left-color: var(--jeok-strong); }
+.ledger li.in .mono:nth-child(2) { color: var(--cheong-hi); } .ledger li.out .mono:nth-child(2) { color: var(--jeok-hi); }

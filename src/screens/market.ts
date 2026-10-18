@@ -11,6 +11,7 @@ import { guildApi, type AgreementRow, type BankRow, type ProviderRow, type Playe
 import { marketStats, quote, quoteLocal, type MarketStat, type Quote } from '../api/planned';
 import { actions } from '../api/actions';
 import { balances, denomLabel, type Coin } from '../api/chain';
+import { call } from '../api/http';
 import { KW, BLOCKS_PER_DAY, perKwDay as chainPerKwDay, chainRate, MIN_PER_KW_DAY } from '../api/rates';
 import { wallet } from '../wallet/wallet';
 import { sfx } from '../game/sfx';
@@ -29,7 +30,7 @@ const POLICY: Record<string, string> = { openMarket: '공개', 'open-market': '�
 interface State {
   tab: Tab; me: PlayerRow | null; providers: ProviderRow[]; mineProv: ProviderRow[]; stats: Map<string, MarketStat>; agreements: AgreementRow[]; bank: BankRow[];
   coins: Coin[]; sel: number; capKw: number; days: number; q: Quote | null; busy: boolean; sort: 'price' | 'cap' | 'alpha'; policy: '' | 'open' | 'guild';
-  bankGuild: string; bankAmount: string; hist: Map<string, BucketVolume[] | null>;
+  bankGuild: string; bankAmount: string; hist: Map<string, BucketVolume[] | null>; ledger: Record<string, unknown>[] | null | undefined;
 }
 /** An offer in comparable alpha per kW·day: guild tokens at their bank's collateral ratio. */
 function alphaEq(s: State, p: ProviderRow): number | null {
@@ -181,12 +182,27 @@ function bank(s: State): Safe {
     </section></div>`;
 }
 
+const LEDGER_KO: Record<string, string> = { mined: '채굴', refined: '정제', seized: '약탈', forfeited: '빼앗김', sent: '보냄', received: '받음', infused: '주입', defused: '회수', minted: '발행', burned: '소각', redeemed: '상환', converted: '교환', diverted: '전환' };
+function ledgerList(rows: Record<string, unknown>[] | null | undefined): Safe {
+  if (rows === undefined) return html`<p class="note">내역 불러오는 중…</p>`;
+  if (!rows || !rows.length) return html`<p class="note">거래 내역이 없습니다.</p>`;
+  return html`<ol class="ledger">${rows.slice(0, 40).map((r) => {
+    const action = String(r.action ?? ''), denom = String(r.denom ?? ''), raw0 = Number(r.amount_p ?? r.amount ?? 0);
+    const amt = denom.startsWith('u') ? raw0 / 1e6 : raw0;
+    const out = /sent|forfeited|infused|burned|redeemed|seized_from/.test(action);
+    const when = String(r.time ?? r.created_at ?? r.updated_at ?? '');
+    const other = String(r.counterparty ?? r.other_player_id ?? r.destination ?? r.source ?? '');
+    return html`<li class="${out ? 'out' : 'in'}"><b>${LEDGER_KO[action] ?? action}</b><span class="mono">${out ? '−' : '+'}${n(amt, denom.startsWith('u') ? 4 : 0)} ${denomLabel(denom.replace(/\.infused$/, ''))}</span>${/^\d{1,2}-\d+$/.test(other) ? html`<a class="mono" href="${href(`/o/${other}`)}">${other}</a>` : html`<span></span>`}<small class="mono faint">${when ? new Date(when).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : r.block_height ? '#' + n(r.block_height) : ''}</small></li>`;
+  })}</ol>`;
+}
+
 function walletTab(s: State): Safe {
   return html`<div class="g2" style="align-items:start">
     <section class="card game-panel"><div class="card-head"><h2>내 지갑</h2><span class="end mono dim">${wallet.commander?.address.slice(0, 16) ?? ''}…</span></div>
       ${s.coins.length ? html`<ul class="coins">${s.coins.map((c) => html`<li><span class="coin-ico ${c.denom === 'ualpha' ? 'alpha' : 'token'}"></span><div><b>${denomLabel(c.denom)}</b><small class="mono">${c.denom}</small></div><strong class="mono ${c.denom === 'ualpha' ? 'c-hwang' : ''}">${micro(c.amount, 4)}</strong><button class="btn ghost sm" data-act="send" data-d="${c.denom}" ${unlocked() ? '' : 'disabled'}>보내기</button></li>`)}</ul>` : html`<p class="empty">잔액이 없습니다.</p>`}
       <button class="btn gold" data-act="send" data-d="ualpha" ${unlocked() ? '' : 'disabled'}>알파 보내기</button>
     </section>
+    <section class="card game-panel"><h2>거래 내역</h2>${ledgerList(s.ledger)}</section>
     <section class="card game-panel"><h2>레플리칸트 지갑</h2>
       <p class="note">레플리칸트의 알파는 <a href="${href('/replicants')}">레플리칸트</a> 화면에서 한 번에 회수하거나, 여기서 개별로 보낼 수 있습니다.</p>
       <ul class="coins">${wallet.accounts.filter((a) => a.index > 0).slice(0, 12).map((a) => html`<li><span class="coin-ico rep"></span><div><b>#${a.index} ${a.playerId ?? ''}</b><small class="mono">${a.address.slice(0, 18)}…</small></div><button class="btn ghost sm" data-act="sendFrom" data-i="${a.index}" ${unlocked() ? '' : 'disabled'}>보내기</button></li>`)}</ul>
@@ -200,7 +216,7 @@ const screen: Screen = {
     if (!pid) return;
     mount(root, loading());
     const startTab = (params.get('tab') as Tab) || 'buy';
-    const s: State = { tab: TABS.some(([t]) => t === startTab) ? startTab : 'buy', me: null, providers: [], mineProv: [], stats: new Map(), agreements: [], bank: [], coins: [], sel: 0, capKw: 10, days: 7, q: null, busy: false, sort: 'price', policy: '', bankGuild: '', bankAmount: '', hist: new Map() };
+    const s: State = { tab: TABS.some(([t]) => t === startTab) ? startTab : 'buy', me: null, providers: [], mineProv: [], stats: new Map(), agreements: [], bank: [], coins: [], sel: 0, capKw: 10, days: 7, q: null, busy: false, sort: 'price', policy: '', bankGuild: '', bankAmount: '', hist: new Map(), ledger: undefined };
     let quoteTicket = 0;
     const requote = () => {
       const p = s.providers[s.sel];
@@ -226,6 +242,7 @@ const screen: Screen = {
     const paint = () => {
       if (!root.isConnected) return;
       if (s.tab === 'bank') loadHist(s.bankGuild || s.bank[0]?.guild_id || '');
+      if (s.tab === 'wallet' && s.ledger === undefined) { s.ledger = null; void call<Record<string, unknown>[]>(`ledger/list/player/${encodeURIComponent(pid)}/page/1?limit=40&order=desc`).then((b) => { s.ledger = b.data ?? []; paint(); }).catch(() => { s.ledger = []; paint(); }); }
       mount(root, html`<div class="card-head"><h1 style="font-size:28px">알파 거래소</h1><span class="label c-cheong">ALPHA EXCHANGE</span></div>${tabs()}${s.tab === 'buy' ? buy(s) : s.tab === 'mine' ? mine(s) : s.tab === 'sell' ? sell(s) : s.tab === 'bank' ? bank(s) : walletTab(s)}`, handlers);
       const alpha = s.coins.find((c) => c.denom === 'ualpha')?.amount ?? s.me?.alpha;
       setTiles([{ label: '알파 매터', value: alpha != null ? micro(alpha, 2) + ' g' : '—', tone: 'var(--hwang)' }, { label: '계약', value: n(s.agreements.length) }, { label: '판매 제안', value: n(s.providers.length) }]);
