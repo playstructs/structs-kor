@@ -121,3 +121,15 @@ test('service record: one leg of each ledger pair, raids won from seized rows, t
   assert.equal(r.find((x) => x.key === 'raids_won')!.tier, 3);
   assert.equal(r.find((x) => x.key === 'ore_mined')!.value, null, 'unknown stays unknown, not zero');
 });
+
+test('board codes round-trip and refuse what a stranger could slip in', async () => {
+  const { encodeBoard, decodeBoard } = await import('../src/social/boardcode');
+  const b = { name: '레이더 보드', cards: [{ k: 'raids' as const, w: 1 as const }, { k: 'obj' as const, id: '2-14', w: 2 as const }] };
+  assert.deepEqual(decodeBoard(encodeBoard(b)), b);
+  const enc = (o: unknown) => 'B' + Buffer.from(JSON.stringify(o)).toString('base64url');
+  const d = decodeBoard(enc({ name: 'x'.repeat(99), cards: [{ k: 'constructor', w: 1 }, { k: '__proto__' }, { k: 'obj', id: '<img>' }, { k: 'feed', w: 9 }] }))!;
+  assert.equal(d.name.length, 20);
+  assert.deepEqual(d.cards, [{ k: 'feed', w: 2 }]);
+  assert.equal(decodeBoard(enc({ cards: [{ k: 'nope' }] })), null);
+  assert.equal(decodeBoard('not a code'), null);
+});

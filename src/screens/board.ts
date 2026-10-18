@@ -19,16 +19,8 @@ import { share } from '../social/share';
 import { setTiles } from '../ui/shell';
 import { sfx } from '../game/sfx';
 
-type Kind = 'obj' | 'me' | 'market' | 'banks' | 'armada' | 'raids' | 'comms' | 'feed' | 'leaders' | 'duty' | 'watch';
-interface Card { k: Kind; id?: string; w: 1 | 2 | 3 }
-interface Board { name: string; cards: Card[] }
+import { KINDS, encodeBoard, decodeBoard, type Kind, type Card, type Board } from '../social/boardcode';
 interface Store { at: number; boards: Board[] }
-const KINDS: Record<Kind, { name: string; icon: string; w: 1 | 2 | 3 }> = {
-  obj: { name: '객체 카드', icon: 'icon-info', w: 1 }, me: { name: '내 기지', icon: 'icon-cmd-post', w: 1 }, market: { name: '전력 시장', icon: 'icon-transfers', w: 2 },
-  banks: { name: '길드 은행', icon: 'icon-guild-directory', w: 1 }, armada: { name: '레플리칸트', icon: 'icon-member', w: 1 }, raids: { name: '습격 감시', icon: 'icon-raid', w: 1 },
-  comms: { name: '통신', icon: 'icon-phone', w: 1 }, feed: { name: '행성 기록', icon: 'icon-combat-log', w: 2 }, leaders: { name: '순위', icon: 'icon-success', w: 1 },
-  duty: { name: '근무 일지', icon: 'icon-computer', w: 1 }, watch: { name: '감시 목록', icon: 'icon-detected', w: 3 },
-};
 const PRESETS: Record<string, Board> = {
   지휘관: { name: '지휘관', cards: [{ k: 'me', w: 1 }, { k: 'raids', w: 1 }, { k: 'comms', w: 1 }, { k: 'feed', w: 2 }, { k: 'armada', w: 1 }, { k: 'watch', w: 3 }] },
   트레이더: { name: '트레이더', cards: [{ k: 'market', w: 2 }, { k: 'banks', w: 1 }, { k: 'me', w: 1 }, { k: 'comms', w: 1 }, { k: 'leaders', w: 1 }] },
@@ -39,18 +31,6 @@ const PRESETS: Record<string, Board> = {
 const KEY = 'structs-kor.boards';
 const load = (): Store => { try { const s = JSON.parse(localStorage.getItem(KEY) || 'null') as Store | null; if (s?.boards?.length) return s; } catch { /* fresh */ } return { at: 0, boards: [structuredClone(PRESETS['지휘관'])] }; };
 const save = (s: Store) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* fine */ } };
-
-/* A board travels as a code: JSON → base64url, prefixed B. Checked on the way in. */
-export const encodeBoard = (b: Board) => 'B' + btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(b)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-export function decodeBoard(code: string): Board | null {
-  if (!/^B[A-Za-z0-9_-]{4,4000}$/.test(code.trim())) return null;
-  try {
-    const s = code.trim().slice(1);
-    const b = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0)))) as Board;
-    const cards = (Array.isArray(b.cards) ? b.cards : []).filter((c) => c && KINDS[c.k] && (c.k !== 'obj' || isRefId(String(c.id)))).slice(0, 24).map((c) => ({ k: c.k, id: c.k === 'obj' ? String(c.id) : undefined, w: ([1, 2, 3].includes(c.w) ? c.w : KINDS[c.k].w) as 1 | 2 | 3 }));
-    return cards.length ? { name: String(b.name || '공유 보드').slice(0, 20), cards } : null;
-  } catch { return null; }
-}
 
 const screen: Screen = {
   async render(root, params) {
