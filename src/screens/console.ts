@@ -300,6 +300,7 @@ const screen: Screen = {
       return html`<section class="raid-alarm ${eta ? '' : 'live'}" role="alert">
         <strong>${eta ? `▲ 적 함대 접근 · ${eta}블록` : '▲ 행성 습격 진행 중'}</strong>
         <span>${r ? `${r.name} 함대 ${r.fleetId} · ${r.structs.length}기` : `함대 ${live!.fleet_id}${live!.fleet_owner ? ` (${live!.fleet_owner})` : ''}`} · 노출된 광석 <b class="mono">${n(Math.floor(Number(d?.player.ore ?? 0)))}</b></span>
+        ${r && eta ? html`<span class="stance" role="group" aria-label="대응 태세"><button class="btn ${r.stance === 'intercept' ? 'danger' : 'ghost'}" data-act="stance" data-v="intercept" title="함포 추가 피해 +30% · 받는 피해도 늘어남">요격</button><button class="btn ${r.stance === 'entrench' ? 'primary' : 'ghost'}" data-act="stance" data-v="entrench" title="방어막 차단 1.6배 · 함포 위력 조금 감소">참호</button></span>` : r?.stance ? html`<span class="chip ${r.stance === 'intercept' ? 'jeok' : 'cheong'}">${r.stance === 'intercept' ? '요격 태세' : '참호 태세'}</span>` : ''}
         <span class="end" style="display:flex;gap:8px;flex-wrap:wrap">${isDemo ? html`<button class="btn gold" data-act="refineAll" style="min-height:36px">정제소 가동 <kbd>Q</kbd></button>` : ''}<a class="btn danger" href="${href('/sim')}" style="min-height:36px">방어 시뮬레이션</a></span>
       </section>`;
     };
@@ -429,6 +430,11 @@ const screen: Screen = {
         banner({ kicker: '새 시대', title: `제${demo.era + 1}시대`, sub: `생산 +${15 * demo.era}% · 은하가 다시 깨어납니다`, tone: 'gold', ms: 3600 });
         career.award(500, `제${demo.era + 1}시대 개막`);
         refresh();
+      },
+      stance: (el: HTMLElement) => {
+        const v = el.dataset.v as 'intercept' | 'entrench';
+        if (err(demo.setStance(v))) return;
+        sfx.play(v === 'intercept' ? 'alarm' : 'shield'); refresh();
       },
       ability: (el: HTMLElement) => {
         const id = el.dataset.id as AbilityId, a = ABILITIES.find((x) => x.id === id)!;

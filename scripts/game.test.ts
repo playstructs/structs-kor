@@ -666,3 +666,14 @@ test('contract board: deliveries pay a premium at once; a defence contract pays 
   assert.equal(demo.takeJob(def.id), null);
   assert.ok(demo.jobs!.active, 'contract running');
 });
+
+test('raid stance: chosen while the raid approaches, locked once it lands', () => {
+  demo.reset();
+  assert.match(demo.setStance('entrench') ?? '', /없습니다/);
+  demo.state.nextRaid = 1; demo.step();
+  assert.ok(demo.raid && demo.raid.eta > 0);
+  assert.equal(demo.setStance('intercept'), null);
+  assert.equal(demo.raid!.stance, 'intercept');
+  demo.state.raid!.eta = 0;
+  assert.match(demo.setStance('entrench') ?? '', /교전/);
+});

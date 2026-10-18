@@ -34,7 +34,7 @@ const SECTIONS: [string, string, Entry[]][] = [
     { icon: 16, title: '은하 사건', body: html`때때로 은하의 날씨가 바뀝니다. ${Object.values(EVENTS).map((e) => `${e.name}: ${e.text}`).join(' / ')}.`, go: ['/console', '함교'] },
     { icon: 2, title: '공허 함대', body: html`${VOID.every}블록마다 나타나 ${VOID.stays}블록 머뭅니다. 요격하면 ${VOID.reward} α부터. 놓아두면 당신이나 경쟁 세력 중 하나를 덮칩니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 1, title: '지휘관 능력', body: html`함교의 즉발 능력, 계급으로 해금: ${ABILITIES.map((a) => `${a.name} [${a.key}] · ${a.what} · 재사용 ${a.cooldown}블록`).join(' / ')}.`, go: ['/console', '함교'] },
-    { icon: 19, title: '방어', body: html`습격 함대는 ${RATE.raidEta}블록 전에 경보가 울립니다. 함대와 방어포가 반격하고, 방어막이 공격을 막습니다. 무너지면 정제되지 않은 광석을 모두 잃습니다.`, go: ['/console', '함교'] },
+    { icon: 19, title: '방어', body: html`습격 함대는 ${RATE.raidEta}블록 전에 경보가 울립니다. 그동안 태세를 고르세요: 요격(함포 추가 피해 +30%, 받는 피해도 증가) 또는 참호(방어막 차단 1.6배, 함포 위력 조금 감소). 함대와 방어포가 반격하고, 방어막이 공격을 막습니다. 무너지면 정제되지 않은 광석을 모두 잃습니다. 처음 세 번의 습격은 작게 옵니다.`, go: ['/console', '함교'] },
   ]],
   ['성장', '오래 버틴 제국이 강하다.', [
     { icon: 15, title: '연구와 교리', body: html`연구는 영구 강화: 경제·전력·방어, 그리고 장교에게 열리는 패권(첩보망·거점 공병·제국 관료제). 교리는 하나만: ${DOCTRINES.map((d) => `${d.name}(${d.perks.join(', ')})`).join(' · ')}. 첫 선택은 무료, 전환 ${DOCTRINE_SWITCH} g.`, go: ['/research', '연구소'] },

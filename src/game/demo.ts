@@ -29,7 +29,8 @@ function creditInner(byId: Record<string, number>): { id: string; type: number; 
 }
 /** Veteran rank from kills: ★ at 3, ★★ at 8, ★★★ at 15. */
 export const vetRank = (kills = 0) => (kills >= 15 ? 3 : kills >= 8 ? 2 : kills >= 3 ? 1 : 0);
-export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number }
+export type Stance = 'intercept' | 'entrench';
+export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number; /** Chosen while it approaches. */ stance?: Stance }
 interface Contract { id: string; kw: number; rate: number; left: number; buyer: string; dir?: 'buy' | 'sell' }
 
 /* ── Galactic events: the weather of the economy. One at a time, a few dozen blocks each. ── */
@@ -920,10 +921,11 @@ function raidStep() {
   const theirs = r.structs.filter((x) => x.hp > 0);
   if (theirs.length && mineAlive.length) {
     const a = theirs[Math.floor(rnd() * theirs.length)];
-    const shieldUp = s.shield > 0 && rnd() < (s.shield / 140) * (1 + 0.3 * lv('shield'));
+    // 참호: the shield takes more of the blows. 요격: you meet them in the open, and so do their guns.
+    const shieldUp = s.shield > 0 && rnd() < (s.shield / 140) * (1 + 0.3 * lv('shield')) * (r.stance === 'entrench' ? 1.6 : 1);
     const t = mineAlive.filter((x) => x.cat === 'planet').concat(mineAlive)[Math.floor(rnd() * mineAlive.length)];
     if (shieldUp) { s.shield = Math.max(0, s.shield - 12); attack(a, t, 0, false, true); }
-    else attack(a, t, 1 + (rnd() < 0.3 ? 1 : 0), rnd() < 0.12);
+    else attack(a, t, 1 + (rnd() < (r.stance === 'intercept' ? 0.4 : 0.3) ? 1 : 0), rnd() < 0.12);
   }
   // The best guns fire first: veterans, then defence cannons.
   const shooters = s.structs.filter((x) => x.hp > 0 && x.online && x.building == null && (x.cat === 'fleet' || x.type === 19))
@@ -934,7 +936,7 @@ function raidStep() {
     if (!left.length) break;
     const tgt = left.find((x) => x.type !== 1) ?? left[0];
     // Veterans (★★ and up) hit harder.
-    attack(d, tgt, (d.type === 19 ? 2 : 1) + (vetRank(d.kills) >= 2 ? 1 : 0) + (rnd() < 0.25 * lv('guns') + (inGuild('iron') ? 0.1 : 0) ? 1 : 0), rnd() < 0.15);
+    attack(d, tgt, (d.type === 19 ? 2 : 1) + (vetRank(d.kills) >= 2 ? 1 : 0) + (rnd() < 0.25 * lv('guns') + (inGuild('iron') ? 0.1 : 0) + (r.stance === 'intercept' ? 0.3 : 0) - (r.stance === 'entrench' ? 0.1 : 0) ? 1 : 0), rnd() < 0.15);
   }
   const cmdDown = r.structs.find((x) => x.type === 1)!.hp <= 0;
   if (cmdDown || r.structs.every((x) => x.hp <= 0)) {
@@ -1138,6 +1140,15 @@ export const demo = {
     return null;
   },
   covert,
+  /** Choose how to meet the incoming raid (only while it approaches). */
+  setStance(st: Stance): string | null {
+    adoptStored();
+    if (!s.raid) return '다가오는 습격이 없습니다';
+    if (s.raid.eta === 0) return '이미 교전 중입니다';
+    s.raid.stance = st;
+    persist(); for (const f of changeFns) f();
+    return null;
+  },
   get jobs() { const j = s.jobs; return j ? { offers: j.offers, active: j.active ? { ...j.active, left: Math.max(0, j.active.until - s.height) } : null, next: Math.max(0, j.next - s.height), done: j.done ?? 0 } : null; },
   /** Take a job: a delivery is settled at once; a defence contract starts its clock. */
   takeJob(id: string): string | null {
