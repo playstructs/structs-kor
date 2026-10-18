@@ -16,7 +16,7 @@ Dev only: open any page with `?mock=1` to sign in as a fixture commander against
 
 ## Playtesting
 
-`playtest/` is the playtest harness. It has twenty player profiles: ten player types (first-timer, optimizer, raider, trader, turtle, diplomat, completionist, speedrunner, low-vision keyboard player, fuzzer) and ten feature specialists that together cover the 70 features in `playtest/features.ts`. The player types play the demo headless for balance and stability. Every profile drives the real client in its own browser profile, and can be handed to a Claude Sonnet playtester for a deep dive with a coverage report. CI runs the simulation gates and the browser personas on every pull request. See [playtest/README.md](playtest/README.md).
+`playtest/` is the playtest harness. It has twenty player profiles: ten player types (first-timer, optimizer, raider, trader, turtle, diplomat, completionist, speedrunner, low-vision keyboard player, fuzzer) and ten feature specialists that together cover the 58 features in `playtest/features.ts`. The player types play the demo headless for balance and stability. Every profile drives the real client in its own browser profile, and can be handed to a Claude Sonnet playtester for a deep dive with a coverage report. CI runs the simulation gates and the browser personas on every pull request. See [playtest/README.md](playtest/README.md).
 
 ## Environments
 

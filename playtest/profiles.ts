@@ -181,7 +181,7 @@ export const PROFILES: Profile[] = [
     voice: 'Specific about barriers: unlabeled buttons, focus lost after a re-render, colour-only signals, text that clips at 200%, motion that ignores the setting.',
     questions: ['Can the whole demo loop be played by keyboard?', 'Do controls have names?', 'Does the layout survive 200% zoom?'],
     expect: { maxSpiralRate: 0.05, maxRejectRate: 0.5 },
-    slice: ['hotkeys', 'title', 'demo-bridge', 'login-screens', 'audio'],
+    slice: ['hotkeys', 'title', 'demo-bridge', 'login-screens', 'audio', 'palette'],
   },
   {
     id: 'chaos', name: 'Chaos monkey', ko: '혼돈 · QA 원숭이', archetype: 'Adversarial QA / fuzzer',
@@ -216,7 +216,7 @@ export const PROFILES: Profile[] = [
     voice: 'Business-minded; flags any rate, penalty or duration shown without units or explanation.',
     questions: ['Is the power market usable by a new account?', 'Are agreement terms clear before signing?'],
     expect: { maxSpiralRate: 1 },
-    slice: ['energy-grid', 'brownout', 'struct-power', 'market-providers', 'market-agreements', 'market-provide', 'guild-bank'],
+    slice: ['energy-grid', 'brownout', 'struct-power', 'market-providers', 'market-agreements', 'market-provide', 'guild-bank', 'send-alpha', 'bank-exchange', 'my-providers', 'distribution'],
   },
   {
     id: 'replicator', name: 'Yuna (squad commander)', ko: '유나 · 레플리칸트 지휘관', archetype: 'Replicants and automation',
@@ -227,7 +227,7 @@ export const PROFILES: Profile[] = [
     voice: 'Practical; annoyed by screens that crash or load forever.',
     questions: ['Does the replicants screen load for a brand-new account?', 'Are standing orders understandable?'],
     expect: { maxSpiralRate: 1 },
-    slice: ['replicants', 'replicate', 'standing-orders'],
+    slice: ['replicants', 'replicate', 'standing-orders', 'armada-roster', 'armada-sweep', 'board'],
   },
   {
     id: 'admiral', name: 'Sungmin (admiral)', ko: '성민 · 함대 제독', archetype: 'Galaxy and fleet operations',
@@ -238,7 +238,7 @@ export const PROFILES: Profile[] = [
     voice: 'Strategic; wants to know exactly what a chain action will do before confirming.',
     questions: ['Is the launch confirmation clear about what gets signed?', 'Can a new commander find targets?'],
     expect: { maxSpiralRate: 1 },
-    slice: ['galaxy-map', 'galaxy-leaders', 'fleet-launch', 'raid-defense', 'threat-radar'],
+    slice: ['galaxy-map', 'galaxy-leaders', 'fleet-launch', 'raid-defense', 'threat-radar', 'stats', 'war-room', 'object-card'],
   },
   {
     id: 'guild-officer', name: 'Haneul (guild officer)', ko: '하늘 · 길드 간부', archetype: 'Guild and comms',
@@ -249,7 +249,7 @@ export const PROFILES: Profile[] = [
     voice: 'Social; cares whether the guild feels alive and whether chat works for a new member.',
     questions: ['Can a new member chat right away?', 'Does the roster show the new member?'],
     expect: { maxSpiralRate: 1 },
-    slice: ['guild-real', 'guild-bank', 'chat', 'chat-phrase-guard', 'notifications'],
+    slice: ['guild-real', 'guild-bank', 'chat', 'chat-phrase-guard', 'notifications', 'guild-apps', 'guild-directory', 'guild-admin', 'chat-cards', 'chat-commands', 'share-sheet'],
   },
   {
     id: 'security-auditor', name: 'Doyoon (security auditor)', ko: '도윤 · 보안 감사관', archetype: 'Account safety and wallet UX',

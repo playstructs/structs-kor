@@ -6,7 +6,7 @@ Twenty player profiles (ten player types and ten feature specialists), and three
 |---|---|---|---|
 | **Simulation** | Plays the demo base headless (the same `src/game/demo.ts` the browser runs) for thousands of blocks per persona over many seeds. Measures balance, friction and stability, and checks invariants every 10 blocks. | `pnpm playtest:sim` | ~1,000–2,000 blocks/s |
 | **Browser** | Each persona drives the real client in its **own persistent Chrome profile** (`playtest/.profiles/<id>`), on its own device, network, zoom and motion settings, with game time fast-forwarded. Probes errors, performance, layout, accessibility (axe WCAG 2.2 AA), i18n, save integrity and safety. | `pnpm playtest:browser` | ~2–4 min per persona |
-| **AI deep dive** | Claude Sonnet 5.5 plays each persona from screenshots and a numbered control list. It works through its feature slice (`features.ts`), explores freely, and reports every feature as passed, failed or blocked, with notes and a review. A synthesis pass merges everything into a ranked triage list, and the report shows coverage of all 70 features. | `pnpm playtest:ai` | needs `ANTHROPIC_API_KEY` |
+| **AI deep dive** | Claude Sonnet 5.5 plays each persona from screenshots and a numbered control list. It works through its feature slice (`features.ts`), explores freely, and reports every feature as passed, failed or blocked, with notes and a review. A synthesis pass merges everything into a ranked triage list, and the report shows coverage of all 58 features. | `pnpm playtest:ai` | needs `ANTHROPIC_API_KEY` |
 
 `pnpm playtest` runs all three into one folder (`playtest/reports/<stamp>/`) and builds `report.html`, a self-contained page with every finding, screenshot and chart.
 
@@ -39,7 +39,7 @@ pnpm playtest:report                            # rebuild report.html for the la
 
 The ten feature specialists are: PoW engineer, grid operator, replicant commander, admiral, guild officer, security auditor, drill sergeant, sim analyst, archivist and demo strategist. Nine of them play a signed-in account; the demo strategist plays the demo base.
 
-`features.ts` lists 70 features taken from the README's Screens and game-layer tables. Each one records its screen, how to tell it's present, the control that exercises it, and whether it signs a chain transaction or is guarded. Every profile owns a slice of them, and a test checks that the slices together cover every feature. Coverage statuses:
+`features.ts` lists 58 features taken from the README's Screens and game-layer tables. Each one records its screen, how to tell it's present, the control that exercises it, and whether it signs a chain transaction or is guarded. Every profile owns a slice of them, and a test checks that the slices together cover every feature. Coverage statuses:
 - **passed:** present and working.
 - **failed:** missing, broken or throws.
 - **blocked:** couldn't be reached.

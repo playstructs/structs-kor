@@ -51,7 +51,9 @@ const ALL: Feature[] = [
   // ── Replicants ──
   { id: 'replicants', area: 'replicants', name: '레플리칸트 roster', path: '/replicants', mode: 'any', expect: '/레플리칸트|분대/', try: 'Read your squad; does the screen load without errors?' },
   { id: 'replicate', area: 'replicants', name: '복제 (replicate a new account)', path: '/replicants', mode: 'account', expect: '[data-act="replicate"]', chain: true, try: 'Read what replication does; replicate only if chain actions are allowed (it enlists another account).' },
-  { id: 'standing-orders', area: 'replicants', name: '복무 규칙 (standing orders)', path: '/replicants', mode: 'any', expect: '/복무 규칙|근무 일지/', act: '[data-act="role"]', try: 'Set a role and standing orders; read the duty log.' },
+  { id: 'standing-orders', area: 'replicants', name: '복무 규칙 (standing orders)', path: '/replicants?tab=orders', mode: 'any', expect: '/복무 규칙|근무 일지/', act: '[data-act="tab"][data-t="orders"]', try: 'Open 복무 규칙; read what auto-sweep and auto-replicate would do; read the duty log.' },
+  { id: 'armada-roster', area: 'replicants', name: '함대 편성: filter, sort, bulk roles', path: '/replicants', mode: 'account', expect: '/명단|레플리칸트/', act: '[data-act="attention"]', try: 'Filter the roster to 주의 필요, sort by alpha, select a few and set a role in bulk.' },
+  { id: 'armada-sweep', area: 'replicants', name: '전체 회수 (sweep alpha home)', path: '/replicants', mode: 'account', expect: '[data-act="sweepAll"]', chain: true, try: 'Read what sweeping would send; sweep only if chain actions are allowed (one transaction per replicant).' },
   { id: 'demo-staff', area: 'replicants', name: 'Hire a watch officer, mechanic or trader (demo)', path: '/replicants', mode: 'demo', expect: '[data-act="hire"]', act: '[data-act="hire"]', try: 'Hire a staff member and watch them act.' },
 
   // ── Galaxy and fleet ──
@@ -72,6 +74,21 @@ const ALL: Feature[] = [
   { id: 'guild-real', area: 'guild', name: '길드: roster, bank, info (real guild)', path: '/guild', mode: 'account', expect: '/길드원|길드 정보/', try: 'Read the roster and guild info.' },
   { id: 'guild-demo', area: 'guild', name: 'NPC guilds, donations, 길드 전', path: '/guild', mode: 'demo', expect: '/길드/', act: '[data-act="join"]', try: 'Join, donate, follow the guild race.' },
   { id: 'chat', area: 'comms', name: '통신 (Matrix chat)', path: '/chat', mode: 'any', expect: '/통신/', try: 'Read channels; send a short friendly message.' },
+  { id: 'object-card', area: 'social', name: '객체 카드 page (/o/<id>) with planet board', path: '/o/2-14', mode: 'account', expect: '/객체|행성|플레이어/', try: 'Open an object page (try a planet and a player id); read the live card; watch the planet board.' },
+  { id: 'share-sheet', area: 'social', name: '공유 sheet (to a room, link, image)', path: '/console', mode: 'account', expect: '[data-act="shareBase"]', act: '[data-act="shareBase"]', try: 'Share your base status: read the preview card and the options (room, link copy, PNG). Do not spam rooms.' },
+  { id: 'chat-cards', area: 'comms', name: 'Ids in chat unfurl as live cards', path: '/chat', mode: 'any', expect: '/통신/', try: 'Write an object id (2-14, 1-42) in a message draft; check the chips and cards in history; use a card button.' },
+  { id: 'chat-commands', area: 'comms', name: 'Slash commands, Tab completion, reactions, replies', path: '/chat', mode: 'any', expect: '/통신/', try: 'Type /help; Tab-complete a command; react to a message; reply to one.' },
+  { id: 'palette', area: 'reference', name: '명령 팔레트 (Ctrl/⌘-K)', path: '/console', mode: 'any', expect: '/console|구조체/', try: 'Press Ctrl+K; try an id, "보내기 1-7 5", "ㄱㄹㅅ"; Esc closes.' },
+  { id: 'send-alpha', area: 'market', name: '송금 (send alpha, review before signing)', path: '/market?tab=wallet', mode: 'account', expect: '/내 지갑/', act: '[data-act="send"]', chain: true, try: 'Open the send sheet; read the review step; send only if chain actions are allowed.' },
+  { id: 'bank-exchange', area: 'market', name: '토큰 교환 (convert, redeem) and bank chart', path: '/market?tab=bank', mode: 'account', expect: '/토큰 교환/', chain: true, try: 'Read the exchange quotes and the volume chart; exchange only if chain actions are allowed.' },
+  { id: 'my-providers', area: 'market', name: '내 공급자 (access, withdraw, delete)', path: '/market?tab=sell', mode: 'account', expect: '/내 공급자/', chain: true, try: 'Read your providers and their controls.' },
+  { id: 'guild-apps', area: 'guild', name: '가입 신청: requests and invites', path: '/guild?tab=apps', mode: 'account', expect: '/가입 요청|보낸 초대/', chain: true, try: 'Read pending requests and invites; approve or invite only if chain actions are allowed.' },
+  { id: 'guild-directory', area: 'guild', name: '길드 찾기 (directory, join request)', path: '/guild?tab=find', mode: 'account', expect: '/길드 찾기/', try: 'Browse the guild directory; open another guild.' },
+  { id: 'guild-admin', area: 'guild', name: '길드 관리 (owner settings)', path: '/guild?tab=admin', mode: 'account', expect: '/길드 관리|길드원/', chain: true, try: 'Read the settings; change nothing unless chain actions are allowed and you own the guild.' },
+  { id: 'stats', area: 'galaxy', name: '은하 통계 and live stream', path: '/stats', mode: 'account', expect: '/은하 통계/', act: '[data-act="stream"]', try: 'Read the universe figures and leaderboards; turn the live stream on.' },
+  { id: 'war-room', area: 'galaxy', name: '작전 상황실 (targets, grudges, incidents)', path: '/war', mode: 'account', expect: '/작전 상황실/', try: 'Read the target board; add a grudge and a never-attack entry; read incidents.' },
+  { id: 'board', area: 'reference', name: '작전 보드 (custom card console)', path: '/board', mode: 'account', expect: '/작전 보드/', act: '[data-act="add"]', try: 'Add a card, reorder it, apply a preset, copy the board code.' },
+  { id: 'distribution', area: 'energy', name: '배전 (allocations and substations)', path: '/energy', mode: 'account', expect: '/배전/', chain: true, try: 'Read your allocations and the headroom preview; change nothing unless chain actions are allowed.' },
   { id: 'chat-phrase-guard', area: 'comms', name: 'Chat blocks messages that look like a recovery phrase', path: '/chat', mode: 'any', expect: '/통신/', try: 'Do not test this with a real phrase. Note whether the warning exists.' },
   { id: 'notifications', area: 'comms', name: 'Notification log (HUD bell)', path: '/console', mode: 'any', expect: '/console|구조체/', try: 'Open the bell; read the last notifications.' },
 
