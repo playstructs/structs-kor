@@ -306,3 +306,18 @@ tr.me td { background: var(--cheong-bg); }
 .diag-list li { display: grid; grid-template-columns: 12px auto minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 6px 8px; background: var(--sunken); border: 1px solid var(--line); }
 .diag-list li > small:last-child:not(:nth-child(3)) { grid-column: 2 / -1; }
 .diag-list li .planned { justify-self: start; }
+
+/* ── History sparklines ── */
+.spark-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.spark-card { margin: 0; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: var(--sunken); border: 1px solid var(--line); }
+.spark-card figcaption { display: flex; align-items: baseline; gap: 8px; }
+.spark-card figcaption b { font: 700 13px var(--f-pix); color: var(--text); flex: 1 1 auto; }
+.spark-card figcaption .mono { color: #fff; font-size: 15px; }
+.spark-card small.up { color: var(--jeok); } .spark-card small.down { color: var(--down); }
+.spark-card svg { width: 100%; height: auto; display: block; }
+.sp-line { fill: none; stroke: var(--sc); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.sp-area { fill: var(--sc); opacity: .12; }
+.sp-dot { fill: var(--sc); stroke: var(--sunken); stroke-width: 2; }
+.sp-hit { fill: transparent; }
+.sp-hit:hover { fill: rgba(255,255,255,.06); }
+.sp-range { font-size: 10px; }

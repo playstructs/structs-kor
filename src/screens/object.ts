@@ -18,6 +18,7 @@ import { portraitHtml, seededPfp } from '../game/portrait';
 import { setTiles } from '../ui/shell';
 import { onGrass, throttled } from '../grass/grass';
 import { serviceRecord, roman, type Ribbon } from '../social/record';
+import { history, sparkHtml } from '../social/history';
 import { actions } from '../api/actions';
 import { wallet } from '../wallet/wallet';
 
@@ -97,6 +98,7 @@ const screen: Screen = {
       const p = await guildApi.planet(id).catch(() => null);
       if (!p) return;
       const [mine, raid] = await Promise.all([guildApi.structsOf(p.owner).catch(() => [] as StructRow[]), guildApi.activeRaid(id).catch(() => null)]);
+      const hOre = await history('ore', id);
       const here = mine.filter((s) => s.location_id === id || (s.location_type === 'fleet' && s.type <= 13 && s.location_id.startsWith('9-')));
       let attackers: StructRow[] = [];
       if (raid?.fleet_owner) attackers = (await guildApi.structsOf(raid.fleet_owner).catch(() => [])).filter((s) => s.location_id === raid.fleet_id);
@@ -108,11 +110,11 @@ const screen: Screen = {
       board?.setStructs([...toBoard(here, 'defender'), ...toBoard(attackers, 'attacker')]);
       board?.setFog(!attackers.length);
       const mineP = p.owner === me;
-      extra = html`${mineP ? html`<form class="invite-form planet-name" data-act="rename" data-on="submit"><input class="input" name="name" maxlength="24" value="${p.name}" placeholder="행성 이름" aria-label="행성 이름"><button class="btn ghost sm" ${wallet.state === 'unlocked' && !MOCK ? '' : 'disabled'}>행성 이름 변경</button></form>` : ''}<section class="card game-panel"><div class="card-head"><h2>구조체</h2><span class="end mono dim">${n(here.length)} 아군${attackers.length ? ` · ${n(attackers.length)} 습격` : ''}</span></div>
+      extra = html`${mineP ? html`<form class="invite-form planet-name" data-act="rename" data-on="submit"><input class="input" name="name" maxlength="24" value="${p.name}" placeholder="행성 이름" aria-label="행성 이름"><button class="btn ghost sm" ${wallet.state === 'unlocked' && !MOCK ? '' : 'disabled'}>행성 이름 변경</button></form>` : ''}${hOre.length ? html`<section class="card game-panel">${raw(sparkHtml(hOre, { label: '행성 광석 (7일)', unit: '', tone: 'var(--hwang)' }))}</section>` : ''}<section class="card game-panel"><div class="card-head"><h2>구조체</h2><span class="end mono dim">${n(here.length)} 아군${attackers.length ? ` · ${n(attackers.length)} 습격` : ''}</span></div>
         <div class="obj-structs">${[...here, ...attackers].slice(0, 24).map((s) => html`<a class="obj-struct ${attackers.includes(s) ? 'enemy' : ''}" href="${href(`/o/${s.id}`)}"><b>${STRUCT_TYPE[s.type] ?? s.type}</b><small class="mono">${s.id} · ♥${s.health}</small></a>`)}</div></section>`;
     };
     const loadPlayer = async () => {
-      const [stats, structs, rib] = await Promise.all([guildApi.oreStats(id).catch(() => null), guildApi.structsOf(id).catch(() => [] as StructRow[]), serviceRecord(id).catch(() => [] as Ribbon[])]);
+      const [stats, structs, rib, hOre, hLoad, hCap] = await Promise.all([guildApi.oreStats(id).catch(() => null), guildApi.structsOf(id).catch(() => [] as StructRow[]), serviceRecord(id).catch(() => [] as Ribbon[]), history('ore', id), history('load', id), history('capacity', id)]);
       ribbonsNow = rib;
       const alive = structs.filter((s) => !s.is_destroyed);
       extra = html`<section class="card game-panel"><h2>전적</h2><div class="stat-grid obj-stats">
@@ -122,6 +124,7 @@ const screen: Screen = {
         <div class="stat"><small>구조체</small><strong class="mono">${n(alive.length)}</strong></div>
         <div class="stat"><small>함대 전력</small><strong class="mono">${n(alive.filter((s) => s.type <= 13).length)}</strong></div>
         <div class="stat"><small>행성 시설</small><strong class="mono">${n(alive.filter((s) => s.type > 13).length)}</strong></div></div></section>
+        ${hOre.length + hLoad.length + hCap.length ? html`<section class="card game-panel"><div class="card-head"><h2>지난 7일</h2><span class="end dim" style="font-size:12px">길드 통계 기록</span></div><div class="spark-grid">${raw(sparkHtml(hOre, { label: '보유 광석', unit: '', tone: 'var(--hwang)' }))}${raw(sparkHtml(hLoad, { label: '전력 부하', unit: 'kW', scale: 1e6 }))}${raw(sparkHtml(hCap, { label: '전력 용량', unit: 'kW', scale: 1e6, tone: 'var(--cheong-hi)' }))}</div></section>` : ''}
         ${rib.length ? html`<section class="card game-panel"><div class="card-head"><h2>복무 기록</h2><span class="end dim" style="font-size:12px">체인 기록 · 등급 I–VI</span><button class="btn ghost sm" data-act="shareRec">공유</button></div>
           <div class="ribbons">${rib.map((r) => html`<div class="ribbon t${r.tier} ${r.family === '습격' ? 'raid' : r.family === '방어' ? 'def' : 'ind'}" title="${r.next ? `다음 등급까지 ${n(r.next)} ${r.unit}` : r.tier ? '최고 등급' : ''}"><span class="rb-bar"></span><b>${r.name}</b><strong class="mono">${r.value == null ? '—' : n(r.value, r.unit === 'g' ? 1 : 0)}</strong><small>${r.unit}${r.tier ? ` · ${roman(r.tier)}` : ''}</small></div>`)}</div></section>` : ''}`;
     };
