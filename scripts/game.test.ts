@@ -778,6 +778,14 @@ test('coalition: a dominant empire draws two-house raids with more escorts', () 
     if (demo.raid?.partner) { seen++; assert.match(demo.raid.name, /연합/); assert.equal(demo.raid.structs.length, 7, 'capped at six escorts'); }
   }
   assert.ok(seen > 0 && seen < 40, `some raids are coalitions (${seen}/40)`);
+  // Break one: both houses lose a ship.
+  for (let i = 0; i < 40 && !demo.raid?.partner; i++) { s.raid = null; s.nextRaid = 1; demo.step(); }
+  const cr = demo.raid!, a = demo.rivals().find((x) => x.id === cr.owner)!, b = demo.rivals().find((x) => x.id === cr.partner)!;
+  a.fleet = b.fleet = 6;
+  s.raid!.eta = 0; for (const x of s.raid!.structs) x.hp = 0;
+  demo.step();
+  assert.deepEqual([a.fleet, b.fleet], [5, 5]);
+  assert.equal(s.coalitionWins, 1);
   demo.reset();
   const t = demo.state;
   t.raidsRepelled = 4;
