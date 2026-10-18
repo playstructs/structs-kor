@@ -3,7 +3,7 @@
 import type { Screen } from '../router';
 import { href } from '../router';
 import { html, mount, raw, type Safe } from '../ui/dom';
-import { ALLY, OUTPOSTS, OUTPOST, DOMINION, HEGEMONY, OC, DOCTRINES, DOCTRINE_SWITCH, BOUNTY, VOID, RACE, LOAN, OPS, REPS, ENGINE, RATE, DECISION, WAR, TEMPER, type OpId } from '../game/demo';
+import { EVENTS, ALLY, OUTPOSTS, OUTPOST, DOMINION, HEGEMONY, OC, DOCTRINES, DOCTRINE_SWITCH, BOUNTY, VOID, RACE, LOAN, OPS, REPS, ENGINE, RATE, DECISION, WAR, TEMPER, type OpId } from '../game/demo';
 import { spriteHtml } from '../game/map/art';
 import { setTiles } from '../ui/shell';
 
@@ -29,6 +29,7 @@ const SECTIONS: [string, string, Entry[]][] = [
   ]],
   ['결단과 위기', '은하가 당신에게 선택을 요구한다.', [
     { icon: 16, title: '결단', body: html`약 ${DECISION.every}블록마다 함교에 선택지가 옵니다(밀수, 불가침, 광석 매입, 용병, 최후통첩). ${DECISION.open}블록 안에 <kbd>1</kbd> · <kbd>2</kbd>로 정하세요.`, go: ['/console', '함교'] },
+    { icon: 16, title: '은하 사건', body: html`때때로 은하의 날씨가 바뀝니다. ${Object.values(EVENTS).map((e) => `${e.name}: ${e.text}`).join(' / ')}.`, go: ['/console', '함교'] },
     { icon: 2, title: '공허 함대', body: html`${VOID.every}블록마다 나타나 ${VOID.stays}블록 머뭅니다. 요격하면 ${VOID.reward} α부터. 놓아두면 당신이나 경쟁 세력 중 하나를 덮칩니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 19, title: '방어', body: html`습격 함대는 ${RATE.raidEta}블록 전에 경보가 울립니다. 함대와 방어포가 반격하고, 방어막이 공격을 막습니다. 무너지면 정제되지 않은 광석을 모두 잃습니다.`, go: ['/console', '함교'] },
   ]],
