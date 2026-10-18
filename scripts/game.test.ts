@@ -790,8 +790,9 @@ test('grudge: a house you rob comes for you more often, and the grudge fades', (
   const rv = demo.rivals().find((x) => x.id === '1-87')!;
   const count = () => { let n = 0; for (let i = 0; i < 120; i++) { s.raid = null; s.nextRaid = 1; s.rebel = null; demo.step(); if (demo.raid?.owner === rv.id) n++; } return n; };
   const before = count();
-  for (let i = 0; i < 5; i++) { rv.ore = 50; demo.settleRaid(rv.id, true, {}); }
+  for (let i = 0; i < 5; i++) { rv.ore = 50; demo.settleRaid(rv.id, true, {}); if (i === 2) assert.match(demo.news[0]?.text ?? '', /복수/, 'a vow on the wire at 3'); }
   assert.equal(rv.grudge, 5);
+  assert.match(demo.news[0]?.text ?? '', /숙적/, 'sworn enemy at 5');
   const after = count();
   assert.ok(after > before, `raids from the robbed house: ${before} → ${after}`);
   while (s.height % 100 !== 99) demo.step();
