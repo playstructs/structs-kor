@@ -75,31 +75,66 @@ export const STEPS: Record<string, Step> = {
     const t0 = Date.now();
     await h.go('/');
     const title = await h.page.title();
-    // Time to playable: until the demo button can be pressed (the app renders it after its JS loads).
-    const ready = await h.page.getByRole('button', { name: /데모/ }).first().waitFor({ state: 'visible', timeout: 30_000 }).then(() => true, () => false);
+    // Time to playable: until 바로 플레이 can be pressed (the app renders it after its JS loads).
+    const play = h.page.locator('.title-menu a', { hasText: '바로 플레이' }).first();
+    const ready = await play.waitFor({ state: 'visible', timeout: 30_000 }).then(() => true, () => false);
     const ms = Date.now() - t0;
-    if (!ready) h.find('onboarding', 'blocker', `title screen showed no "play the demo" button within 30 s on ${h.p.network}`);
-    else if (ms > (h.p.network === '3g' ? 10_000 : 4_000)) h.find('perf.playable', 'major', `the demo button took ${ms} ms to appear on ${h.p.network}`);
+    if (!ready) h.find('onboarding', 'blocker', `title screen showed no 바로 플레이 within 30 s on ${h.p.network}`);
+    else {
+      if (ms > (h.p.network === '3g' ? 10_000 : 4_000)) h.find('perf.playable', 'major', `바로 플레이 took ${ms} ms to appear on ${h.p.network}`);
+      const to = new URL((await play.getAttribute('href')) ?? '/', h.page.url()).pathname;
+      if (!/\/(start|console)$/.test(to)) h.find('onboarding', 'blocker', `바로 플레이 leads to ${to}, not the enlist flow`);
+    }
+    if (await h.page.locator('.title-menu', { hasText: '데모' }).count()) h.find('onboarding', 'major', 'the title menu still offers the retired demo');
     return `"${title}"; playable in ${ms} ms on ${h.p.network}`;
   },
 
-  async demo(h) {
-    if (path(h).endsWith('/console')) return 'already on the bridge';
-    if (!(await h.click({ role: 'button', name: /데모/ }))) throw new Error('no demo button on the title screen');
-    await h.page.waitForURL(/\/console/, { timeout: 8000 }).catch(() => {});
-    if (!path(h).endsWith('/console')) throw new Error(`demo button led to ${path(h)}`);
-    const s = await h.demoState();
-    return `bridge open; demo base at height ${num(s?.height)}, α ${num(s?.alpha).toFixed?.(1)}`;
-  },
+  /** Old journeys said 'demo': the demo is retired, so this is enlisting. */
+  async demo(h) { return STEPS.enlist(h); },
 
-  async 'keyboard-demo'(h) {
+  async 'keyboard-play'(h) {
+    await h.go('/');
     for (let i = 0; i < 25; i++) {
       await h.page.keyboard.press('Tab');
       const name = await h.page.evaluate(() => (document.activeElement as HTMLElement | null)?.innerText ?? '');
-      if (/데모/.test(name)) { await h.key('Enter'); await h.page.waitForURL(/\/console/, { timeout: 8000 }).catch(() => {}); return `reached the demo button in ${i + 1} Tab presses`; }
+      if (/바로 플레이/.test(name)) return `reached 바로 플레이 in ${i + 1} Tab presses`;
     }
-    h.find('a11y.keyboard', 'blocker', 'the demo button cannot be reached with Tab from the title screen');
-    throw new Error('demo button not reachable by keyboard');
+    h.find('a11y.keyboard', 'blocker', '바로 플레이 cannot be reached with Tab from the title screen');
+    throw new Error('바로 플레이 not reachable by keyboard');
+  },
+
+  /** A browser that still holds a demo save from before the retirement. */
+  async 'retired-demo'(h) {
+    await h.go('/');
+    await h.page.evaluate(() => {
+      localStorage.setItem('structs-kor.demo', '1');
+      localStorage.setItem('structs-kor.demo.state', JSON.stringify({ height: 1482300, alpha: 30, ore: 1, infusedKw: 0, vein: 100, shield: 50, structs: [], raid: null, nextRaid: 10, contracts: [], log: [], seq: 5, raidsRepelled: 2, raidsLost: 0, earned: 0, chronicle: [], priceHist: [0.04] }));
+      localStorage.setItem('structs-kor.career.demo', JSON.stringify({ xp: 400, claimed: [], stats: { simWins: 3, simStars: 2, simBattles: 5, dailyPlays: 1, shotsHit: 20, kills: 12, contracts: 0, research: 0, gauntlets: 0, perfect: 1 } }));
+    });
+    await h.go('/');
+    const left = await h.page.evaluate(() => ['structs-kor.demo', 'structs-kor.demo.state'].filter((k) => localStorage.getItem(k) != null));
+    if (left.length) h.find('retire.save', 'blocker', `the old demo save was not cleared: ${left.join(', ')} still stored`);
+    const note = h.page.locator('.retired-note');
+    if (!(await note.count())) h.find('retire.note', 'major', 'no "the demo has ended" note on the title screen for a returning demo player');
+    else if (!/상병/.test(await note.innerText())) h.find('retire.note', 'minor', 'the note does not name the rank that will carry over (상병)');
+    await h.screenshot('retired-note');
+    await h.go('/research');
+    if (!(await h.page.getByText('좌표 없음').count())) h.find('retire.research', 'major', '/research still opens a retired screen');
+    for (const p of ['/console', '/market', '/galaxy', '/guild']) {
+      await h.go(p);
+      if (await h.page.getByText(/데모 함교|데모 종료/).count()) h.find('retire.screen', 'major', `${p} still shows demo controls to a signed-out visitor`);
+    }
+    return `old save ${left.length ? 'kept' : 'cleared'}; note ${(await note.count()) ? 'shown' : 'missing'}`;
+  },
+  /** After enlisting: the rank from the demo came along, once. */
+  async 'carried-rank'(h) {
+    if (!h.account?.playerId) return 'skip: no account';
+    await h.go('/record');
+    const xp = await h.page.evaluate((id) => { try { return JSON.parse(localStorage.getItem(`structs-kor.career.${id}`) || 'null')?.xp ?? 0; } catch { return 0; } }, h.account.playerId);
+    const gone = await h.page.evaluate(() => localStorage.getItem('structs-kor.career.demo') == null);
+    if (xp < 400) h.find('retire.rank', 'major', `the demo rank did not carry over: the new commander has ${xp} XP, the demo career had 400`);
+    if (!gone) h.find('retire.rank', 'minor', 'the demo career is still stored after carrying over');
+    return `commander ${h.account.playerId} at ${xp} XP; demo career ${gone ? 'removed' : 'still stored'}`;
   },
 
   async tour(h) {

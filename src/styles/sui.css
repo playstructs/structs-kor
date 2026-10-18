@@ -449,5 +449,5 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
 @media (max-width: 900px) { .hud-tc { top: 58px; } .demo-bar > span, .demo-bar > a.ev-chip { display: none; } .ops { top: 100px; } }
 /* Touch screens have no keys: no key badges on buttons, no key hints. */
 @media (pointer: coarse) {
-  .sb kbd, .ab-switch kbd, .btn kbd, .title-keys { display: none; }
+  .sb kbd, .ck kbd, .ab-switch kbd, .btn kbd, .title-keys { display: none; }
 }

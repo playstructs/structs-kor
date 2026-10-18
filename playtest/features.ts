@@ -17,9 +17,9 @@ export interface Feature {
   try: string;
 }
 
-export const FEATURES: Feature[] = [
+const ALL: Feature[] = [
   // ── Onboarding and account ──
-  { id: 'title', area: 'onboarding', name: 'Title screen with live battle', path: '/', mode: 'any', expect: '[data-act="demo"], [data-act="resume"]', try: 'Read the title screen; does it say what the game is? Does the live battle behind it run?' },
+  { id: 'title', area: 'onboarding', name: 'Title screen with live battle', path: '/', mode: 'any', expect: '.title-menu a[href$="/start"], .title-menu a[href$="/console"]', try: 'Read the title screen; does it say what the game is? Does the live battle behind it run?' },
   { id: 'enlist', area: 'onboarding', name: 'Enlist (지금 시작 → /start)', path: '/start', mode: 'account', expect: '/입대|사령관/', try: 'The harness enlists you before you start; check the steps were clear and that you landed signed in.' },
   { id: 'login-screens', area: 'onboarding', name: 'Login: resume, import, unlock', path: '/login', mode: 'any', expect: '/환영|로그인|잠금/', try: 'Look at the returning-player options. Do not submit a recovery phrase or password.' },
   { id: 'profile', area: 'account', name: '내 정보 (account page)', path: '/profile', mode: 'account', expect: '/내 정보/', try: 'Read your account details: address, player id, guild.' },
@@ -106,6 +106,11 @@ export const FEATURES: Feature[] = [
   { id: 'hotkeys', area: 'reference', name: 'Hotkeys and ? help', path: '/console', mode: 'any', expect: '/console|구조체/', try: 'Press ? and try the navigation keys.' },
   { id: 'audio', area: 'reference', name: 'Sound (M) and music (J)', path: '/console', mode: 'any', expect: '/console|구조체/', try: 'Toggle sound and music.' },
 ];
+
+/** The demo base is retired (src/game/retire.ts): its systems no longer have an entry point. Kept
+ * here so the record of what was covered stays readable; they're out of every slice and the count. */
+export const RETIRED = new Set(ALL.filter((f) => f.mode === 'demo').map((f) => f.id));
+export const FEATURES: Feature[] = ALL.filter((f) => !RETIRED.has(f.id));
 
 export const feature = (id: string) => FEATURES.find((f) => f.id === id);
 export type FeatureStatus = 'untouched' | 'touched' | 'passed' | 'failed' | 'blocked' | 'guarded';
