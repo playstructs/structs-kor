@@ -30,6 +30,13 @@ The build writes `404.html` and `_redirects`, so every screen path (`/console`, 
 
 `.github/workflows/pages.yml` builds and publishes to GitHub Pages on every push to `main` (Settings › Pages › Source: GitHub Actions). Repository variables override the `VITE_*` values; `VITE_BASE` and `VITE_SITE_URL` otherwise follow the Pages site (`/` on a custom domain, `/structs-kor/` on github.io).
 
+## Daily challenge and links
+
+- **The daily** (`src/sim/daily.ts`). Every commander gets the same fleets, enemy and chain dice each day; the day turns at midnight KST. Charge is fixed and autopilot is off. A result is just your orders: a daily code (`D…`, about 200 characters for a whole battle) carries the day, a call sign and those orders. Whoever opens `/daily/<day>/<code>` replays them against the same computer, so a score can't be claimed that the orders didn't earn. No server is needed; the guild ladder (REQ-SIM-1) can take the same codes. Your record and friends' results stay in this browser (`src/game/dailysim.ts`).
+- **Links** (`src/core/links.ts`). One grammar for the web and the desktop app: `/daily`, `/daily/<day>`, `/daily/<day>/<code>`, `/sim/<replay>`, `/<screen>`. The desktop app answers the same paths on `structs-kor://` (not `structs://`, which Structs Desktop already owns).
+- **Desktop handoff** (`src/core/handoff.ts`). The web client is the whole game, so a shared link always plays in the browser. Once `VITE_DESKTOP_RELEASES` is set, a shared result also offers "데스크톱 앱에서 열기", and the choice can be remembered (always the app / always here / ask). Inside KakaoTalk's in-app browser, the page instead offers to reopen in the phone's own browser.
+- **Hotkeys and 한글.** Shortcuts read the physical key when the input method is in 한글 mode (Z arrives as `ㅋ` or `Process`), and an Enter that confirms a syllable never submits a form.
+
 ## Search and sharing
 
 - `src/seo.ts` holds every screen's title and description. The build writes one HTML file per screen (`console.html` → `/console`) with its own title, description, canonical, Open Graph/Twitter tags and JSON-LD (`WebSite`, `VideoGame`, `WebPage`), plus `sitemap.xml` and a fully permissive `robots.txt`; all absolute URLs use `VITE_SITE_URL`. In the browser the same tags follow the router.
@@ -67,7 +74,8 @@ SUI art (`public/img/sui/`), the Structicons icon font, and DirectiveZero/Extrem
 | `/energy` | Power grid, brownout what-if, struct power | REQ-EN-1/2, `MsgStructActivate`/`Deactivate` |
 | `/market` | Energy exchange, contracts, provider, guild bank | `/provider/market`, `/agreement/owner/…/market`, `/guild-bank`, REQ-MKT-* |
 | `/replicants` | Replicants, replication, standing orders (demo: hire a watch officer, mechanic or trader with alpha to run the base for a wage) | REQ-REP-*, `/auth/signup` per HD index |
-| `/sim` | Battle simulator (local copy of structsd combat) | REQ-SIM-1 for the daily ladder |
+| `/sim` | Battle simulator (local copy of structsd combat) | — (local); `/sim/<R…>` plays a replay |
+| `/daily` | 일일 교전: one battle a day for everyone (turns at midnight KST), score, streak, archive, friends' results | REQ-SIM-1 for the guild ladder; otherwise local |
 | `/chat` | Comms (Matrix); on the demo, the guild channel (guildmates react to raids, the Void Fleet and the guild race, and answer you) and a log of every rival transmission | `/auth/matrix` → homeserver `/sync` |
 | `/tutorial` | Combat Training (tutorial-attempt-1 flow, in Korean) on the battle board | REQ-TUT-1 to save completion |
 | `/research` | 연구소 (demo base) | — |

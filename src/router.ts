@@ -8,12 +8,15 @@ export interface Screen {
 
 type Loader = () => Promise<{ default: Screen }>;
 const routes = new Map<string, Loader>();
+/** Routes that also take the path below them (/daily/2026-10-18/D…); the screen reads current(). */
+const nested = new Set<string>();
 let cleanup: (() => void) | void = undefined;
 let changeFns: ((path: string) => void)[] = [];
 
-export function route(path: string, load: Loader) { routes.set(path, load); }
+export function route(path: string, load: Loader, opts?: { nested?: boolean }) { routes.set(path, load); if (opts?.nested) nested.add(path); }
+const find = (path: string) => routes.get(path) ?? (nested.has('/' + path.split('/')[1]) ? routes.get('/' + path.split('/')[1]) : undefined);
 /** Fetch a screen's code ahead of time (idle moments, hovered links), so going there is instant. */
-export function prefetch(path: string) { void routes.get(path)?.().catch(() => null); }
+export function prefetch(path: string) { void find(path)?.().catch(() => null); }
 export function onRoute(f: (path: string) => void) { changeFns.push(f); }
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -29,7 +32,7 @@ let renderToken = 0;
 export async function render() {
   const outlet = document.getElementById('outlet')!;
   const path = current();
-  const load = routes.get(path) || routes.get('/404')!;
+  const load = find(path) || routes.get('/404')!;
   const token = ++renderToken;
   try { cleanup?.(); } catch (e) { console.error(e); }
   cleanup = undefined;

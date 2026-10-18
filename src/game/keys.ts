@@ -2,6 +2,7 @@
 import { go } from '../router';
 import { sfx } from './sfx';
 import { music } from './music';
+import { keyOf } from './keyof';
 
 /** A key handler; returning false means "not mine" and lets the key fall through. */
 type Fn = (e: KeyboardEvent) => unknown;
@@ -14,6 +15,7 @@ export const NAV_KEYS: { key: string; path: string; label: string }[] = [
   { key: 't', path: '/market', label: '거래소' },
   { key: 'u', path: '/research', label: '연구소' },
   { key: 'b', path: '/sim', label: '전투 시뮬' },
+  { key: 'v', path: '/daily', label: '일일 교전' },
   { key: 'o', path: '/campaign', label: '작전' },
   { key: 'y', path: '/guild', label: '길드' },
   { key: 'n', path: '/replicants', label: '레플리칸트' },
@@ -48,9 +50,15 @@ function help() {
   el.querySelector('button')?.focus();
 }
 
+/* Enter that confirms a 한글 syllable must not also submit the form (Safari sends it with
+   isComposing false but keyCode 229), or chat sends a half-typed message. */
 document.addEventListener('keydown', (e) => {
-  if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
-  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229) && e.target instanceof HTMLElement && e.target.closest('form')) e.preventDefault();
+}, true);
+
+document.addEventListener('keydown', (e) => {
+  if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+  const k = keyOf(e);
   // A held key fires once (arrows may repeat to move the board cursor): no auto-fire, no re-sent orders.
   if (e.repeat && !k.startsWith('Arrow')) return;
   // Enter and Space on a focused control press that control; screen hotkeys must not also fire.

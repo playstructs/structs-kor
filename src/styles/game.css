@@ -689,3 +689,31 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .invest { display: grid; gap: 6px; }
 .invest-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .invest-row .btn { min-height: 40px; }
+
+/* 일일 교전 (/daily, and the simulator's daily debrief) */
+.dl-today { gap: 12px; }
+.dl-name { font-size: 22px; margin: 0; }
+.dl-vs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px; background: var(--sunken); border: 1px solid var(--line); }
+.dl-vs .label { color: var(--text-faint); }
+.dl-fleet { display: flex; flex-wrap: wrap; gap: 2px; flex: 1 1 140px; }
+.dl-fleet.computer { justify-content: flex-end; }
+.dl-best, .dl-shared { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--hwang-bg); border: 2px solid var(--hwang-line); }
+.dl-best > div:first-child { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.dl-shared h2 { margin: 0; }
+.dl-grid { display: flex; flex-direction: column; gap: 2px; font-size: 18px; line-height: 1.1; letter-spacing: 1px; overflow-wrap: anywhere; }
+.dl-share { display: flex; gap: 8px; flex-wrap: wrap; }
+.dl-board { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dl-board li { display: grid; grid-template-columns: 28px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 10px; background: var(--bg-raised); border: 1px solid var(--line); }
+.dl-board li:first-child { background: var(--hwang-bg); border-color: var(--hwang-line); }
+.dl-board li.me { outline: 2px solid var(--cheong); outline-offset: -2px; }
+.dl-archive { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.dl-archive a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; background: var(--bg-raised); border: 1px solid var(--line); color: var(--text-faint); text-decoration: none; }
+.dl-archive a.played { color: var(--text); border-color: var(--cheong-mid); }
+.dl-archive a.on { background: var(--jeok-bg); border-color: var(--jeok-strong); color: #fff; }
+.dl-archive b { color: var(--hwang); font-size: 12px; }
+.dl-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 14px; background: var(--cheong-bg); border: 2px solid var(--cheong-mid); }
+.dl-banner > span { flex: 1 1 240px; }
+.dl-remember { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.dl-rules summary { cursor: pointer; color: var(--text-faint); }
+.dl-result { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 14px; background: var(--hwang-bg); border: 2px solid var(--hwang-line); }
+.dl-result strong { font-size: 24px; color: var(--hwang); }

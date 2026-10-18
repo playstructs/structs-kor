@@ -32,6 +32,7 @@ export const PAGES: Record<string, PageSeo> = {
   '/login': { title: '로그인', description: '구조체 STRUCTS 사령관 로그인.', hidden: true, canonical: '/start' },
   '/tutorial': { title: '훈련소 · 전투 훈련', description: '처음이라면 여기서 시작하세요. 전투 보드에서 구조체 배치, 공격, 방어를 한국어로 차근차근 배웁니다.', priority: 0.9, changefreq: 'monthly' },
   '/campaign': { title: '작전 · 캠페인', description: '열 개의 작전 임무. 점점 강해지는 적 함대를 상대로 전략을 시험하고 보상을 얻으세요.', priority: 0.8, changefreq: 'weekly' },
+  '/daily': { title: '일일 교전 · 오늘의 작전', description: '매일 자정(KST) 새 작전. 모든 사령관이 같은 함대, 같은 적과 싸웁니다. 점수를 겨루고 결과를 카카오톡으로 공유하세요.', priority: 0.9, changefreq: 'daily' },
   '/sim': { title: '전투 시뮬레이터', description: 'Structs 실제 전투 규칙을 그대로 옮긴 시뮬레이터. 습격 전에 함대 구성과 결과를 미리 확인하세요.', priority: 0.8, changefreq: 'weekly' },
   '/codex': { title: '교본 · 게임 가이드', description: '채굴, 정제, 전력망, 전투, 길드까지 구조체의 모든 시스템을 한 페이지에. 수치는 게임 상수에서 직접 읽어옵니다.', priority: 0.8, changefreq: 'weekly' },
   '/console': { title: '함교 · 사령부', description: '행성, 광석, 전력, 함대를 한눈에. 사령관의 지휘 콘솔.', priority: 0.7, changefreq: 'daily' },
@@ -47,7 +48,12 @@ export const PAGES: Record<string, PageSeo> = {
   '/404': { title: '찾을 수 없는 좌표', description: '요청한 페이지를 찾을 수 없습니다.', hidden: true },
 };
 
-export const pageFor = (path: string): PageSeo => PAGES[path] ?? PAGES['/404'];
+/** A screen's page; a path below a screen (a shared daily result, a replay) is that screen, not indexed on its own. */
+export const pageFor = (path: string): PageSeo => {
+  if (PAGES[path]) return PAGES[path];
+  const top = '/' + path.split('/')[1];
+  return top !== path && (top === '/daily' || top === '/sim') ? { ...PAGES[top], canonical: top, hidden: true } : PAGES['/404'];
+};
 export const fullTitle = (path: string, p = pageFor(path)) => (path === '/' ? p.title : `${p.title} | ${SITE_NAME}`);
 
 /** Absolute URL of a path. `base` has no trailing slash ('' at the root). */

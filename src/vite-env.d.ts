@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_MATRIX_URL?: string;
   readonly VITE_LCD_URL?: string;
   readonly VITE_SITE_URL?: string;
+  readonly VITE_DESKTOP_RELEASES?: string;
 }
 interface ImportMeta { readonly env: ImportMetaEnv }
 

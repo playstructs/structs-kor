@@ -5,7 +5,7 @@
  * The daily engagement and its ladder come from the guild (REQ-SIM-1); until then the daily is
  * seeded from today's date. */
 import type { Screen } from '../router';
-import { href, go } from '../router';
+import { href, go, current } from '../router';
 import { html, mount, n, raw, toast, type Safe } from '../ui/dom';
 import { Chain, type Msg, type AttackDetail, type SimStruct } from '../sim/chain';
 import { Ai, type Difficulty } from '../sim/ai';
@@ -25,6 +25,8 @@ import { DIFFICULTY_KO } from './sim-labels';
 import { rivalFleet, raidSeed } from './galaxy';
 import { music } from '../game/music';
 import { estimateOdds } from '../game/odds';
+import { DAILY_CHARGE, TWIST_KO, dailyNo, encodeDaily, kstDay, nameKo, playDaily, playable, type DailyResult } from '../sim/daily';
+import { dailySim } from '../game/dailysim';
 
 type Phase = 'setup' | 'deploy' | 'battle' | 'debrief';
 interface Side { lost: number; attacks: number; damage: number; evaded: number; blocked: number; counter: number }
@@ -73,6 +75,9 @@ const screen: Screen = {
     let ace: Record<string, { type: number; dmg: number; kills: number; id?: string }> = {};
     let picked: string | null = null, ws: WeaponSystem = 'primaryWeapon', queued: Msg | null = null, guard = false, moving = false;
     let ladder: Awaited<ReturnType<typeof daily>> | null = null;
+    // 일일 교전: which day (today unless the daily screen sent a past one), and the scored result.
+    let dailyDay: string | null = null, dailyRes: (DailyResult & { code: string; best: boolean }) | null = null;
+    const theDay = () => dailyDay ?? kstDay();
     let board: Board | null = null;
     /* Every order, by the block it lands in: the battle replays exactly from these (chain is seeded). */
     let orders: { height: number; signer: string; msg: Msg }[] = [];
@@ -285,7 +290,20 @@ const screen: Screen = {
         if (replaying) { replaying = false; sfx.play(w === 'player' ? 'victory' : 'defeat'); phase = 'debrief'; paint(); return; }
         career.bump('simBattles');
         career.bump('kills', stats.computer.lost);
-        if (mode === 'daily') career.bump('dailyPlays');
+        if (mode === 'daily' && !mission && !raidOn) {
+          career.bump('dailyPlays');
+          // Score it the way anyone who opens the link will: replay your orders on a fresh chain.
+          const day = theDay();
+          const mine = orders.filter((o) => o.signer === YOU.id).map((o) => ({ height: o.height, msg: o.msg }));
+          const r = playDaily(day, mine);
+          if (r) {
+            if (r.winner !== w) console.warn('daily replay disagrees with the live battle', r.winner, w);
+            const code = encodeDaily({ day, name: dailySim.name, orders: mine });
+            const best = dailySim.record(r, code);
+            dailyRes = { ...r, code, best };
+            stars = r.stars;
+          }
+        } else dailyRes = null;
         if (w === 'player') {
           career.bump('simWins');
           if (stars > career.stats.simStars) career.bump('simStars', stars - career.stats.simStars);
@@ -364,12 +382,12 @@ const screen: Screen = {
           <div class="field"><span>난이도 · 기본 보상 <b class="c-hwang mono">+${DIFF_XP[diff]} XP</b></span>${pills((Object.keys(DIFF_KO) as Difficulty[]).map((d) => [d, DIFF_KO[d]]), diff, 'diff')}</div>
           <div class="field"><span>적 규모</span>${pills((Object.keys(PRESET_KO) as Preset[]).map((p) => [p, PRESET_KO[p]]), preset, 'preset')}</div>` : ''}
           <div class="field"><span>블록 시간</span>${pills([['2000', '2초 · 훈련'], ['6000', '6초 · 체인']], String(blockMs), 'block')}</div>
-          <label class="field"><span>시작 충전량 · <b class="mono c-cheong">${charge}</b> / ${MAX_CHARGE}</span><input type="range" min="0" max="${MAX_CHARGE}" value="${charge}" data-act="charge" style="accent-color:var(--cheong);min-height:32px"></label>
+          ${mode === 'daily' ? html`<p class="note">일일 교전은 양측 모두 충전 ${DAILY_CHARGE}에서 시작하고 자동 조종을 쓸 수 없습니다. <a href="${href('/daily')}">오늘의 작전 보기 →</a></p>` : html`<label class="field"><span>시작 충전량 · <b class="mono c-cheong">${charge}</b> / ${MAX_CHARGE}</span><input type="range" min="0" max="${MAX_CHARGE}" value="${charge}" data-act="charge" style="accent-color:var(--cheong);min-height:32px"></label>`}
           ${mode === 'single' ? html`<label class="field"><span>시드</span><input class="input" value="${seed}" data-act="seed"></label>` : ''}
           <button class="btn primary lg" data-act="toDeploy">배치 단계로 <kbd>Enter</kbd></button>
         </section>
-        <section class="card game-panel"><h2>오늘의 일일 교전 ${ladder ? html`<span class="mono dim" style="font-size:14px">${ladder.date}</span>` : ''}</h2>
-          <p class="note">${dailyScenario().name} · ${DIFF_KO[dailyScenario().difficulty]}</p>
+        <section class="card game-panel"><h2><a href="${href('/daily')}">오늘의 일일 교전</a> <span class="mono dim" style="font-size:14px">#${dailyNo(kstDay())} · ${kstDay()}</span></h2>
+          <p class="note">작전 「${nameKo(dailyScenario(kstDay()))}」 · ${TWIST_KO[dailyScenario(kstDay()).twist.id].name} · ${DIFF_KO[dailyScenario(kstDay()).difficulty]}</p>
           ${ladder?.ladder.length ? html`<ol class="log" style="padding:0">${ladder.ladder.map((r, i) => html`<li style="display:flex;justify-content:space-between;padding:8px 10px;background:${i === 0 ? 'var(--hwang-bg)' : 'var(--bg-raised)'}"><span>${i + 1} · ${r.username}</span><span>${'★'.repeat(r.stars)}${'☆'.repeat(3 - r.stars)} · ${r.blocks}블록</span></li>`)}</ol>`
             : html`<p class="empty">아직 오늘의 기록이 없습니다.</p>`}
           <div class="g3" style="gap:8px">
@@ -377,7 +395,7 @@ const screen: Screen = {
           </div>
           <p class="note">함대는 본거지 밖에서 만나므로 행성 구조체는 없습니다. CMD 함선이 파괴되면 전투가 끝납니다.</p>
         </section></div>`,
-      deploy: () => html`<section class="card game-panel" style="gap:12px"><div class="card-head"><h1 style="font-size:26px">${mission ? `작전 ${mission.no} · ${mission.title}` : raidOn ? `습격 · ${raidOn.name}` : run ? `연전 ${run.round}/5 · ${ROUND_KO[run.round - 1]}` : '함대 편성'}</h1><span class="mono dim">${units.length} 유닛 · 시드 ${seed}</span>
+      deploy: () => html`<section class="card game-panel" style="gap:12px"><div class="card-head"><h1 style="font-size:26px">${mission ? `작전 ${mission.no} · ${mission.title}` : raidOn ? `습격 · ${raidOn.name}` : run ? `연전 ${run.round}/5 · ${ROUND_KO[run.round - 1]}` : mode === 'daily' ? `일일 교전 #${dailyNo(theDay())} · 「${nameKo(dailyScenario(theDay()))}」` : '함대 편성'}</h1><span class="mono dim">${units.length} 유닛 · 시드 ${seed}</span>
           ${raidOn ? (() => {
             const hpOf = (side: string) => units.filter((u) => u.side === side).reduce((t, u) => t + (u.health ?? TYPES_BY_ID[u.type].maxHealth), 0);
             const mine = hpOf('player'), theirs = hpOf('computer');
@@ -407,7 +425,7 @@ const screen: Screen = {
               <button class="pill ${guard ? 'on' : ''}" data-act="guard" ${picked ? '' : 'disabled'}>방어 지정 <kbd>D</kbd></button>
               <button class="pill ${moving ? 'on' : ''}" data-act="move" ${picked && chain && chain.typeOf(chain.get(picked)!).movable ? '' : 'disabled'} title="지휘함만 전장을 옮길 수 있습니다">이동 <kbd>M</kbd></button>
               <button class="pill" data-act="stealth" ${picked && chain && chain.typeOf(chain.get(picked)!).unitDefenses === 'stealthMode' ? '' : 'disabled'}>${picked && chain?.isHidden(chain.get(picked)!) ? '은신 해제' : '은신'} <kbd>S</kbd></button>
-              <button class="pill ${autopilot ? 'on' : ''}" data-act="autopilot">자동 <kbd>A</kbd></button>
+              ${mode === 'daily' ? '' : html`<button class="pill ${autopilot ? 'on' : ''}" data-act="autopilot">자동 <kbd>A</kbd></button>`}
               <button class="pill ${mult > 1 ? 'on' : ''}" data-act="speed">${mult}× <kbd>F</kbd></button>
               <button class="pill" data-act="pause">${paused ? '재개' : '일시정지'} <kbd>Space</kbd></button></span>
           </div>
@@ -425,6 +443,8 @@ const screen: Screen = {
             <span class="debrief-stars" aria-label="별 3개 중 ${stars}개">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>
             <span class="mono">${blocks}블록 · 격파 ${c.lost} · 손실 ${p.lost}</span>
             ${xpWon ? html`<span class="chip hwang mono" style="font-size:16px">+${xpWon} XP</span>` : ''}
+            ${dailyRes ? html`<div class="dl-result"><span class="label c-hwang">일일 교전 #${dailyNo(dailyRes.day)}${dailyRes.best ? ' · 오늘의 최고 기록!' : ''}</span><strong class="mono">${dailyRes.score.toLocaleString('ko-KR')}점</strong>
+              <a class="btn gold" href="${href('/daily/' + dailyRes.day + '/' + dailyRes.code)}">결과 공유하기</a></div>` : ''}
             ${(() => { const own = raidOn ? new Set(Object.keys(raidIds).map((u) => idMap[u])) : null; const best = Object.values(ace).filter((a) => !own || own.has(a.id ?? '')).sort((a, z) => z.kills * 10 + z.dmg - (a.kills * 10 + a.dmg))[0]; return best && (best.dmg || best.kills) ? html`<div class="mvp">${pixel(best.type, 56)}<div><span class="label c-hwang">최우수 함선</span><b>${(() => { const uid = Object.keys(idMap).find((u) => idMap[u] === best.id); const nm = uid && raidIds[uid] ? demo.state.structs.find((x) => x.id === raidIds[uid])?.name : undefined; return nm ? `「${nm}」 ${STRUCT_TYPE[best.type] ?? best.type}` : STRUCT_TYPE[best.type] ?? best.type; })()}</b><span class="mono">피해 ${best.dmg} · 격파 ${best.kills}</span></div></div>` : ''; })()}
             ${mission && winner === 'player' ? (() => { const next = MISSIONS[mission.no]; return next ? html`<a class="btn danger" href="${href('/sim?mission=' + next.id)}">다음 작전 · ${next.title}</a>` : html`<span class="chip hwang">작전 완수 · 붉은 연합 격파</span>`; })() : ''}
             ${mission ? html`<a class="btn ghost" href="${href('/campaign')}">작전 지도</a>` : ''}
@@ -452,7 +472,7 @@ const screen: Screen = {
         <span class="end" style="display:flex;gap:6px">${e.unit && e.unit.type !== COMMAND_SHIP_ID ? html`<button class="btn outline-danger" data-act="remove">제거</button>` : ''}<button class="btn ghost" data-act="closeEdit">닫기</button></span></div>
         <div class="build-grid">${options.map((t) => html`<button class="build-opt ${e.unit?.type === t.id ? 'on' : ''}" data-act="place" data-type="${t.id}" ${cost(t.id) > free ? 'disabled' : ''}>${pixel(t.id, 40)}<b>${STRUCT_TYPE[t.id]}</b><span class="mono faint">${n(cost(t.id))}점 · HP ${t.maxHealth}</span></button>`)}</div></div>`;
     };
-    const replayLink = () => location.origin + href('/sim?replay=') + encodeReplay({ units, seed, start: 1000, charge, txs: orders, title: mission ? mission.title : undefined, winner: winner ?? undefined });
+    const replayLink = () => location.origin + href('/sim/') + encodeReplay({ units, seed, start: 1000, charge, txs: orders, title: mission ? mission.title : undefined, winner: winner ?? undefined });
     const watch = (o: typeof orders) => { replaying = true; replayOrders = o; autopilot = false; start(); };
     const steps = (): Safe => html`<nav aria-label="시뮬레이션 단계" class="tabs steps">${(['setup', 'deploy', 'battle', 'debrief'] as Phase[]).map((p, i) => html`<span class="tab ${phase === p ? 'on' : ''}" aria-current="${phase === p ? 'step' : 'false'}">${i + 1} · ${{ setup: '설정', deploy: '배치', battle: '전투', debrief: '결과' }[p]}</span>`)}</nav>`;
     const paint = () => {
@@ -486,7 +506,7 @@ const screen: Screen = {
         paint();
         return;
       }
-      if (mode === 'daily') { run = null; const d = dailyScenario(); units = d.units; seed = d.seed; diff = d.difficulty; }
+      if (mode === 'daily') { run = null; const d = dailyScenario(theDay()); units = d.units; seed = d.seed; diff = d.difficulty; charge = DAILY_CHARGE; autopilot = false; }
       else if (mode === 'gauntlet') {
         if (!run || run.over) run = { round: 1, fleet: layout('difficult', seed).filter((u) => u.side === 'player'), seed, offers: null, over: false, won: false };
         diff = GAUNTLET_ROUNDS[run.round - 1].difficulty;
@@ -529,7 +549,7 @@ const screen: Screen = {
       reroll: () => { seed = 'KR-' + Math.random().toString(36).slice(2, 7).toUpperCase(); units = layout(preset, seed); board?.setStructs(units.map(fromUnit)); paint(); },
       start,
       ws: (el: HTMLElement) => { ws = el.dataset.v as WeaponSystem; markTargets(); paint(); },
-      autopilot: () => { autopilot = !autopilot; paint(); },
+      autopilot: () => { if (mode === 'daily' && !mission && !raidOn) return; autopilot = !autopilot; paint(); },
       guard: () => { if (!picked) return; guard = !guard; moving = false; board?.markTiles([]); markTargets(); paint(); },
       move: () => {
         if (!picked || !chain) return;
@@ -570,12 +590,20 @@ const screen: Screen = {
       '2': () => { if (phase === 'battle') { ws = 'secondaryWeapon'; markTargets(); paint(); } },
       Escape: () => { if (picked) { picked = null; guard = false; moving = false; board?.markTiles([]); board?.select(null); markTargets(); paint(); } },
     });
-    const shared = params.get('replay') ? decodeReplay(params.get('replay')!) : null;
+    // /sim/R… is the canonical replay link; /sim?replay=R… is how older links say it.
+    const replayCode = params.get('replay') ?? (current().split('/')[2] || null);
+    const shared = replayCode ? decodeReplay(replayCode) : null;
+    const dailyParam = params.get('daily');
+    if (dailyParam && !shared) {
+      mode = 'daily';
+      if (playable(dailyParam)) dailyDay = dailyParam; else toast('그날의 작전은 없습니다', 3000);
+    }
     if (shared) {
       units = shared.units; seed = shared.seed; charge = shared.charge ?? 10;
       notify('리플레이', shared.title ? `${shared.title} 다시 보기` : '공유된 전투를 재생합니다', 'cheong', null);
       watch(shared.txs);
-    } else if (params.get('replay')) { toast('리플레이 링크를 읽지 못했습니다', 4000); paint(); }
+    } else if (replayCode) { toast('리플레이 링크를 읽지 못했습니다', 4000); paint(); }
+    else if (dailyParam) toDeploy();
     else if (mission) toDeploy();
     else if (raidOn) {
       if (!demo.fleetUnits().units.some((u) => u.type === COMMAND_SHIP_ID)) { mount(root, html`<section class="card game-panel" style="max-width:560px;margin:40px auto"><h1 style="font-size:28px">출격 불가</h1><p class="note">지휘함이 없습니다. 함교에서 지휘함을 수리한 뒤 출격하세요.</p><a class="btn primary" href="${href('/console')}">함교로</a></section>`); return () => offKeys(); }

@@ -25,6 +25,7 @@ const NAV: { path: string; label: string; icon: string }[] = [
   { path: '/market', label: '거래소', icon: I('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>') },
   { path: '/research', label: '연구소', icon: I('<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7 15h10"/>') },
   { path: '/campaign', label: '작전', icon: I('<path d="M4 21V4h11l-1 4h6v9h-9l1-4H4"/>') },
+  { path: '/daily', label: '일일 교전', icon: I('<rect x="4" y="5" width="16" height="15"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/>') },
   { path: '/sim', label: '전투', icon: I('<path d="M5 19L19 5M15 5h4v4M9 19H5v-4M5 5l5 5M19 19l-5-5"/>') },
   { path: '/replicants', label: '레플리칸트', icon: I('<rect x="3" y="6" width="8" height="8"/><rect x="13" y="10" width="8" height="8"/><path d="M7 14v4h6"/>') },
   { path: '/guild', label: '길드', icon: I('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },

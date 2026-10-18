@@ -319,7 +319,7 @@ export function decodeReplay(code: string): ReplayCode | null {
   } catch { return null; }
 }
 
-/* ── Daily engagement: one scenario per UTC day, the same for every commander ─
+/* ── Daily engagement: one scenario per day (KST), the same for every commander ─
  * Fleets, twist, difficulty and the chain's dice all derive from the date, so
  * the same orders always produce the same battle. */
 export interface DailyTwist { id: 'standard' | 'outnumbered' | 'battered' | 'no-guards' | 'orbit' | 'fortress'; name: string; note: string }
@@ -336,8 +336,8 @@ export const DAILY_TWISTS: DailyTwist[] = [
   { id: 'fortress', name: 'Fortress', note: 'Every enemy ship that can guard is guarding its Command Ship.' },
 ];
 
-/** Today's key in UTC (YYYY-MM-DD), so every commander shares the same daily. */
-export const dailyKey = (d = new Date()) => d.toISOString().slice(0, 10);
+/** Today's key (YYYY-MM-DD). The day turns at midnight KST, so every commander shares the same daily. */
+export const dailyKey = (d = new Date()) => new Date(d.getTime() + 9 * 3600e3).toISOString().slice(0, 10);
 
 export function dailyScenario(key = dailyKey()): Daily {
   const seed = 'daily:' + key;

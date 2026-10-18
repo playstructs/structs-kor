@@ -196,7 +196,7 @@ export function resolveAddresses(addresses: string[]): Promise<Record<string, st
 export interface Daily { date: string; seed: string; ladder: { player_id: string; username: string; stars: number; blocks: number }[] }
 export function daily(): Promise<Daily> {
   return planned('REQ-SIM-1', 'sim/daily', async () => {
-    const date = new Date().toISOString().slice(0, 10);
+    const date = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
     return { date, seed: 'KR-' + date.replace(/-/g, ''), ladder: [] };
   });
 }

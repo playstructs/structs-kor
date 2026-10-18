@@ -101,7 +101,7 @@ export const MISSIONS: Mission[] = [
   { id: 'guild', title: '길드 가입', hint: '길드에 들어가 이점을 받으세요', xp: 70, href: '/guild', check: (c) => [c.signedIn || (demo.on && demo.guild) ? 1 : 0, 1] },
   { id: 'research3', title: '연구 3단계', hint: '연구소에서 알파로 기지를 강화하세요', xp: 150, href: '/research', check: (_, st) => [Math.min(3, st.research), 3] },
   { id: 'gauntlet', title: '연전 제패', hint: '5연전을 끝까지 살아남으세요', xp: 400, href: '/sim', check: (_, st) => [Math.min(1, st.gauntlets), 1] },
-  { id: 'daily', title: '일일 교전 참가', hint: '모든 사령관과 같은 시드로 겨루세요', xp: 90, href: '/sim', check: (_, st) => [Math.min(1, st.dailyPlays), 1] },
+  { id: 'daily', title: '일일 교전 참가', hint: '모든 사령관과 같은 시드로 겨루세요', xp: 90, href: '/daily', check: (_, st) => [Math.min(1, st.dailyPlays), 1] },
 ];
 
 export interface MissionState extends Mission { done: number; of: number; ready: boolean; claimed: boolean }
