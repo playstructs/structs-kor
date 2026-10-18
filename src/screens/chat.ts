@@ -73,7 +73,7 @@ const screen: Screen = {
           <form class="comms-form"><label class="sr" for="msg">메시지 입력</label>
             <button type="button" class="hud-btn comms-plus" data-plus aria-label="공유하기" title="객체·상황 공유"><i class="si icon-add"></i></button>
             <textarea id="msg" class="input" rows="1" autocomplete="off" placeholder="메시지 · /help 명령어 · 2-14 처럼 ID를 쓰면 카드가 됩니다"></textarea>
-            <button class="btn primary comms-send" type="submit">전송</button></form>
+            <button class="btn primary comms-send" type="submit" data-act="send">전송</button></form>
           <div class="comms-comp" role="listbox"></div>
         </div>
       </section>
