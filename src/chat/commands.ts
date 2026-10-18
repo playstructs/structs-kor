@@ -14,7 +14,7 @@ export const COMMANDS: Command[] = [
   { name: 'who', args: '', help: '이 방의 참여자' },
   { name: 'whois', args: '<플레이어|ID>', help: '객체 카드 보기' },
   { name: 'share', args: '<ID>', help: '객체를 카드로 공유 (예: /share 2-14)' },
-  { name: 'pay', args: '<플레이어> [g]', help: '알파 보내기 (서명 전에 검토)', aliases: ['send'] },
+  { name: 'pay', args: '<플레이어> [g]', help: '알파 보내기', aliases: ['send'] },
   { name: 'rent', args: '<공급자 ID>', help: '전력 임대 창 열기' },
   { name: 'sim', args: '[플레이어]', help: '전투 시뮬레이터로 도전' },
   { name: 'duel', args: '[플레이어]', help: '실시간 대전 신청 (DM에서는 상대에게)', aliases: ['대전'] },

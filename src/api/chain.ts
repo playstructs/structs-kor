@@ -51,4 +51,19 @@ export async function applications(o: { guildId?: string; playerId?: string }): 
 /** Mock only: approving/denying moves the fixture so the screen can be exercised. */
 export function mockResolve(playerId: string) { const i = mockApps.findIndex((a) => a.playerId === playerId); if (i >= 0) mockApps.splice(i, 1); }
 
-export const denomLabel = (d: string) => (d === 'ualpha' ? '알파' : d.startsWith('uguild.') ? `${d.slice(7)} 토큰` : d);
+/* Guild tokens are named for their guild ("SN Corp 토큰"), not their denom ("uguild.0-5"). Names come
+ * from the guild directory, fetched once in the background the first time a token is shown. */
+const guildNames = new Map<string, string>();
+let asked = false;
+export function nameGuilds(rows: { guild_id: string; name: string }[]) { for (const r of rows) if (r.name) guildNames.set(r.guild_id, r.name); }
+function askNames() {
+  if (asked) return; asked = true;
+  void get<{ guild_id: string; name: string }[]>('guild/directory').then((rows) => nameGuilds(rows ?? [])).catch(() => { asked = false; });
+}
+export const denomLabel = (d: string) => {
+  if (d === 'ualpha') return '알파';
+  if (!d.startsWith('uguild.')) return d;
+  const id = d.slice(7), name = guildNames.get(id);
+  if (!name) askNames();
+  return name ? `${name} 토큰` : `길드 ${id} 토큰`;
+};

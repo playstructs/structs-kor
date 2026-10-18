@@ -20,7 +20,6 @@ import { MOCK } from '../api/http';
 import { setTiles } from '../ui/shell';
 import { sfx } from '../game/sfx';
 import { float } from '../game/fx';
-import { ask } from '../ui/sheet';
 import { openTransfer } from '../social/transfer';
 import { share } from '../social/share';
 import { doctrine, setDoctrine, dutyLog, onOrders, roster, replicate, sweep, shareNow, derived, runOrdersNow, CALLSIGNS, SCAN, type Role } from '../game/orders';
@@ -39,7 +38,7 @@ const screen: Screen = {
     const pid = needSession(root, '레플리칸트');
     if (!pid) return;
     if (!MOCK && wallet.state !== 'unlocked') {
-      mount(root, html`<section class="card accent" style="max-width:560px;margin:40px auto"><h1 style="font-size:28px">지갑 잠금 해제 필요</h1><p class="note">레플리칸트는 내 복구 문구에서 파생됩니다. 주소를 계산하려면 지갑을 열어야 합니다.</p><a class="btn primary" href="${href('/login')}">잠금 해제</a></section>`);
+      mount(root, html`<section class="card accent" style="max-width:560px;margin:40px auto"><h1 style="font-size:28px">계정 잠금 해제 필요</h1><p class="note">레플리칸트는 내 사령관 계정에서 갈라져 나온 부대입니다. 부대를 불러오려면 계정 잠금을 해제하세요.</p><a class="btn primary" href="${href('/login')}">잠금 해제</a></section>`);
       return;
     }
     mount(root, loading());
@@ -139,9 +138,9 @@ const screen: Screen = {
 만약 알파 > ${d.sweepAbove} g  → 사령관에게 회수${d.autoSweep ? ' ✔' : ''}
 만약 연결당 ≥ 4 kW → 복제${d.autoReplicate ? ' ✔' : ''}
 만약 역할 = 레이더 → ${d.rally || '[집결 행성]'} 집결
-만약 행동 거부     → 약 15블록 대기` : '규칙 꺼짐 — 아무 행동도 하지 않습니다.'}</pre>
+만약 행동 거부     → 약 1분 대기` : '규칙 꺼짐 — 아무 행동도 하지 않습니다.'}</pre>
           <button class="btn primary" data-act="runNow" ${busy ? 'disabled' : ''}>지금 한 번 실행</button>
-          <p class="note">✔ 표시된 규칙은 이 탭이 열려 있고 지갑이 열려 있는 동안 2분마다 실행됩니다. 행성 탐사처럼 되돌릴 수 없는 행동은 자동으로 하지 않습니다.</p>
+          <p class="note">✔ 표시된 규칙은 이 탭이 열려 있고 계정이 열려 있는 동안 2분마다 실행됩니다. 행성 탐사처럼 되돌릴 수 없는 행동은 자동으로 하지 않습니다.</p>
         </section>
         <section class="card game-panel"><div class="card-head"><h2>근무 일지</h2><button class="linkish end" data-act="clearLog">지우기</button></div>
           ${log.length ? html`<ol class="newswire duty">${log.map((x) => html`<li class="${x.tone ?? ''}"><span class="mono faint">${new Date(x.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span> ${x.text}</li>`)}</ol>` : html`<p class="empty">아직 기록이 없습니다.</p>`}
@@ -169,12 +168,11 @@ const screen: Screen = {
         const free = (MOCK ? Array.from({ length: SCAN + 20 }, (_, i) => ({ index: i + 1 })) : derived()).filter((x) => !used.has(x.index)).slice(0, count);
         for (const x of free) { try { await replicate(x.index, doctrine().newRole); } catch (e) { toast('복제 실패: ' + (e as Error).message, 5000); break; } }
         sfx.play('confirm'); float(el, `+${free.length} 부화 중`, 'var(--cheong-hi)', true);
-        toast(`${free.length}명 복제 신청 · 체인 기록을 기다립니다`);
+        toast(`${free.length}명 복제 신청 · 사령부 등록을 기다립니다`);
         busy = false; paint();
       },
       sweepAll: async () => {
         const d = doctrine();
-        if (!await ask('전체 회수', `레플리칸트 ${list.length}명의 알파 약 ${n(sweepable(), 2)} g를 사령관에게 보냅니다 (각자 ${n(d.keep, 2)} g 남김). 레플리칸트마다 거래 하나씩 서명합니다.`, '회수', 'hwang')) return;
         busy = true; paint();
         const r = await sweep(list, d.keep, d.keep);
         sfx.play('coin'); toast(`${r.sent}명에게서 ${n(r.total / 1e6, 2)} g 회수`);

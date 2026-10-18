@@ -9,6 +9,7 @@
  * person's. The host's loop is the chain's clock and plays the guest's moves in place of the computer;
  * the guest replays the host's blocks on its own chain (src/sim/live.ts over src/chat/duel.ts) and sees
  * the battle from its own side, its fleet on the left as `me`. */
+import { playerMessage } from '../api/errors';
 import type { Screen } from '../router';
 import { share } from '../social/share';
 import { href, go, current } from '../router';
@@ -131,7 +132,7 @@ const screen: Screen = {
           if (phase === 'battle' && moving && picked && s === 'defender' && chain && !replaying) {
             const [kind, , , slot] = key.split('|');
             order({ '@type': '/structs.structs.MsgStructMove', structId: picked, locationType: 'fleet', ambit, slot: kind === 'cmd' ? 0 : Number(slot) });
-            sfx.play('confirm'); notify('이동 명령', `${typeName(picked)} → ${AMBIT[ambit]}${kind === 'cmd' ? '' : ' ' + (Number(slot) + 1)} · 다음 블록`, 'cheong', null);
+            sfx.play('confirm'); notify('이동 명령', `${typeName(picked)} → ${AMBIT[ambit]}${kind === 'cmd' ? '' : ' ' + (Number(slot) + 1)} · 다음 턴`, 'cheong', null);
             moving = false; board?.markTiles([]); paint();
             return;
           }
@@ -285,10 +286,10 @@ const screen: Screen = {
       if (w === 'player') {
         career.bump('simWins');
         sfx.play('victory');
-        banner({ kicker: `${blocks}블록 · ${WHY_KO[why]}`, title: '대전 승리', sub: `${peerName()} 님을 꺾었습니다`, tone: 'gold', ms: 3000 });
+        banner({ kicker: `${blocks}턴 · ${WHY_KO[why]}`, title: '대전 승리', sub: `${peerName()} 님을 꺾었습니다`, tone: 'gold', ms: 3000 });
       } else {
         sfx.play('defeat');
-        banner({ kicker: `${blocks}블록 · ${WHY_KO[why]}`, title: w === 'computer' ? '대전 패배' : '무승부', sub: w === 'computer' ? `${peerName()} 님의 승리` : '양측 모두 버텼습니다', tone: 'jeok', ms: 2600 });
+        banner({ kicker: `${blocks}턴 · ${WHY_KO[why]}`, title: w === 'computer' ? '대전 패배' : '무승부', sub: w === 'computer' ? `${peerName()} 님의 승리` : '양측 모두 버텼습니다', tone: 'jeok', ms: 2600 });
       }
       if (xpWon) setTimeout(() => career.award(xpWon, `실시간 대전 · ${peerName()}`), 1200);
       phase = 'debrief';
@@ -305,7 +306,7 @@ const screen: Screen = {
         if (!chain.canDefend(d)) { sfx.play('error'); notify('방어 불가', `${typeName(picked)}은(는) 방어를 맡을 수 없습니다`, 'jeok', null); return; }
         order({ '@type': '/structs.structs.MsgStructDefenseSet', defenderStructId: picked, protectedStructId: id });
         sfx.play('shield');
-        notify('방어 지정', `${typeName(picked)} → ${typeName(id)} 보호 · 다음 블록`, 'cheong', null);
+        notify('방어 지정', `${typeName(picked)} → ${typeName(id)} 보호 · 다음 턴`, 'cheong', null);
         guard = false; markTargets(); paint();
         return;
       }
@@ -327,7 +328,7 @@ const screen: Screen = {
       if (why) { sfx.play('error'); log.unshift({ h: chain.height, text: `공격 불가: ${why}`, tone: 'c-warn' }); paint(); return; }
       order({ '@type': '/structs.structs.MsgStructAttack', operatingStructId: picked, targetStructId: [id], weaponSystem: ws });
       sfx.play('confirm');
-      notify('사격 명령', `${typeName(picked)} → ${typeName(id)} · 다음 블록`, 'cheong', null);
+      notify('사격 명령', `${typeName(picked)} → ${typeName(id)} · 다음 턴`, 'cheong', null);
       paint();
     };
 
@@ -399,7 +400,7 @@ const screen: Screen = {
         if (!r) return;
         b = r.block;
         for (const x of r.subs) orders.push({ height: b.height, signer: x.signer, msg: x.msg });
-        if (!r.ok && g.desync === b.height) log.unshift({ h: b.height, text: '동기화 경고 · 상대 체인과 상태가 다릅니다', tone: 'c-warn' });
+        if (!r.ok && g.desync === b.height) log.unshift({ h: b.height, text: '동기화 경고 · 상대와 전투 상태가 다릅니다', tone: 'c-warn' });
         // My order made it into a block: nothing waits any more.
         if (!g.pending) queued = null;
       } else {
@@ -424,7 +425,7 @@ const screen: Screen = {
       blocks++; quiet++;
       for (const tx of b.txs) {
         const who = side(tx.signer);
-        if (!tx.ok) { if (who === 'player') log.unshift({ h: b.height, text: `명령 거부: ${tx.error}`, tone: 'c-warn' }); continue; }
+        if (!tx.ok) { if (who === 'player') log.unshift({ h: b.height, text: `명령 거부: ${playerMessage(tx.error)}`, tone: 'c-warn' }); continue; }
         if (tx.msg['@type'] === '/structs.structs.MsgStructMove') log.unshift({ h: b.height, text: `${who === 'player' ? '아군' : '적'} ${typeName(tx.msg.structId)} → ${AMBIT[tx.msg.ambit]} 이동`, tone: who === 'player' ? 'c-cheong' : 'c-jeok' });
         if (tx.msg['@type'] === '/structs.structs.MsgStructStealthActivate' || tx.msg['@type'] === '/structs.structs.MsgStructStealthDeactivate') log.unshift({ h: b.height, text: `${who === 'player' ? '아군' : '적'} ${typeName(tx.msg.structId)} ${tx.msg['@type'].endsWith('Activate') ? '은신' : '은신 해제'}`, tone: 'c-warn' });
         if (tx.msg['@type'] === '/structs.structs.MsgStructDefenseSet') log.unshift({ h: b.height, text: `${who === 'player' ? '아군' : '적'} ${typeName(tx.msg.defenderStructId)} → ${typeName(tx.msg.protectedStructId)} 방어 지정`, tone: who === 'player' ? 'c-cheong' : 'c-jeok' });
@@ -534,12 +535,12 @@ const screen: Screen = {
           if (stars > career.stats.simStars) career.bump('simStars', stars - career.stats.simStars);
           if (stars === 3) career.bump('perfect');
           sfx.play('victory');
-          banner({ kicker: `${blocks}블록 · 격파 ${stats.computer.lost}`, title: stars === 3 ? '완벽한 승리' : '승리', sub: '★'.repeat(stars) + '☆'.repeat(3 - stars), tone: 'gold', ms: 3000 });
+          banner({ kicker: `${blocks}턴 · 격파 ${stats.computer.lost}`, title: stars === 3 ? '완벽한 승리' : '승리', sub: '★'.repeat(stars) + '☆'.repeat(3 - stars), tone: 'gold', ms: 3000 });
           xpWon = DIFF_XP[diff] + stars * 20 + stats.computer.lost * 5 + streakXp;
           setTimeout(() => career.award(xpWon, `모의전 승리 · ${DIFF_KO[diff]}`), 1200);
         } else {
           sfx.play('defeat');
-          banner({ kicker: `${blocks}블록`, title: w === 'computer' ? '패배' : '무승부', sub: w === 'computer' ? '지휘함을 잃었습니다' : '양측 모두 버텼습니다', tone: 'jeok', ms: 2600 });
+          banner({ kicker: `${blocks}턴`, title: w === 'computer' ? '패배' : '무승부', sub: w === 'computer' ? '지휘함을 잃었습니다' : '양측 모두 버텼습니다', tone: 'jeok', ms: 2600 });
           xpWon = stats.computer.lost * 5 + streakXp;
           if (xpWon) setTimeout(() => career.award(xpWon, '교전 경험'), 1200);
         }
@@ -606,14 +607,14 @@ const screen: Screen = {
           ${mode === 'single' ? html`
           <div class="field"><span>난이도 · 기본 보상 <b class="c-hwang mono">+${DIFF_XP[diff]} XP</b></span>${pills((Object.keys(DIFF_KO) as Difficulty[]).map((d) => [d, DIFF_KO[d]]), diff, 'diff')}</div>
           <div class="field"><span>적 규모</span>${pills((Object.keys(PRESET_KO) as Preset[]).map((p) => [p, PRESET_KO[p]]), preset, 'preset')}</div>` : ''}
-          <div class="field"><span>블록 시간</span>${pills([['2000', '2초 · 훈련'], ['6000', '6초 · 체인']], String(blockMs), 'block')}</div>
+          <div class="field"><span>턴 시간</span>${pills([['2000', '2초 · 훈련'], ['6000', '6초 · 실전 속도']], String(blockMs), 'block')}</div>
           ${mode === 'daily' ? html`<p class="note">일일 교전은 양측 모두 충전 ${DAILY_CHARGE}에서 시작하고 자동 조종을 쓸 수 없습니다. <a href="${href('/daily')}">오늘의 작전 보기 →</a></p>` : html`<label class="field"><span>시작 충전량 · <b class="mono c-cheong">${charge}</b> / ${MAX_CHARGE}</span><input type="range" min="0" max="${MAX_CHARGE}" value="${charge}" aria-label="시작 충전량" data-act="charge" style="accent-color:var(--cheong);min-height:32px"></label>`}
           ${mode === 'single' ? html`<label class="field"><span>시드</span><input class="input" value="${seed}" aria-label="시드" data-act="seed"></label>` : ''}
           <button class="btn primary lg" data-act="toDeploy">배치 단계로 <kbd>Enter</kbd></button>
         </section>
         <section class="card game-panel"><h2><a href="${href('/daily')}">오늘의 일일 교전</a> <span class="mono dim" style="font-size:14px">#${dailyNo(kstDay())} · ${kstDay()}</span></h2>
           <p class="note">작전 「${nameKo(dailyScenario(kstDay()))}」 · ${TWIST_KO[dailyScenario(kstDay()).twist.id].name} · ${DIFF_KO[dailyScenario(kstDay()).difficulty]}</p>
-          ${ladder?.ladder.length ? html`<ol class="log" style="padding:0">${ladder.ladder.map((r, i) => html`<li style="display:flex;justify-content:space-between;padding:8px 10px;background:${i === 0 ? 'var(--hwang-bg)' : 'var(--bg-raised)'}"><span>${i + 1} · ${r.username}</span><span>${'★'.repeat(r.stars)}${'☆'.repeat(3 - r.stars)} · ${r.blocks}블록</span></li>`)}</ol>`
+          ${ladder?.ladder.length ? html`<ol class="log" style="padding:0">${ladder.ladder.map((r, i) => html`<li style="display:flex;justify-content:space-between;padding:8px 10px;background:${i === 0 ? 'var(--hwang-bg)' : 'var(--bg-raised)'}"><span>${i + 1} · ${r.username}</span><span>${'★'.repeat(r.stars)}${'☆'.repeat(3 - r.stars)} · ${r.blocks}턴</span></li>`)}</ol>`
             : html`<p class="empty">아직 오늘의 기록이 없습니다.</p>`}
           <div class="g3" style="gap:8px">
             ${[['전적', `${career.stats.simWins}승 / ${career.stats.simBattles}전`], ['최고 별', '★'.repeat(career.stats.simStars) || '—'], ['누적 격파', String(career.stats.kills)]].map(([k, v]) => html`<div class="stat"><small>${k}</small><strong>${v}</strong></div>`)}
@@ -643,10 +644,10 @@ const screen: Screen = {
         <div id="bd-host"></div></section>`,
       battle: () => html`<div class="row">
         <section class="card grow game-panel bt-stage" style="padding:0;gap:0">
-          <div class="bt-top">${strength('you')}<div class="bt-mid"><span class="label">블록</span><strong class="mono">#${chain?.height ?? 0}</strong><span class="mono faint">${blockMs / 1000}초</span>${battling() ? linkChip() : ''}</div>${strength('cpu')}</div>
+          <div class="bt-top">${strength('you')}<div class="bt-mid"><span class="label">턴</span><strong class="mono">#${chain?.height ?? 0}</strong><span class="mono faint">${blockMs / 1000}초</span>${battling() ? linkChip() : ''}</div>${strength('cpu')}</div>
           <div id="bd-host"></div>
           <div class="bt-bar">
-            <span class="bt-hint">${replaying ? '▶ 리플레이 재생 중 · F로 배속' : autopilot ? '자동 조종 중 — A로 해제' : picked && guard ? raw(`<b>${typeName(picked)}</b> 방어 지정 · 지킬 아군을 누르세요`) : picked ? raw(`<b>${typeName(picked)}</b> 선택 · 깜빡이는 적을 누르세요 · D로 방어 지정`) : '내 유닛을 눌러 선택하세요'}${queued ? (battling() && duel!.guest ? ' · 호스트에게 보냄, 다음 블록에 발사' : ' · 다음 블록에 발사') : ''}</span>
+            <span class="bt-hint">${replaying ? '▶ 리플레이 재생 중 · F로 배속' : autopilot ? '자동 조종 중 — A로 해제' : picked && guard ? raw(`<b>${typeName(picked)}</b> 방어 지정 · 지킬 아군을 누르세요`) : picked ? raw(`<b>${typeName(picked)}</b> 선택 · 깜빡이는 적을 누르세요 · D로 방어 지정`) : '내 유닛을 눌러 선택하세요'}${queued ? (battling() && duel!.guest ? ' · 호스트에게 보냄, 다음 턴에 발사' : ' · 다음 턴에 발사') : ''}</span>
             <span class="end" style="display:flex;gap:6px;flex-wrap:wrap">
               <button class="pill ${ws === 'primaryWeapon' ? 'on' : ''}" data-act="ws" data-v="primaryWeapon">주무기 <kbd>1</kbd></button>
               <button class="pill ${ws === 'secondaryWeapon' ? 'on' : ''}" data-act="ws" data-v="secondaryWeapon">보조무기 <kbd>2</kbd></button>
@@ -670,7 +671,7 @@ const screen: Screen = {
             <span class="label">DEBRIEF</span>
             <strong class="debrief-title">${winner === 'player' ? '승리' : winner === 'computer' ? '패배' : '무승부'}</strong>
             <span class="debrief-stars" aria-label="별 3개 중 ${stars}개">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>
-            <span class="mono">${blocks}블록 · 격파 ${c.lost} · 손실 ${p.lost}</span>
+            <span class="mono">${blocks}턴 · 격파 ${c.lost} · 손실 ${p.lost}</span>
             ${xpWon ? html`<span class="chip hwang mono" style="font-size:16px">+${xpWon} XP</span>` : ''}
             ${dailyRes ? html`<div class="dl-result"><span class="label c-hwang">일일 교전 #${dailyNo(dailyRes.day)}${dailyRes.best ? ' · 오늘의 최고 기록!' : ''}</span><strong class="mono">${dailyRes.score.toLocaleString('ko-KR')}점</strong>
               <a class="btn gold" href="${href('/daily/' + dailyRes.day + '/' + dailyRes.code)}">결과 공유하기</a></div>` : ''}
@@ -680,10 +681,10 @@ const screen: Screen = {
               return html`<div class="chal-compare ${winner === 'player' ? 'win' : 'loss'}"><span class="label c-hwang">실시간 대전 · ${d.me.name} 대 ${peerName()}</span>
                 <div><span>결과</span><b>${winner === 'player' ? '승리' : winner === 'computer' ? '패배' : '무승부'} · ${WHY_KO[d.why ?? 'fleet']}</b></div>
                 <div><span>상대 전적</span><b>${r ? `${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''}` : '—'}</b></div>
-                <div><span>내 역할</span><b>${d.role === 'host' ? '호스트 · 블록 생산' : '게스트'}</b></div>
+                <div><span>내 역할</span><b>${d.role === 'host' ? '호스트 · 턴 진행' : '게스트'}</b></div>
                 <div><span>격파 / 손실</span><b class="mono">${stats.computer.lost} / ${stats.player.lost}</b></div></div>`;
             })() : ''}
-            ${rival ? (() => { const theirWin = rival.winner === 'player', mineWin = winner === 'player'; const beat = mineWin && (!theirWin || (rival.blocks != null && blocks < rival.blocks)); return html`<div class="chal-compare ${beat ? 'win' : 'loss'}"><span class="label c-hwang">도전 결과</span><div><span>상대</span><b>${theirWin ? '승리' : rival.winner === 'computer' ? '패배' : '—'}${rival.blocks != null ? ` · ${rival.blocks}블록` : ''}</b></div><div><span>나</span><b>${mineWin ? '승리' : winner === 'computer' ? '패배' : '무승부'} · ${blocks}블록</b></div><strong>${beat ? '기록을 넘었습니다!' : mineWin && theirWin ? '이겼지만 더 느렸습니다' : '아직 못 넘었습니다'}</strong></div>`; })() : ''}
+            ${rival ? (() => { const theirWin = rival.winner === 'player', mineWin = winner === 'player'; const beat = mineWin && (!theirWin || (rival.blocks != null && blocks < rival.blocks)); return html`<div class="chal-compare ${beat ? 'win' : 'loss'}"><span class="label c-hwang">도전 결과</span><div><span>상대</span><b>${theirWin ? '승리' : rival.winner === 'computer' ? '패배' : '—'}${rival.blocks != null ? ` · ${rival.blocks}턴` : ''}</b></div><div><span>나</span><b>${mineWin ? '승리' : winner === 'computer' ? '패배' : '무승부'} · ${blocks}턴</b></div><strong>${beat ? '기록을 넘었습니다!' : mineWin && theirWin ? '이겼지만 더 느렸습니다' : '아직 못 넘었습니다'}</strong></div>`; })() : ''}
             ${mission && winner === 'player' ? (() => { const next = MISSIONS[mission.no]; return next ? html`<a class="btn danger" href="${href('/sim?mission=' + next.id)}">다음 작전 · ${next.title}</a>` : html`<span class="chip hwang">작전 완수 · 붉은 연합 격파</span>`; })() : ''}
             ${mission ? html`<a class="btn ghost" href="${href('/campaign')}">작전 지도</a>` : ''}
             ${raidOn && loot ? html`<span class="chip ${loot.ore || loot.alpha ? 'hwang' : 'jeok'} mono" style="font-size:16px">${loot.alpha ? `전리품 +${n(loot.alpha)} α` : loot.ore ? `노획 광석 +${n(loot.ore)}` : '노획 없음'}</span><a class="btn gold" href="${href('/console')}">함교로 귀환</a>` : ''}
@@ -714,7 +715,7 @@ const screen: Screen = {
       if (d.role === 'host' && !d.link) {
         return box(html`<p>${d.peer?.name} 님에게 실시간 대전을 신청합니다. 신청은 통신 DM에 카드로 가고, 상대가 들어와 둘 다 준비하면 시작합니다. 내 함대가 왼쪽, ${d.peer?.name} 님은 오른쪽 함대를 지휘합니다.</p>
           <div class="field"><span>함대</span>${pills(d.fleet === 'from' ? [['from', '공유된 전투의 함대']] : [['mirror', '대칭 · 9기 대 9기'], ['random', '무작위']], d.fleet, 'duelFleet')}</div>
-          <div class="field"><span>블록 시간</span>${pills(LIVE_BLOCK_MS.map((ms) => [String(ms), `${ms / 1000}초${ms === 4000 ? ' · 권장' : ''}`]), String(blockMs), 'duelBlock')}</div>
+          <div class="field"><span>턴 시간</span>${pills(LIVE_BLOCK_MS.map((ms) => [String(ms), `${ms / 1000}초${ms === 4000 ? ' · 권장' : ''}`]), String(blockMs), 'duelBlock')}</div>
           ${d.note ? html`<p class="note">${d.note}</p>` : ''}
           <div class="chal-acts"><button class="btn danger lg" data-act="duelOffer"><i class="si icon-raid"></i> 대전 신청 보내기</button></div>`);
       }
@@ -725,7 +726,7 @@ const screen: Screen = {
       const mine = d.role === 'host' ? l.ready.host : l.ready.guest;
       const seat = (p: Peer | null, ready: boolean, me: boolean) => html`<li class="${ready ? 'on' : ''}"><b>${p?.name ?? '빈 자리'}</b>${me ? html` <span class="chip cheong">나</span>` : ''}<span class="mono ${ready ? 'c-cheong' : 'faint'}">${ready ? '준비 완료' : '준비 중'}</span></li>`;
       return box(html`<ul class="duel-seats">${seat(l.host, l.ready.host, d.role === 'host')}${seat(l.guest, l.ready.guest, d.role === 'guest')}</ul>
-        <p class="note">블록 ${blockMs / 1000}초 · 시작 충전 ${charge} · 블록은 호스트가 만들고, 30초 동안 응답이 없는 쪽은 기권패합니다.</p>
+        <p class="note">턴 ${blockMs / 1000}초 · 시작 충전 ${charge} · 턴은 호스트가 진행하고, 30초 동안 응답이 없는 쪽은 기권패합니다.</p>
         <div class="chal-acts"><button class="btn ${mine ? 'ghost' : 'danger lg'}" data-act="duelReady">${mine ? '준비 취소' : '준비 완료'}</button><button class="btn ghost" data-act="duelLeave">나가기</button></div>`);
     };
 
@@ -851,7 +852,7 @@ const screen: Screen = {
         const code = replayLink().split('/sim/')[1] ?? '';
         share({ kind: 'situation', s: {
           t: 'replay', title: `${mission ? mission.title + ' · ' : ''}${winner === 'player' ? '승리' : winner === 'computer' ? '패배' : '무승부'} ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`, sub: '같은 함대, 같은 시드로 도전해 보세요. 더 빨리 이기면 기록을 넘습니다.',
-          lines: [['전투 시간', `${blocks}블록`], ['격파', String(c.lost)], ['손실', String(p.lost)], ['가한 피해', String(p.damage)], ['회피', String(p.evaded)], ['차단', String(p.blocked)]],
+          lines: [['전투 시간', `${blocks}턴`], ['격파', String(c.lost)], ['손실', String(p.lost)], ['가한 피해', String(p.damage)], ['회피', String(p.evaded)], ['차단', String(p.blocked)]],
           go: code.length < 1800 ? `/sim?from=${code}` : '/sim', tone: winner === 'player' ? 'cheong' : 'jeok', at: Date.now(),
         } });
       },
@@ -900,7 +901,7 @@ const screen: Screen = {
         if (chain.typeOf(s).unitDefenses !== 'stealthMode') { sfx.play('error'); notify('은신 불가', `${typeName(picked)}에는 은신 장치가 없습니다`, 'jeok', null); return; }
         const on = chain.isHidden(s);
         order({ '@type': on ? '/structs.structs.MsgStructStealthDeactivate' : '/structs.structs.MsgStructStealthActivate', structId: picked });
-        sfx.play('evade'); notify(on ? '은신 해제' : '은신', `${typeName(picked)} · 다음 블록`, 'cheong', null); paint();
+        sfx.play('evade'); notify(on ? '은신 해제' : '은신', `${typeName(picked)} · 다음 턴`, 'cheong', null); paint();
       },
       speed: () => { if (battling()) return; mult = mult >= 4 ? 1 : mult * 2; if (board) board.speed = (blockMs < 4000 ? 1.6 : 1.2) * mult; paint(); },
       pause: () => { if (battling()) return; paused = !paused; paint(); },

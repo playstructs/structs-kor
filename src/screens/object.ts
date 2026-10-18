@@ -94,7 +94,7 @@ const screen: Screen = {
       share: () => share({ kind: 'object', id }),
       shareRec: () => { const top = ribbonsNow.filter((r) => r.tier).sort((a, b) => b.tier - a.tier).slice(0, 6); share({ kind: 'situation', s: { t: 'base', title: `${card?.title ?? id}의 복무 기록`, sub: top.length ? `최고 ${top[0].name} ${roman(top[0].tier)}` : undefined, lines: top.map((r) => [`${r.name} ${roman(r.tier)}`, `${n(r.value ?? 0, r.unit === 'g' ? 1 : 0)} ${r.unit}`] as [string, string]), ids: [id], go: `/o/${id}`, tone: 'hwang', at: Date.now() } }); },
       watch: () => { toggleWatch(id); paint(); },
-      rename: (el: HTMLElement) => { const name = String(new FormData(el as HTMLFormElement).get('name') || '').trim(); if (name) void actions.planetName(id, name).then((h) => toast(`행성 이름 변경 · ${h.slice(0, 10)}…`)).catch((e) => toast('실패: ' + (e as Error).message, 5000)); },
+      rename: (el: HTMLElement) => { const name = String(new FormData(el as HTMLFormElement).get('name') || '').trim(); if (name) void actions.planetName(id, name).then(() => toast('행성 이름을 바꿨습니다')).catch((e) => toast('실패: ' + (e as Error).message, 5000)); },
     };
     const paint = () => {
       if (!root.isConnected) return;
@@ -150,7 +150,7 @@ const screen: Screen = {
         <div class="stat"><small>함대 전력</small><strong class="mono">${n(alive.filter((s) => s.type <= 13).length)}</strong></div>
         <div class="stat"><small>행성 시설</small><strong class="mono">${n(alive.filter((s) => s.type > 13).length)}</strong></div></div></section>
         ${hOre.length + hLoad.length + hCap.length ? html`<section class="card game-panel"><div class="card-head"><h2>지난 7일</h2><span class="end dim" style="font-size:12px">길드 통계 기록</span></div><div class="spark-grid">${raw(sparkHtml(hOre, { label: '보유 광석', unit: '', tone: 'var(--hwang)' }))}${raw(sparkHtml(hLoad, { label: '전력 부하', unit: 'kW', scale: 1e6 }))}${raw(sparkHtml(hCap, { label: '전력 용량', unit: 'kW', scale: 1e6, tone: 'var(--cheong-hi)' }))}</div></section>` : ''}
-        ${rib.length ? html`<section class="card game-panel"><div class="card-head"><h2>복무 기록</h2><span class="end dim" style="font-size:12px">체인 기록 · 등급 I–VI</span><button class="btn ghost sm" data-act="shareRec">공유</button></div>
+        ${rib.length ? html`<section class="card game-panel"><div class="card-head"><h2>복무 기록</h2><span class="end dim" style="font-size:12px">공식 기록 · 등급 I–VI</span><button class="btn ghost sm" data-act="shareRec">공유</button></div>
           <div class="ribbons">${rib.map((r) => html`<div class="ribbon t${r.tier} ${r.family === '습격' ? 'raid' : r.family === '방어' ? 'def' : 'ind'}" title="${r.next ? `다음 등급까지 ${n(r.next)} ${r.unit}` : r.tier ? '최고 등급' : ''}"><span class="rb-bar"></span><b>${r.name}</b><strong class="mono">${r.value == null ? '—' : n(r.value, r.unit === 'g' ? 1 : 0)}</strong><small>${r.unit}${r.tier ? ` · ${roman(r.tier)}` : ''}</small></div>`)}</div></section>` : ''}`;
     };
     const loadGuild = async () => {

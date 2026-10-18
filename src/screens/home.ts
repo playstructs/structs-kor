@@ -17,7 +17,7 @@ function retiredCard() {
   if (!retiredNotice.pending || session.status.state === 'in') return html``;
   let rank = '';
   try { const xp = JSON.parse(localStorage.getItem('structs-kor.career.demo') || 'null')?.xp ?? 0; if (xp > 0) rank = rankOf(xp).name; } catch { /* no rank to carry */ }
-  return html`<section class="retired-note" role="note"><b>데모 함교가 종료되었습니다</b><p>이제 바로 플레이로 실제 은하에 입대합니다. 무료이며, 지갑은 이 브라우저가 만들어 줍니다.${rank ? ` 데모에서 얻은 계급(${rank})은 입대하면 그대로 이어집니다.` : ''}</p><button class="btn ghost" type="button" data-act="dismissRetired">닫기</button></section>`;
+  return html`<section class="retired-note" role="note"><b>데모 함교가 종료되었습니다</b><p>이제 바로 플레이로 실제 은하에 입대합니다. 무료이며, 계정은 이 브라우저가 만들어 줍니다.${rank ? ` 데모에서 얻은 계급(${rank})은 입대하면 그대로 이어집니다.` : ''}</p><button class="btn ghost" type="button" data-act="dismissRetired">닫기</button></section>`;
 }
 
 const screen: Screen = {
@@ -42,7 +42,7 @@ const screen: Screen = {
         <div class="title-stats mono">${[['사령관', s?.players], ['행성', s?.planets], ['구조체', s?.structs]].map(([k, v]) => html`<span>${k} <b>${v == null ? '—' : n(v)}</b></span>`)}<span class="c-cheong">● ${s?.guild_name ?? 'SN Corp'} 실시간</span></div>
       </div>
       ${lb?.length ? html`<aside class="title-rank" aria-label="사령관 랭킹"><h2>명예의 전당</h2><ol>${lb.slice(0, 5).map((p, i) => html`<li><span class="rk">${i + 1}</span><b>${p.username || p.player_id}</b><span class="mono c-hwang">${micro(p.alpha_balance_p, 0)} g</span></li>`)}</ol></aside>` : ''}
-      <footer class="title-foot">시즌 1 · 한국 서버 · 모든 전투는 체인에 기록됩니다</footer>
+      <footer class="title-foot">시즌 1 · 한국 서버 · 모든 전투가 영구히 기록됩니다</footer>
     </div>`;
 
     const handlers = { dismissRetired: () => { retiredNotice.dismiss(); root.querySelector('.retired-note')?.remove(); } };

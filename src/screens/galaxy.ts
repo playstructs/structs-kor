@@ -378,9 +378,9 @@ async function realGalaxy(root: HTMLElement, pid: string): Promise<() => void> {
             <div class="stat"><small>행성</small><strong class="mono">${p.planet_id}</strong></div>
             <div class="stat"><small>보호막</small><strong>${shield.has(p.planet_id) ? (shield.get(p.planet_id) == null ? '—' : shield.get(p.planet_id) + '%') : '…'}</strong></div>
           </div>
-          <p class="note">${p.guild_name || p.guild_id} · 함대가 도착하면 습격이 시작되고, 습격 증명은 함교의 작업 증명 카드가 계산합니다.</p>
+          <p class="note">${p.guild_name || p.guild_id} · 함대가 도착하면 습격이 시작되고, 함교의 작업 카드에서 진행 상황을 볼 수 있습니다.</p>
           ${fleet ? html`<button class="btn danger lg" data-act="launch" data-to="${p.planet_id}" ${wallet.state === 'unlocked' && fleet.location_id !== p.planet_id ? '' : 'disabled'}>${fleet.location_id === p.planet_id ? '함대 주둔 중' : `함대 ${fleet.id} 출격 → ${p.planet_id}`}</button>` : ''}
-          ${wallet.state === 'unlocked' ? '' : html`<p class="note">출격하려면 지갑 잠금을 해제하세요.</p>`}
+          ${wallet.state === 'unlocked' ? '' : html`<p class="note">출격하려면 계정 잠금을 해제하세요.</p>`}
           <a class="btn ghost" href="${href(`/sim?vs=${p.id}`)}">시뮬레이터로 먼저 대비</a>
           <div class="intel-acts"><a class="btn ghost sm" href="${href(`/o/${p.planet_id}`)}">행성 관전</a><a class="btn ghost sm" href="${href(`/o/${p.id}`)}">카드</a><button class="btn ghost sm" data-ref="message" data-id="${p.id}">메시지</button><button class="btn ghost sm" data-ref="share" data-id="${p.planet_id}">공유</button></div></section>`
         : html`<section class="card game-panel"><h2>정보</h2><p class="note">행성을 눌러 사령관을 살펴보세요. 크기는 알파 보유량입니다.${raid ? ' 붉은 점선은 내 행성을 습격 중인 함대입니다.' : ''}</p>
@@ -395,7 +395,7 @@ async function realGalaxy(root: HTMLElement, pid: string): Promise<() => void> {
       const to = el.dataset.to!;
       (el as HTMLButtonElement).disabled = true;
       void actions.fleetMove(fleet.id, to)
-        .then((h) => { sfx.play('alarm'); notify('출격', `함대 ${fleet!.id} → ${to} · ${h.slice(0, 10)}…`, 'jeok', null); if (!pow.running) pow.start(); fleet = { ...fleet!, status: 'away', location_id: to }; paint(); })
+        .then(() => { sfx.play('alarm'); notify('출격', `함대가 ${to}(으)로 출발했습니다`, 'jeok', null); if (!pow.running) pow.start(); fleet = { ...fleet!, status: 'away', location_id: to }; paint(); })
         .catch((e) => { sfx.play('error'); toast('출격 실패: ' + (e as Error).message, 5000); (el as HTMLButtonElement).disabled = false; });
     },
     recall: (el: HTMLElement) => {

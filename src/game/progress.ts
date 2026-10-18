@@ -101,11 +101,11 @@ const g = (v: unknown) => Number(v ?? 0) / 1e6;
 export const MISSIONS: Mission[] = [
   { id: 'tutorial', title: '전투 훈련 수료', hint: '훈련소에서 기본 전투를 익히세요', xp: 60, href: '/tutorial', check: (c) => [c.tutorial ? 1 : 0, 1] },
   { id: 'sim1', title: '첫 모의전 승리', hint: '시뮬레이터에서 컴퓨터 함대를 꺾으세요', xp: 80, href: '/sim', check: (_, st) => [Math.min(1, st.simWins), 1] },
-  { id: 'enlist', title: '사령관 입대', hint: '지갑을 만들고 길드에 등록하세요', xp: 100, href: '/start', check: (c) => [c.signedIn ? 1 : 0, 1] },
-  { id: 'backup', title: '복구 문구 확보', hint: '내 정보에서 복구 문구를 확인하세요', xp: 50, href: '/profile', check: (c) => [c.backedUp ? 1 : 0, 1] },
+  { id: 'enlist', title: '사령관 입대', hint: '사령관을 만들고 길드에 등록하세요', xp: 100, href: '/start', check: (c) => [c.signedIn ? 1 : 0, 1] },
+  { id: 'backup', title: '백업 코드 확보', hint: '내 정보에서 백업 코드를 확인하세요', xp: 50, href: '/profile', check: (c) => [c.backedUp ? 1 : 0, 1] },
   { id: 'miner', title: '광석 추출기 가동', hint: '지상 또는 수상 슬롯에 추출기를 세우세요', xp: 120, href: '/console', check: (c) => [has(c.dash, 14, true) ? 1 : 0, 1] },
   { id: 'refinery', title: '정제소 가동', hint: '광석은 약탈되지만 알파는 안전합니다', xp: 150, href: '/console', check: (c) => [has(c.dash, 15, true) ? 1 : 0, 1] },
-  { id: 'stars3', title: '3성 완벽 승리', hint: '손실을 줄이고 60블록 안에 끝내세요', xp: 200, href: '/sim', check: (_, st) => [st.simStars >= 3 ? 1 : 0, 1] },
+  { id: 'stars3', title: '3성 완벽 승리', hint: '손실을 줄이고 60턴 안에 끝내세요', xp: 200, href: '/sim', check: (_, st) => [st.simStars >= 3 ? 1 : 0, 1] },
   { id: 'base6', title: '기지 6기 확장', hint: '행성과 함대에 구조체 6기', xp: 180, href: '/console', check: (c) => [Math.min(6, count(c.dash)), 6] },
   { id: 'alpha10', title: '알파 매터 10 g 비축', hint: '정제한 알파는 전력이 되고 거래됩니다', xp: 160, href: '/market', check: (c) => [Math.min(10, Math.floor(g(c.dash?.player.alpha))), 10] },
   { id: 'grid', title: '안정적인 전력망', hint: '구조체를 돌리며 사용률 80% 이하', xp: 120, href: '/energy', check: (c) => {

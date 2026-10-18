@@ -4,6 +4,7 @@
  * drag, by the arrows, or Alt+←/→ on a focused card. Presets lay out a whole board for a way of
  * playing; a board can be shared as a code (or a link) and imported by anyone.
  * After structs-universe's Structs Terminal (workspaces, cards, presets, SHARE / IMPORT). */
+import { orderName } from '../i18n/ko';
 import type { Screen } from '../router';
 import { href } from '../router';
 import { html, mount, raw, n, micro, watts, toast, type Safe } from '../ui/dom';
@@ -67,7 +68,7 @@ const screen: Screen = {
         case 'feed': return feed.length ? html`<ol class="newswire bw-feed">${feed.slice(0, 8).map((r) => html`<li><span class="mono faint">${r.block_height ? '#' + n(r.block_height) : ''}</span> <b>${activityLabel(r.category)}</b> ${typeof r.detail === 'string' ? r.detail : ''}</li>`)}</ol>` : html`<p class="faint">기록이 없습니다.</p>`;
         case 'leaders': return html`<ol class="bw-list num">${leaders.slice(0, 6).map((l) => html`<li class="${l.player_id === pid ? 'me' : ''}"><a href="${href(`/o/${l.player_id}`)}">${l.username || l.player_id}</a><span class="mono c-hwang">${micro(l.alpha_value_p ?? l.alpha_balance_p, 0)} g</span></li>`)}</ol>`;
         case 'duty': { const log = dutyLog().slice(0, 6); return log.length ? html`<ol class="newswire duty">${log.map((x) => html`<li class="${x.tone ?? ''}"><span class="mono faint">${new Date(x.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span> ${x.text}</li>`)}</ol>` : html`<p class="faint">복무 규칙이 아직 아무것도 하지 않았습니다.</p>`; }
-        case 'tx': { const t = txLog().slice(0, 8); return t.length ? html`<ul class="bw-list">${t.map((x) => html`<li><b>${({ pending: '대기', ok: '완료', failed: '실패', unknown: '?', refused: '거부' } as Record<string, string>)[x.status]}</b><small>${x.name.replace(/^Msg/, '')}</small><span class="mono faint">${new Date(x.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span></li>`)}</ul>` : html`<p class="faint">이번 세션에 보낸 거래가 없습니다.</p>`; }
+        case 'tx': { const t = txLog().slice(0, 8); return t.length ? html`<ul class="bw-list">${t.map((x) => html`<li><b>${({ pending: '대기', ok: '완료', failed: '실패', unknown: '?', refused: '거부' } as Record<string, string>)[x.status]}</b><small>${orderName(x.name)}</small><span class="mono faint">${new Date(x.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span></li>`)}</ul>` : html`<p class="faint">이번 세션에 보낸 거래가 없습니다.</p>`; }
         case 'watch': { const w = watchlist(); return w.length ? html`<div class="bw-watch">${w.slice(0, 9).map((id) => raw(refSlot(id, { base: href(''), compact: true, me: pid })))}</div>` : html`<p class="faint">카드의 ☆ 감시나 팔레트의 <b>감시 ID</b>로 추가하세요.</p>`; }
       }
     };

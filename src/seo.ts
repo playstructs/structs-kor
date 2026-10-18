@@ -20,9 +20,9 @@ export interface PageSeo {
 export const SITE_NAME = '구조체 STRUCTS';
 export const SITE_TAGLINE = '우주는 구조체가 지배한다';
 export const DEFAULT_DESCRIPTION =
-  'Structs 한국 서버. 행성을 채굴하고, 알파 매터를 정제하고, 길드와 함께 함대를 지휘하는 블록체인 전략 게임. 설치 없이 브라우저에서 바로 무료로 플레이하세요.';
+  'Structs 한국 서버. 행성을 채굴하고, 알파 매터를 정제하고, 길드와 함께 함대를 지휘하는 실시간 우주 전략 게임. 설치 없이 브라우저에서 바로 무료로 플레이하세요.';
 export const KEYWORDS =
-  '구조체, Structs, 스트럭츠, 우주 전략 게임, 블록체인 게임, 웹 게임, 브라우저 게임, 무료 게임, 함대 전투, 길드, 행성 채굴, 알파 매터, MMO 전략';
+  '구조체, Structs, 스트럭츠, 우주 전략 게임, 하드코어 전략, 웹 게임, 브라우저 게임, 무료 게임, 함대 전투, 길드, 행성 채굴, 알파 매터, MMO 전략';
 export const OG_IMAGE = { path: '/og.png', width: 1200, height: 630, alt: '구조체 STRUCTS — 우주는 구조체가 지배한다' };
 export const THEME_COLOR = '#16142A';
 
@@ -44,10 +44,10 @@ export const PAGES: Record<string, PageSeo> = {
   '/chat': { title: '통신', description: '길드 채널과 교신 기록. Matrix 기반 실시간 길드 채팅.', priority: 0.5, changefreq: 'daily' },
   '/record': { title: '전적', description: '사령관 계급과 경력, 훈장, 작전 목표.', priority: 0.5, changefreq: 'weekly' },
   '/profile': { title: '사령관 프로필', description: '사령관 프로필.', hidden: true },
-  '/diag': { title: '시스템 진단', description: '연결, 인덱서 지연, 작업 증명 엔진, 대체 경로를 한눈에.', hidden: true },
+  '/diag': { title: '시스템 진단', description: '연결, 데이터 지연, 작업 엔진, 대체 경로를 한눈에.', hidden: true },
   '/board': { title: '작전 보드', description: '내 방식대로 배치하는 실시간 카드 콘솔. 프리셋과 보드 공유.', hidden: true },
   '/war': { title: '작전 상황실', description: '표적 보드, 원한과 공격 금지 목록, 내 행성 사건 기록, 진행 중인 습격.', hidden: true },
-  '/stats': { title: '은하 통계 · 랭킹', description: '사령관, 행성, 구조체 수와 체인 상태, 최고의 사령관과 길드 순위.', priority: 0.6, changefreq: 'daily' },
+  '/stats': { title: '은하 통계 · 랭킹', description: '사령관, 행성, 구조체 수와 서버 상태, 최고의 사령관과 길드 순위.', priority: 0.6, changefreq: 'daily' },
   '/o': { title: '객체 카드', description: '플레이어, 행성, 구조체, 함대, 길드, 공급자 — 구조체의 모든 객체를 실시간 카드로.', hidden: true },
   '/s': { title: '공유된 상황', description: '사령관이 공유한 전장 상황. 습격, 전투 예측, 거래 제안을 한 장의 카드로.', hidden: true },
   '/404': { title: '찾을 수 없는 좌표', description: '요청한 페이지를 찾을 수 없습니다.', hidden: true },

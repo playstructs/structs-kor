@@ -41,7 +41,7 @@ export async function hydrateChallenges(root: ParentNode) {
       const label = st === 'live' ? '진행 중' : st === 'ended' ? '끝난 대전' : st === 'cancelled' ? '취소됨' : stale ? '만료' : '대기 중';
       const side = (k: string) => b ? mini(b.units.filter((u) => u.side === k).map((u) => u.type)) : '';
       el.outerHTML = `<article class="chal live ${st === 'open' || st == null ? 'win' : ''}"><header><span class="sit-kind"><i class="si icon-raid"></i>실시간 대전</span><b>${esc(o?.frame.host.name ?? '대전 신청')}${b?.title ? ` · ${esc(b.title)}` : ''}</b><span class="chip ${st === 'live' ? 'jeok' : st === 'ended' || st === 'cancelled' || stale ? '' : 'hwang'}">${label}</span></header>
-        ${b ? `<div class="chal-vs"><span class="chal-side">${side('player')}</span><b class="mono">VS</b><span class="chal-side foe">${side('computer')}</span></div><p class="note">블록 ${b.blockMs / 1000}초 · 시작 충전 ${b.charge} · 신청자가 블록을 만들고, 받는 쪽은 오른쪽 함대를 지휘합니다.</p>` : '<p class="note">사람 대 사람, 같은 체인 규칙으로 한 블록씩.</p>'}
+        ${b ? `<div class="chal-vs"><span class="chal-side">${side('player')}</span><b class="mono">VS</b><span class="chal-side foe">${side('computer')}</span></div><p class="note">턴 ${b.blockMs / 1000}초 · 시작 충전 ${b.charge} · 신청자가 턴을 진행하고, 받는 쪽은 오른쪽 함대를 지휘합니다.</p>` : '<p class="note">사람 대 사람, 실전과 같은 규칙으로 한 수씩.</p>'}
         <div class="chal-acts">${mine ? '<span class="faint">내가 보낸 신청 · 시뮬레이터 화면에서 기다리세요</span>' : st === 'open' || (st == null && !stale) ? `<a class="btn danger sm" href="${base}/sim?join=${esc(match)}&room=${esc(room)}"><i class="si icon-raid"></i> 대기실 입장</a>` : ''}${o && !mine ? `<a class="btn ghost sm" href="${base}/sim?duel=${esc(o.frame.host.id)}">내가 신청하기</a>` : ''}</div></article>`;
       continue;
     }
@@ -58,7 +58,7 @@ export async function hydrateChallenges(root: ParentNode) {
       const c = code ? daily.decodeDaily(code) : null;
       const no = daily.dailyNo(day);
       el.outerHTML = `<article class="chal daily"><header><span class="sit-kind"><i class="si icon-success"></i>일일 교전 #${no}</span><b>${c ? `${esc(c.name || '익명')}의 기록` : '오늘의 작전에 도전'}</b><span class="mono faint">${esc(day)}</span></header>
-        ${c ? `<p class="note">명령 ${c.orders.length}개로 치른 전투 · 열면 체인 규칙으로 다시 검증합니다.</p>` : '<p class="note">모든 사령관이 같은 함대, 같은 적과 싸웁니다.</p>'}
+        ${c ? `<p class="note">명령 ${c.orders.length}개로 치른 전투 · 열면 실전 규칙으로 다시 확인합니다.</p>` : '<p class="note">모든 사령관이 같은 함대, 같은 적과 싸웁니다.</p>'}
         <div class="chal-acts">${c ? `<a class="btn primary sm" href="${base}/daily/${esc(day)}/${esc(code)}">▶ 기록 보기</a>` : ''}<a class="btn gold sm" href="${base}/sim?daily=${esc(day)}">도전</a></div></article>`;
     }
   }

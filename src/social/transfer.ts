@@ -2,6 +2,7 @@
  * comes from the chain, never typed in) or a raw structs1… address; the sender is the commander or
  * any replicant of this wallet. Review shows both faces and the exact amount before anything is
  * signed. After structs-universe transfer.html. */
+import { denomLabel } from '../api/chain';
 import { html, raw, n, micro, toast, type Safe } from '../ui/dom';
 import { openSheet } from '../ui/sheet';
 import { guildApi, type PlayerRow, type BankRow } from '../api/guild';
@@ -23,7 +24,7 @@ export interface PayOpts { to?: string; amount?: number; denom?: string; from?: 
 
 export async function openTransfer(o: PayOpts = {}) {
   const me = session.playerId;
-  let step: 'form' | 'review' | 'sent' = 'form', busy = false, err = '', hash = '';
+  let step: 'form' | 'sent' = 'form', busy = false, err = '';
   let toQuery = o.to ?? '', to: PlayerRow | null = null, toAddr = '', amountText = o.amount ? String(o.amount) : '', denom = o.denom ?? 'ualpha', from = o.from ?? 0;
   let tokens: BankRow[] = [], fromRow: PlayerRow | null = null, matches: { id: string; username: string; guild_id: string }[] = [];
   const accounts = wallet.accounts.length ? wallet.accounts : [{ index: 0, address: '', label: '사령관', playerId: me ?? undefined }];
@@ -49,21 +50,14 @@ export async function openTransfer(o: PayOpts = {}) {
     fromRow = acc?.playerId ? await guildApi.player(acc.playerId).catch(() => null) : null;
   };
   const grams = () => parseGrams(amountText);
-  const unit = () => (denom === 'ualpha' ? 'g' : '토큰');
+  const unit = () => (denom === 'ualpha' ? 'g' : denomLabel(denom));
   const balance = () => (denom === 'ualpha' ? Number(fromRow?.alpha ?? NaN) / 1e6 : NaN);
   const valid = () => !!toAddr && !!grams() && (!Number.isFinite(balance()) || grams()! <= balance() + 1e-9) && toAddr !== selfAddr();
 
   const face = (p: PlayerRow | null, addr: string, label: string) => html`<div class="pay-party">${raw(portraitHtml(p?.pfp || seededPfp(p?.id || addr), 44))}<div><b>${p?.username || p?.id || '주소'}</b><small class="mono">${p ? `PID #${p.id}` : ''} ${addr ? addr.slice(0, 14) + '…' + addr.slice(-6) : ''}</small></div><span class="label">${label}</span></div>`;
 
   const view = (): Safe => {
-    if (step === 'sent') return html`<div class="pay-done"><i class="si icon-success"></i><h3>보냈습니다</h3><p class="mono">${n(grams() ?? 0, 6)} ${unit()} → ${to?.username || toAddr.slice(0, 16)}</p><p class="mono faint">tx ${hash.slice(0, 16)}…</p><div class="sheet-actions"><button class="btn ghost" data-act="again">한 번 더</button><button class="btn primary" data-act="close" autofocus>닫기</button></div></div>`;
-    if (step === 'review') return html`
-      ${face(fromRow, selfAddr(), '보내는 사람')}
-      <div class="pay-arrow">▼ <b class="mono c-hwang">${n(grams() ?? 0, 6)} ${denom === 'ualpha' ? 'g 알파' : denom}</b></div>
-      ${face(to, toAddr, '받는 사람')}
-      ${o.memo ? html`<p class="note">${o.memo}</p>` : ''}
-      <p class="note">체인 거래는 되돌릴 수 없습니다. 받는 사람을 다시 확인하세요.</p>
-      <div class="sheet-actions"><button class="btn ghost" data-act="back">수정</button><button class="btn gold" data-act="sign" ${busy ? 'disabled' : ''} autofocus>${busy ? '서명 중…' : `${n(grams() ?? 0, 4)} ${unit()} 보내기`}</button></div>`;
+    if (step === 'sent') return html`<div class="pay-done"><i class="si icon-success"></i><h3>보냈습니다</h3><p class="mono">${n(grams() ?? 0, 6)} ${unit()} → ${to?.username || toAddr.slice(0, 16)}</p><div class="sheet-actions"><button class="btn ghost" data-act="again">한 번 더</button><button class="btn primary" data-act="close" autofocus>닫기</button></div></div>`;
     const bal = balance();
     return html`
       <label class="field"><span>보내는 계정</span><select class="input" name="from" data-act="from" data-on="change">${accounts.map((a) => html`<option value="${a.index}" ${a.index === from ? 'selected' : ''}>${a.index === 0 ? '사령관' : `레플리칸트 #${a.index}`} · ${a.playerId ?? a.address.slice(0, 12) + '…'}</option>`)}</select></label>
@@ -78,8 +72,8 @@ export async function openTransfer(o: PayOpts = {}) {
       ${Number.isFinite(bal) ? html`<p class="note">보유 ${n(bal, 4)} g · <button class="linkish" data-act="all">전부 보내기</button></p>` : ''}
       ${err ? html`<div class="notice err">${err}</div>` : ''}
       ${toAddr && toAddr === selfAddr() ? html`<div class="notice err">자기 자신에게는 보낼 수 없습니다.</div>` : ''}
-      ${wallet.state !== 'unlocked' ? html`<div class="notice">서명하려면 지갑 잠금을 해제하세요.</div>` : ''}
-      <div class="sheet-actions"><button class="btn ghost" data-act="close">취소</button><button class="btn primary" data-act="review" ${!valid() || wallet.state !== 'unlocked' ? 'disabled' : ''}>검토</button></div>`;
+      ${wallet.state !== 'unlocked' ? html`<div class="notice">계정 잠금을 해제하세요.</div>` : ''}
+      <div class="sheet-actions"><button class="btn ghost" data-act="close">취소</button><button class="btn primary" data-act="sign" ${!valid() || wallet.state !== 'unlocked' || busy ? 'disabled' : ''}>${busy ? '보내는 중…' : '보내기'}</button></div>`;
   };
   const repaint = () => sheet.paint(view());
   const handlers = {
@@ -87,17 +81,15 @@ export async function openTransfer(o: PayOpts = {}) {
     to: async (el: HTMLElement) => { toQuery = (el as HTMLInputElement).value; await lookup(); repaint(); },
     pick: async (el: HTMLElement) => { toQuery = el.dataset.id!; await lookup(); repaint(); },
     denom: (el: HTMLElement) => { denom = (el as HTMLSelectElement).value; repaint(); },
-    amount: (el: HTMLElement) => { amountText = (el as HTMLInputElement).value; const b = sheet.el.querySelector<HTMLButtonElement>('[data-act=review]'); if (b) b.disabled = !valid() || wallet.state !== 'unlocked'; },
+    amount: (el: HTMLElement) => { amountText = (el as HTMLInputElement).value; const b = sheet.el.querySelector<HTMLButtonElement>('[data-act=sign]'); if (b) b.disabled = !valid() || wallet.state !== 'unlocked'; },
     all: () => { const b = balance(); if (Number.isFinite(b)) { amountText = String(Math.floor(b * 1e6) / 1e6); repaint(); } },
-    review: () => { if (valid()) { step = 'review'; repaint(); } },
-    back: () => { step = 'form'; repaint(); },
     again: () => { step = 'form'; amountText = ''; repaint(); },
     close: () => sheet.close(),
     sign: async (el: HTMLElement) => {
-      const g = grams(); if (!g) return;
+      const g = grams(); if (!g || !valid()) return;
       busy = true; repaint();
       try {
-        hash = await actions.playerSend(toAddr, { denom, amount: String(Math.round(g * 1e6)) }, from);
+        await actions.playerSend(toAddr, { denom, amount: String(Math.round(g * 1e6)) }, from);
         if (to) remember({ id: to.id, name: to.username || to.id });
         sfx.play('coin'); float(el, `−${n(g, 2)} ${unit()}`, 'var(--hwang)', true);
         step = 'sent';

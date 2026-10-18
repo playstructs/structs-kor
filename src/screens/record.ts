@@ -35,7 +35,7 @@ const screen: Screen = {
           <div class="ranks">${RANKS.map((name, i) => html`<span class="${i < r.i ? 'done' : i === r.i ? 'now' : ''}" title="${name} · ${threshold(i)} XP">${name}</span>`)}</div>
         </div>
       </section>
-      ${chainPfp ? html`<p class="note">초상화는 체인에 저장된 모습입니다. 게임 클라이언트에서 바꿀 수 있습니다.</p>` : html`<section class="card game-panel"><div class="card-head"><h2>초상화</h2><span class="end"><button class="btn ghost" data-act="dice">무작위</button></span></div>
+      ${chainPfp ? html`<p class="note">초상화는 사령관 카드에 저장된 모습입니다. 내 정보에서 바꿀 수 있습니다.</p>` : html`<section class="card game-panel"><div class="card-head"><h2>초상화</h2><span class="end"><button class="btn ghost" data-act="dice">무작위</button></span></div>
         <div class="pfp-edit">${PFP_LAYERS.slice().reverse().map((part) => html`<div class="pfp-row"><span class="label">${PART_KO[part]}</span>
           <button class="hud-btn" data-act="part" data-part="${part}" data-d="-1" aria-label="${PART_KO[part]} 이전">◀</button>
           <span class="mono">${cur()[part]} / ${PFP_COUNTS[part]}</span>

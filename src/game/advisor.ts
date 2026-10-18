@@ -117,10 +117,10 @@ export function adviseReal(d: Dashboard, proofs: { ready: number; stuck: number;
   const ore = Number(d.player.ore ?? 0);
   if (ore > 0 && !alive.some((s) => s.type === 15 && s.status & ONLINE)) tips.push({ pri: 70, tone: 'hwang', text: `정제되지 않은 광석 ${ore} · 습격당하면 모두 빼앗깁니다. 정제소를 가동하세요.`, go: '/console', cta: '함교' });
   const { ready, stuck } = proofs;
-  if (stuck) tips.push({ pri: 75, tone: 'jeok', text: `작업 증명 ${stuck}건이 세 번 거부되었습니다. 작업 카드에서 다시 제출하세요.`, go: '/console', cta: '함교' });
+  if (stuck) tips.push({ pri: 75, tone: 'jeok', text: `작업 ${stuck}건이 세 번 실패했습니다. 작업 카드에서 다시 시도하세요.`, go: '/console', cta: '함교' });
   if (ready && proofs.unlocked) tips.push({ pri: 72, tone: 'hwang', text: `제출할 수 있는 증명 ${ready}건 · 작업 카드에서 바로 보내세요 (자동 제출이 꺼져 있으면).`, go: '/console', cta: '함교' });
-  else if (ready && !proofs.unlocked) tips.push({ pri: 72, tone: 'hwang', text: `제출할 수 있는 증명 ${ready}건 · 지갑 잠금을 해제하면 자동으로 보냅니다.`, go: '/login', cta: '잠금 해제' });
-  else if ((d.work ?? []).length && !proofs.hashing) tips.push({ pri: 60, tone: 'cheong', text: `끝내야 할 작업 ${(d.work ?? []).length}건 · 작업 증명을 시작하면 이 브라우저가 해시를 계산합니다.`, go: '/console', cta: '함교' });
+  else if (ready && !proofs.unlocked) tips.push({ pri: 72, tone: 'hwang', text: `마무리할 수 있는 작업 ${ready}건 · 계정 잠금을 해제하면 자동으로 끝냅니다.`, go: '/login', cta: '잠금 해제' });
+  else if ((d.work ?? []).length && !proofs.hashing) tips.push({ pri: 60, tone: 'cheong', text: `끝내야 할 작업 ${(d.work ?? []).length}건 · 작업 카드에서 작업을 시작하세요.`, go: '/console', cta: '함교' });
   if (!tips.length) tips.push({ pri: 0, tone: 'cheong', text: '전선 이상 없음. 은하 지도에서 다음 목표를 찾아보세요.', go: '/galaxy', cta: '은하 지도' });
   return tips.sort((a, b) => b.pri - a.pri).slice(0, 3);
 }

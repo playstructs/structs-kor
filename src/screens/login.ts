@@ -18,10 +18,10 @@ import { enlist, type EnlistStep } from '../api/enlist';
 type Mode = 'start' | 'choose' | 'import' | 'unlock';
 
 const STEPS: [EnlistStep, string, string][] = [
-  ['key', '사원 인식표 발급', '이 브라우저에 계정 열쇠를 만들어 안전하게 보관합니다'],
+  ['key', '사원 인식표 발급', '이 기기에 사령관 계정을 만듭니다'],
   ['register', '길드 입대 신청', 'SN Corp 길드에 가입을 요청합니다'],
-  ['chain', '체인 기록 대기', '가입이 블록체인에 기록되는 중입니다 · 보통 수십 초'],
-  ['signin', '길드 로그인', '서명 한 번으로 길드 서버에 접속합니다'],
+  ['chain', '사령부 등록', '은하 사령부에 입대를 등록하는 중입니다 · 보통 수십 초'],
+  ['signin', '길드 접속', '길드 서버에 접속합니다'],
 ];
 
 const screen: Screen = {
@@ -57,25 +57,25 @@ const screen: Screen = {
             })}
           </ol>
           ${err ? html`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="retry">다시 시도</button><a class="btn ghost" href="${href('/login')}">다른 기기의 계정으로 로그인</a></div>`
-            : html`<p class="note">입대가 끝나면 전투 훈련이 시작됩니다. 계정 복구 문구는 나중에 <b class="c-white">내 정보</b>에서 확인할 수 있습니다.</p>`}`);
+            : html`<p class="note">입대가 끝나면 전투 훈련이 시작됩니다. 계정 백업 코드는 나중에 <b class="c-white">내 정보</b>에서 확인할 수 있습니다.</p>`}`);
       },
       choose: () => box('다시 오신 것을 환영합니다', html`
         <div style="display:flex;flex-direction:column;gap:10px">
           ${wallet.commander ? html`<button class="btn primary lg" data-act="resume">이 브라우저의 사령관으로 계속</button>` : html`<a class="btn primary lg" href="${href('/start')}">신규 사령관 입대</a>`}
-          <button class="btn ghost lg" data-act="toImport">다른 기기의 계정 가져오기 (복구 문구)</button>
+          <button class="btn ghost lg" data-act="toImport">다른 기기의 계정 가져오기 (백업 코드)</button>
         </div>`),
-      import: () => box('복구 문구로 로그인', html`
+      import: () => box('백업 코드로 로그인', html`
         <form data-act="doImport" data-on="submit" style="display:flex;flex-direction:column;gap:14px">
-          <label class="field"><span>복구 문구 (12 또는 24단어)</span><textarea class="input" name="phrase" autocomplete="off" spellcheck="false" required></textarea></label>
+          <label class="field"><span>백업 코드 (12 또는 24단어)</span><textarea class="input" name="phrase" autocomplete="off" spellcheck="false" required></textarea></label>
           <label class="field"><span>이 브라우저 잠금 비밀번호 (8자 이상)</span><input class="input" name="pass" type="password" minlength="8" required autocomplete="new-password"></label>
           <button class="btn primary lg" ${busy ? 'disabled' : ''}>로그인</button>
           <button type="button" class="btn ghost" data-act="toChoose">뒤로</button>
         </form>`),
-      unlock: () => box('지갑 잠금 해제', html`
+      unlock: () => box('계정 잠금 해제', html`
         <form data-act="doUnlock" data-on="submit" style="display:flex;flex-direction:column;gap:14px">
           <label class="field"><span>잠금 비밀번호</span><input class="input" name="pass" type="password" required autocomplete="current-password"></label>
           <button class="btn primary lg" ${busy ? 'disabled' : ''}>잠금 해제하고 로그인</button>
-          <button type="button" class="btn ghost" data-act="toImport">복구 문구로 로그인</button>
+          <button type="button" class="btn ghost" data-act="toImport">백업 코드로 로그인</button>
         </form>`),
     };
 

@@ -15,16 +15,15 @@ import { call } from '../api/http';
 import { KW, BLOCKS_PER_DAY, perKwDay as chainPerKwDay, chainRate, MIN_PER_KW_DAY } from '../api/rates';
 import { wallet } from '../wallet/wallet';
 import { sfx } from '../game/sfx';
-import { ask } from '../ui/sheet';
 import { share } from '../social/share';
 import { offerSituation } from '../social/situations';
 import { openTransfer, parseGrams } from '../social/transfer';
 import { setTiles } from '../ui/shell';
 
 type Tab = 'buy' | 'mine' | 'sell' | 'bank' | 'wallet';
-const TABS: [Tab, string][] = [['buy', '구매'], ['mine', '내 계약'], ['sell', '판매 · 내 공급자'], ['bank', '길드 은행'], ['wallet', '지갑']];
+const TABS: [Tab, string][] = [['buy', '구매'], ['mine', '내 계약'], ['sell', '판매 · 내 공급자'], ['bank', '길드 은행'], ['wallet', '자산']];
 const perKwDay = (p: ProviderRow) => chainPerKwDay(p.rate_amount);
-const denomName = (d: string) => (d === 'ualpha' ? 'α' : d.startsWith('uguild.') ? d.replace('uguild.', '토큰 ') : d);
+const denomName = (d: string) => (d === 'ualpha' ? 'α' : denomLabel(d));
 const POLICY: Record<string, string> = { openMarket: '공개', 'open-market': '공개', guildMarket: '길드 전용', 'guild-market': '길드 전용', closedMarket: '비공개', 'closed-market': '비공개' };
 
 interface State {
@@ -76,10 +75,10 @@ function buy(s: State): Safe {
           <span style="display:flex;justify-content:space-between;align-items:baseline"><span>선결제 총액</span><b class="mono c-hwang">${s.q ? micro(s.q.total, 4) : '—'} <span style="font-size:13px">${denomName(p.rate_denom)}</span></b></span>
           ${s.q?.errors.map((e) => html`<span class="c-jeok" style="font-size:13px">${e}</span>`)}
         </div>
-        <p class="note">총액은 개설 시 에스크로로 전액 결제되고, 공급자에게 블록마다 지급됩니다. 중도 해지 시 위약금 ${p.consumer_cancellation_penalty != null ? n(Number(p.consumer_cancellation_penalty) * 100, 1) + '%' : '[n]%'}.</p>
+        <p class="note">총액은 개설 시 에스크로로 전액 결제되고, 공급자에게 조금씩 나눠 지급됩니다. 중도 해지 시 위약금 ${p.consumer_cancellation_penalty != null ? n(Number(p.consumer_cancellation_penalty) * 100, 1) + '%' : '[n]%'}.</p>
         <button class="btn primary lg" data-act="open" ${!s.q?.valid || s.busy || !unlocked() ? 'disabled' : ''}>${s.q ? `${micro(s.q.total, 2)} ${denomName(p.rate_denom)} 결제하고 개설` : '계약 개설'}</button>
         <button class="btn ghost" data-act="shareOffer" data-i="${s.sel}">이 제안을 길드에 공유</button>
-        ${unlocked() ? '' : html`<p class="note">서명하려면 지갑 잠금을 해제하세요.</p>`}` : html`<p class="empty">공급자를 선택하세요.</p>`}
+        ${unlocked() ? '' : html`<p class="note">계정 잠금을 해제하세요.</p>`}` : html`<p class="empty">공급자를 선택하세요.</p>`}
     </section></div>`;
 }
 
@@ -104,11 +103,11 @@ function sell(s: State): Safe {
   return html`<div class="g2" style="align-items:start">
   <section class="card game-panel">
     <h1 style="font-size:26px">전력 판매하기</h1>
-    <p class="note">변전소의 남는 전력을 공급자로 등록해 판매합니다. 쓰지 않은 용량은 그 블록에서 사라집니다.</p>
+    <p class="note">변전소의 남는 전력을 공급자로 등록해 판매합니다. 쓰지 않은 용량은 바로 사라집니다.</p>
     <form data-act="create" data-on="submit" style="display:flex;flex-direction:column;gap:14px">
       <div class="g2" style="gap:12px">
         <label class="field"><span>판매 변전소</span><input class="input" name="sub" placeholder="4-…" value="${s.me?.substation_id ?? ''}" required></label>
-        <label class="field"><span>통화 (ualpha = 알파)</span><input class="input" name="denom" value="ualpha" required></label>
+        <label class="field"><span>받을 통화</span><select class="input" name="denom"><option value="ualpha">알파</option>${s.coins.filter((c) => c.denom.startsWith('uguild.')).map((c) => html`<option value="${c.denom}">${denomLabel(c.denom)}</option>`)}</select></label>
         <label class="field"><span>요율 (/ kW·일 · 최소 ${n(MIN_PER_KW_DAY)})</span><input class="input" name="rate" type="number" step="any" min="${MIN_PER_KW_DAY}" required></label>
         <label class="field"><span>접근 정책</span><select class="input" name="policy"><option value="openMarket">공개</option><option value="guildMarket">길드 전용</option><option value="closedMarket">비공개</option></select></label>
         <label class="field"><span>최소 용량 (kW)</span><input class="input" name="cmin" type="number" step="any" value="1"></label>
@@ -169,11 +168,11 @@ function bank(s: State): Safe {
     </tbody></table></div>
     <div style="padding:14px 16px">${g ? html`<h3 class="sub-h">${g.guild_id} 거래량</h3>${bankChart(s.hist.get(g.guild_id))}` : ''}</div></section>
     <section class="card accent game-panel"><h2>토큰 교환</h2>
-      ${g ? html`<p class="mono" style="margin:0">${g.denom} · 담보율 ${n(ratio, 4)} · 1 토큰 ≈ ${n(ratio, 4)} α</p>
+      ${g ? html`<p class="mono" style="margin:0">${denomLabel(g.denom)} · 담보율 ${n(ratio, 4)} · 1 토큰 ≈ ${n(ratio, 4)} α</p>
         <label class="field"><span>수량 (g / 토큰)</span><input class="input mono" name="bankAmount" value="${s.bankAmount}" data-act="bankAmount" placeholder="0" inputmode="decimal"></label>
         <div class="quote-box"><span>알파 → 토큰</span><b class="mono">${amt && ratio ? n(amt / ratio, 4) : '—'} 토큰</b></div>
         <div class="quote-box"><span>토큰 → 알파</span><b class="mono c-hwang">${amt && ratio ? n(amt * ratio, 4) : '—'} α</b></div>
-        <p class="note">보유: 알파 ${n(alpha, 3)} g · 토큰 ${n(held, 3)}. 교환은 체인 은행이 담보율로 처리하며, 예상보다 불리하면 거래가 거부됩니다(슬리피지 1%).</p>
+        <p class="note">보유: 알파 ${n(alpha, 3)} g · 토큰 ${n(held, 3)}. 교환은 길드 은행이 담보율로 처리하며, 예상보다 불리하면 취소됩니다(슬리피지 1%).</p>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn primary" data-act="convert" ${!amt || amt > alpha || !unlocked() || s.busy ? 'disabled' : ''}>알파로 토큰 받기</button>
           <button class="btn gold" data-act="redeem" ${!amt || amt > held || !unlocked() || s.busy ? 'disabled' : ''}>토큰으로 알파 받기</button>
@@ -198,12 +197,12 @@ function ledgerList(rows: Record<string, unknown>[] | null | undefined): Safe {
 
 function walletTab(s: State): Safe {
   return html`<div class="g2" style="align-items:start">
-    <section class="card game-panel"><div class="card-head"><h2>내 지갑</h2><span class="end mono dim">${wallet.commander?.address.slice(0, 16) ?? ''}…</span></div>
+    <section class="card game-panel"><div class="card-head"><h2>내 자산</h2><span class="end mono dim">${wallet.commander?.address.slice(0, 16) ?? ''}…</span></div>
       ${s.coins.length ? html`<ul class="coins">${s.coins.map((c) => html`<li><span class="coin-ico ${c.denom === 'ualpha' ? 'alpha' : 'token'}"></span><div><b>${denomLabel(c.denom)}</b><small class="mono">${c.denom}</small></div><strong class="mono ${c.denom === 'ualpha' ? 'c-hwang' : ''}">${micro(c.amount, 4)}</strong><button class="btn ghost sm" data-act="send" data-d="${c.denom}" ${unlocked() ? '' : 'disabled'}>보내기</button></li>`)}</ul>` : html`<p class="empty">잔액이 없습니다.</p>`}
       <button class="btn gold" data-act="send" data-d="ualpha" ${unlocked() ? '' : 'disabled'}>알파 보내기</button>
     </section>
     <section class="card game-panel"><h2>거래 내역</h2>${ledgerList(s.ledger)}</section>
-    <section class="card game-panel"><h2>레플리칸트 지갑</h2>
+    <section class="card game-panel"><h2>레플리칸트 자산</h2>
       <p class="note">레플리칸트의 알파는 <a href="${href('/replicants')}">레플리칸트</a> 화면에서 한 번에 회수하거나, 여기서 개별로 보낼 수 있습니다.</p>
       <ul class="coins">${wallet.accounts.filter((a) => a.index > 0).slice(0, 12).map((a) => html`<li><span class="coin-ico rep"></span><div><b>#${a.index} ${a.playerId ?? ''}</b><small class="mono">${a.address.slice(0, 18)}…</small></div><button class="btn ghost sm" data-act="sendFrom" data-i="${a.index}" ${unlocked() ? '' : 'disabled'}>보내기</button></li>`)}</ul>
       ${wallet.accounts.some((a) => a.index > 0) ? '' : html`<p class="empty">레플리칸트가 없습니다.</p>`}
@@ -249,7 +248,7 @@ const screen: Screen = {
     };
     const sign = (p: Promise<string>, after?: () => void) => {
       s.busy = true; paint();
-      p.then((h) => { sfx.play('coin'); toast(`전송됨 · ${h.slice(0, 10)}…`); after?.(); setTimeout(() => void refresh(), 6000); })
+      p.then(() => { sfx.play('coin'); toast('명령을 내렸습니다'); after?.(); setTimeout(() => void refresh(), 6000); })
         .catch((e) => toast('실패: ' + (e as Error).message, 5000)).finally(() => { s.busy = false; paint(); });
     };
     const handlers = {
@@ -265,16 +264,16 @@ const screen: Screen = {
       extend: (el: HTMLElement) => sign(actions.agreementExtend(el.dataset.id!, BLOCKS_PER_DAY)),
       capUp: (el: HTMLElement) => sign(actions.agreementCapacity(el.dataset.id!, KW)),
       capDown: (el: HTMLElement) => sign(actions.agreementCapacity(el.dataset.id!, -KW)),
-      close: async (el: HTMLElement) => { if (await ask('계약 해지', '계약을 해지하면 위약금이 적용될 수 있습니다. 해지할까요?', '해지', 'jeok')) sign(actions.agreementClose(el.dataset.id!)); },
+      close: (el: HTMLElement) => { sign(actions.agreementClose(el.dataset.id!)); },
       access: (el: HTMLElement) => sign(actions.providerAccess(el.dataset.id!, (el as HTMLSelectElement).value as 'openMarket')),
-      withdraw: (el: HTMLElement) => { const to = wallet.commander?.address; if (!to || wallet.state !== 'unlocked') { toast('서명하려면 지갑 잠금을 해제하세요.'); return; } sign(actions.providerWithdraw(el.dataset.id!, to)); },
-      delete: async (el: HTMLElement) => { if (await ask('공급자 삭제', `${el.dataset.id} 공급자를 삭제합니다. 진행 중인 계약에는 위약금이 적용될 수 있습니다.`, '삭제', 'jeok')) sign(actions.providerDelete(el.dataset.id!)); },
+      withdraw: (el: HTMLElement) => { const to = wallet.commander?.address; if (!to || wallet.state !== 'unlocked') { toast('계정 잠금을 해제하세요.'); return; } sign(actions.providerWithdraw(el.dataset.id!, to)); },
+      delete: (el: HTMLElement) => { sign(actions.providerDelete(el.dataset.id!)); },
       create: async (el: HTMLElement) => {
         const f = new FormData(el as HTMLFormElement);
         const num = (k: string) => Number(f.get(k));
-        // The chain takes whole µ per mW·block: say what the ask really lists at before signing.
+        // Rates are listed in whole steps: use the nearest one and say so, rather than asking.
         const rate = chainRate(num('rate'));
-        if (rate.changed && !await ask('요율 확인', `체인 요율은 µ/mW·블록 정수라서 입력한 ${n(num('rate'), 2)}이(가) 아니라 ${n(rate.listed, 2)} / kW·일로 등록됩니다. 이대로 등록할까요?`, '등록')) return;
+        if (rate.changed) toast(`요율은 가장 가까운 단위인 ${n(rate.listed, 2)} / kW·일로 등록됩니다`, 4000);
         sign(actions.providerCreate({
           substationId: String(f.get('sub')), rate: { denom: String(f.get('denom')), amount: rate.amount },
           accessPolicy: String(f.get('policy')) as 'openMarket', capacityMinimum: Math.round(num('cmin') * KW), capacityMaximum: Math.round(num('cmax') * KW),
@@ -286,7 +285,7 @@ const screen: Screen = {
       bankAmount: (el: HTMLElement) => { s.bankAmount = (el as HTMLInputElement).value; paint(); },
       convert: () => { const g = s.bank.find((b) => b.guild_id === s.bankGuild) ?? s.bank[0], a = parseGrams(s.bankAmount); if (g && a) sign(actions.bankConvert(g.guild_id, Math.round(a * 1e6), Math.floor((a / Number(g.ratio)) * 0.99 * 1e6))); },
       redeem: () => { const g = s.bank.find((b) => b.guild_id === s.bankGuild) ?? s.bank[0], a = parseGrams(s.bankAmount); if (g && a) sign(actions.bankRedeem(g.denom, Math.round(a * 1e6), Math.floor(a * Number(g.ratio) * 0.99 * 1e6))); },
-      mint: async () => { const g = s.bank.find((b) => b.guild_id === s.bankGuild) ?? s.bank[0], a = parseGrams(s.bankAmount); if (g && a && await ask('토큰 발행', `알파 ${n(a, 3)} g를 담보로 넣고 ${g.denom} ${n(a, 3)}를 발행합니다. 길드 운영 권한이 필요합니다.`, '발행', 'hwang')) sign(actions.bankMint(g.guild_id, Math.round(a * 1e6), Math.round(a * 1e6))); },
+      mint: () => { const g = s.bank.find((b) => b.guild_id === s.bankGuild) ?? s.bank[0], a = parseGrams(s.bankAmount); if (g && a) sign(actions.bankMint(g.guild_id, Math.round(a * 1e6), Math.round(a * 1e6))); },
       send: (el: HTMLElement) => void openTransfer({ denom: el.dataset.d }),
       sendFrom: (el: HTMLElement) => void openTransfer({ from: Number(el.dataset.i) }),
     };

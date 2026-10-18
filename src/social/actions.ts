@@ -1,5 +1,6 @@
 /* What object-card buttons do, wherever a card is drawn (chat, /o pages, share sheets, the bridge):
  * one delegated listener for every [data-ref] button. Also the rent sheet a provider card opens. */
+import { denomLabel } from '../api/chain';
 import { html, micro, n, toast, type Safe } from '../ui/dom';
 import { go } from '../router';
 import { openSheet } from '../ui/sheet';
@@ -17,7 +18,7 @@ import { sfx } from '../game/sfx';
 export function openRent(p: ProviderRow) {
   const min = Number(p.capacity_minimum) / KW, max = Number(p.capacity_maximum) / KW;
   let kw = Math.max(min, Math.min(max, 5)), days = Math.max(Number(p.duration_minimum) / BLOCKS_PER_DAY, Math.min(Number(p.duration_maximum) / BLOCKS_PER_DAY, 3)), busy = false;
-  const den = p.rate_denom === 'ualpha' ? 'α' : p.rate_denom.replace('uguild.', '토큰 ');
+  const den = p.rate_denom === 'ualpha' ? 'α' : denomLabel(p.rate_denom);
   const view = (): Safe => {
     const q = quoteLocal(p, Math.round(kw * KW), Math.round(days * BLOCKS_PER_DAY));
     return html`<p class="mono">${micro(perKwDay(p.rate_amount), 4)} ${den} / kW·일 · ${p.id}</p>
@@ -25,8 +26,8 @@ export function openRent(p: ProviderRow) {
       <label class="field"><span>기간 ${n(days, 1)}일</span><input type="range" name="days" min="${Number(p.duration_minimum) / BLOCKS_PER_DAY}" max="${Number(p.duration_maximum) / BLOCKS_PER_DAY}" step="0.5" value="${days}" data-act="days"></label>
       <div class="quote-box"><span>선결제 (에스크로)</span><b class="mono c-hwang">${micro(q.total, 4)} ${den}</b></div>
       ${q.errors.map((e) => html`<div class="notice err">${e}</div>`)}
-      ${wallet.state !== 'unlocked' ? html`<div class="notice">서명하려면 지갑 잠금을 해제하세요.</div>` : ''}
-      <div class="sheet-actions"><button class="btn ghost" data-act="close">취소</button><button class="btn gold" data-act="rent" ${!q.valid || busy || wallet.state !== 'unlocked' ? 'disabled' : ''}>${busy ? '서명 중…' : `${micro(q.total, 2)} ${den} 결제하고 임대`}</button></div>`;
+      ${wallet.state !== 'unlocked' ? html`<div class="notice">계정 잠금을 해제하세요.</div>` : ''}
+      <div class="sheet-actions"><button class="btn ghost" data-act="close">취소</button><button class="btn gold" data-act="rent" ${!q.valid || busy || wallet.state !== 'unlocked' ? 'disabled' : ''}>${busy ? '처리 중…' : `${micro(q.total, 2)} ${den} 결제하고 임대`}</button></div>`;
   };
   const handlers = {
     kw: (el: HTMLElement) => { kw = Number((el as HTMLInputElement).value); s.paint(view()); },

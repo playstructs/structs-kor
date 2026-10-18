@@ -44,7 +44,7 @@ const screen: Screen = {
     const pid = needSession(root, '통신');
     if (!pid) return;
     if (!matrix.possible) {
-      mount(root, html`<section class="card accent" style="max-width:560px;margin:40px auto"><h1 style="font-size:28px">지갑 잠금 해제 필요</h1><p class="note">채팅은 지갑 서명으로 로그인합니다. 비밀번호는 필요 없습니다.</p><a class="btn primary" href="${href('/login')}">잠금 해제</a></section>`);
+      mount(root, html`<section class="card accent" style="max-width:560px;margin:40px auto"><h1 style="font-size:28px">계정 잠금 해제 필요</h1><p class="note">채팅은 이 기기의 사령관 계정으로 바로 접속합니다. 비밀번호는 필요 없습니다.</p><a class="btn primary" href="${href('/login')}">잠금 해제</a></section>`);
       return;
     }
     let active: string | null = null, err = '', filter = '';
@@ -325,7 +325,7 @@ const screen: Screen = {
       form.querySelector<HTMLButtonElement>('.comms-send')!.textContent = editing ? '수정' : '전송';
       if (guard) {
         replyEl.classList.add('on', 'danger');
-        replyEl.innerHTML = `<div role="alertdialog" aria-label="복구 문구 경고"><b>복구 문구로 보이는 메시지입니다.</b> SN.CORP와 길드 운영진은 절대 복구 키를 요구하지 않습니다. <button type="button" class="btn danger sm" data-guard="cancel" autofocus>취소 (권장)</button> <button type="button" class="btn outline-danger sm" data-guard="force">그래도 보내기</button></div>`;
+        replyEl.innerHTML = `<div role="alertdialog" aria-label="백업 코드 경고"><b>백업 코드로 보이는 메시지입니다.</b> SN.CORP와 길드 운영진은 절대 복구 키를 요구하지 않습니다. <button type="button" class="btn danger sm" data-guard="cancel" autofocus>취소 (권장)</button> <button type="button" class="btn outline-danger sm" data-guard="force">그래도 보내기</button></div>`;
         replyEl.querySelector<HTMLElement>('[data-guard=cancel]')?.focus();
       } else replyEl.classList.remove('danger');
     };

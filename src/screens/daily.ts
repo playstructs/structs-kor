@@ -58,7 +58,7 @@ const screen: Screen = {
       const days: string[] = [];
       for (let k = 0, x = today; k < 14 && x >= DAILY_EPOCH; k++, x = dayBefore(x)) days.push(x);
       return html`
-      ${kakao ? html`<div class="dl-banner"><span>카카오톡 안에서는 일부 기능(설치, 지갑)이 제한됩니다.</span><a class="btn gold" href="${kakaoExternal(location.href)}">기본 브라우저로 열기</a></div>` : ''}
+      ${kakao ? html`<div class="dl-banner"><span>카카오톡 안에서는 일부 기능(설치, 계정)이 제한됩니다.</span><a class="btn gold" href="${kakaoExternal(location.href)}">기본 브라우저로 열기</a></div>` : ''}
       ${offer ? html`<div class="dl-banner"><span>이 기록을 데스크톱 앱에서 열까요? 여기서도 그대로 볼 수 있습니다.</span>
         <label class="dl-remember"><input type="checkbox" data-act="remember" ${remember ? 'checked' : ''}> 선택 기억</label>
         <button class="btn primary" data-act="toApp">데스크톱 앱에서 열기</button><button class="btn ghost" data-act="stayWeb">여기서 보기</button></div>` : ''}
@@ -77,19 +77,19 @@ const screen: Screen = {
             <div class="stat"><small>출격</small><strong>${mine.plays}회</strong></div>
             <div class="stat"><small>연속 출격</small><strong>${streak ? `🔥 ${streak}일` : '—'}</strong></div>
           </div>
-          ${best ? html`<div class="dl-best"><div><span class="label">내 최고 기록</span><b>${verdict(best.winner)} ${best.winner === 'player' ? starsOf(best.stars) : ''}</b><span class="mono dim">${best.blocks}블록 · ${won(best.score)}점</span></div>${grid(best)}
+          ${best ? html`<div class="dl-best"><div><span class="label">내 최고 기록</span><b>${verdict(best.winner)} ${best.winner === 'player' ? starsOf(best.stars) : ''}</b><span class="mono dim">${best.blocks}턴 · ${won(best.score)}점</span></div>${grid(best)}
             <div class="dl-share"><button class="btn gold" data-act="share">결과 공유</button><button class="btn ghost" data-act="copyLink">링크 복사</button></div></div>` : ''}
           <label class="field"><span>호출부호 · 공유 링크에 담기는 이름</span><input class="input" maxlength="16" value="${dailySim.name}" placeholder="예: 청룡사령관" data-act="name" data-on="change"></label>
-          <details class="dl-rules"><summary>점수 계산</summary><p class="note">승리 1,000 + 별마다 150 + 격파 1척마다 25 + 남은 내구도 최대 300 + 빨리 끝낼수록 최대 200. 패배와 무승부는 격파와 적에게 준 피해로 매깁니다(무승부 +250). 별: 승리 · 손실 ⅓ 이하 · 60블록 안에 승리.</p></details>
+          <details class="dl-rules"><summary>점수 계산</summary><p class="note">승리 1,000 + 별마다 150 + 격파 1척마다 25 + 남은 내구도 최대 300 + 빨리 끝낼수록 최대 200. 패배와 무승부는 격파와 적에게 준 피해로 매깁니다(무승부 +250). 별: 승리 · 손실 ⅓ 이하 · 60턴 안에 승리.</p></details>
         </section>
         <section class="card game-panel">
           ${shared ? html`<div class="dl-shared"><span class="label c-hwang">공유된 기록 · 재검증 완료 ✓</span>
-            <h2>${shared.name || '익명'}의 기록</h2><b>${verdict(shared.winner)} ${shared.winner === 'player' ? starsOf(shared.stars) : ''} · ${shared.blocks}블록 · ${won(shared.score)}점</b>${grid(shared)}
+            <h2>${shared.name || '익명'}의 기록</h2><b>${verdict(shared.winner)} ${shared.winner === 'player' ? starsOf(shared.stars) : ''} · ${shared.blocks}턴 · ${won(shared.score)}점</b>${grid(shared)}
             <div class="dl-share"><a class="btn primary" href="${replayHref(shared, `${shared.name || '익명'} · 일일 교전 #${dailyNo(day)}`)}">▶ 전투 보기</a><a class="btn danger" href="${href('/sim?daily=' + day)}">이 기록에 도전</a></div></div>` : ''}
           <h2>이날의 순위</h2>
           ${board.length ? html`<ol class="dl-board">${board.map((r, i) => html`<li class="${'me' in r ? 'me' : ''}"><span class="rk mono">${i + 1}</span><b>${r.name}</b><span class="mono">${r.winner === 'player' ? starsOf(r.stars) : verdict(r.winner)}</span><span class="mono c-hwang">${won(r.score)}</span></li>`)}</ol>`
             : html`<p class="empty">아직 기록이 없습니다. 출격하고 친구에게 링크를 보내 보세요. 받은 기록은 여기에 쌓입니다.</p>`}
-          ${ladder?.ladder.length ? html`<h2>길드 순위</h2><ol class="dl-board">${ladder.ladder.map((r, i) => html`<li><span class="rk mono">${i + 1}</span><b>${r.username}</b><span class="mono">${starsOf(r.stars)}</span><span class="mono dim">${r.blocks}블록</span></li>`)}</ol>` : ''}
+          ${ladder?.ladder.length ? html`<h2>길드 순위</h2><ol class="dl-board">${ladder.ladder.map((r, i) => html`<li><span class="rk mono">${i + 1}</span><b>${r.username}</b><span class="mono">${starsOf(r.stars)}</span><span class="mono dim">${r.blocks}턴</span></li>`)}</ol>` : ''}
           <h2>지난 작전</h2>
           <div class="dl-archive">${days.map((x) => { const b = dailySim.day(x).best; return html`<a class="${x === day ? 'on' : ''} ${b ? 'played' : ''}" href="${href('/daily/' + x)}"><span class="mono">#${dailyNo(x)}</span><small>${x.slice(5).replace('-', '/')}</small><b>${b ? (b.winner === 'player' ? starsOf(b.stars) : verdict(b.winner)) : '—'}</b></a>`; })}</div>
         </section>

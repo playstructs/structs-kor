@@ -404,7 +404,7 @@ export const STEPS: Record<string, Step> = {
       const el = els.nth(Math.floor(Math.random() * n));
       const href = await el.getAttribute('href').catch(() => null);
       const text = (await el.innerText().catch(() => '')).trim();
-      if ((href && (FORBIDDEN.test(href) || /^https?:/.test(href) && !href.startsWith(h.target.origin))) || /입대|로그인|지갑|서명|데모 종료/.test(text)) continue; // ending the demo would leave the rest of the run with no base
+      if ((href && (FORBIDDEN.test(href) || /^https?:/.test(href) && !href.startsWith(h.target.origin))) || /입대|로그인|지갑|계정|서명|데모 종료|보내기|송금/.test(text)) continue; // ending the demo would leave the rest of the run with no base
       await el.click({ timeout: 1500, force: true, clickCount: Math.random() < 0.2 ? 2 : 1 }).catch(() => {});
       clicks++;
       if (Math.random() < 0.3) await h.page.keyboard.press(['Escape', 'e', '1', '2', 'v', 'r', 'z', 'q', 'a', 's'][Math.floor(Math.random() * 10)]);

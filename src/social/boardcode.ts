@@ -9,7 +9,7 @@ export const KINDS: Record<Kind, { name: string; icon: string; w: 1 | 2 | 3 }> =
   obj: { name: '객체 카드', icon: 'icon-info', w: 1 }, me: { name: '내 기지', icon: 'icon-cmd-post', w: 1 }, market: { name: '전력 시장', icon: 'icon-transfers', w: 2 },
   banks: { name: '길드 은행', icon: 'icon-guild-directory', w: 1 }, armada: { name: '레플리칸트', icon: 'icon-member', w: 1 }, raids: { name: '습격 감시', icon: 'icon-raid', w: 1 },
   comms: { name: '통신', icon: 'icon-phone', w: 1 }, feed: { name: '행성 기록', icon: 'icon-combat-log', w: 2 }, leaders: { name: '순위', icon: 'icon-success', w: 1 },
-  duty: { name: '근무 일지', icon: 'icon-computer', w: 1 }, watch: { name: '감시 목록', icon: 'icon-detected', w: 3 }, tx: { name: '거래 기록', icon: 'icon-outgoing', w: 1 },
+  duty: { name: '근무 일지', icon: 'icon-computer', w: 1 }, watch: { name: '감시 목록', icon: 'icon-detected', w: 3 }, tx: { name: '명령 기록', icon: 'icon-outgoing', w: 1 },
 };
 /* A board travels as a code: JSON → base64url, prefixed B. Checked on the way in. */
 export const encodeBoard = (b: Board) => 'B' + btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(b)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

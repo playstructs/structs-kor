@@ -36,7 +36,7 @@ const VERBS: Verb[] = [
   { word: '규칙', aliases: ['orders', 'doctrine', 'policy', '자동'], label: '복무 규칙 · 자동화', hint: '규칙', icon: 'icon-computer', arg: 'none', run: () => go('/replicants?tab=orders') },
   { word: '시장', aliases: ['market', 'mkt', 'offers', '구매'], label: '전력 시장', hint: '시장', icon: 'icon-transfers', arg: 'none', run: () => go('/market') },
   { word: '은행', aliases: ['bank', 'mint', 'redeem', 'gt', '토큰'], label: '길드 은행 · 토큰 교환', hint: '은행', icon: 'icon-guild-directory', arg: 'none', run: () => go('/market?tab=bank') },
-  { word: '지갑', aliases: ['wallet', 'inventory', '잔액'], label: '내 지갑', hint: '지갑', icon: 'icon-key', arg: 'none', run: () => go('/market?tab=wallet') },
+  { word: '자산', aliases: ['지갑', 'wallet', 'inventory', '잔액'], label: '내 자산', hint: '자산', icon: 'icon-key', arg: 'none', run: () => go('/market?tab=wallet') },
   { word: '계약', aliases: ['book', 'agreements', 'contracts'], label: '내 전력 계약', hint: '계약', icon: 'icon-transfers', arg: 'none', run: () => go('/market?tab=mine') },
   { word: '통계', aliases: ['stats', 'universe', 'galaxy stats', '랭킹', 'leaderboard'], label: '은하 통계 · 랭킹', hint: '통계', icon: 'icon-combat-log', arg: 'none', run: () => go('/stats') },
   { word: '표적', aliases: ['targets', 'war', 'raid', 'scout', '상황실', '정찰'], label: '작전 상황실 · 표적', hint: '표적', icon: 'icon-raid', arg: 'none', run: () => go('/war') },

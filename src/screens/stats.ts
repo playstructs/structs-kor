@@ -63,7 +63,7 @@ const screen: Screen = {
         <div class="stat"><small>블록 높이</small><strong class="mono">${block ? '#' + n(block.height) : '—'}</strong></div>
       </div></section>
       <section class="card game-panel"><h2>은하 생존 신호</h2>
-        <div class="live-row"><span class="dot ${!block ? '' : lag > 20 ? 'stalled' : 'live'}"></span><b>${!block ? '알 수 없음' : lag > 20 ? `인덱서가 ${n(lag)}블록 뒤처짐` : '정상 — 인덱서가 체인을 따라가고 있습니다'}</b>
+        <div class="live-row"><span class="dot ${!block ? '' : lag > 20 ? 'stalled' : 'live'}"></span><b>${!block ? '알 수 없음' : lag > 20 ? `인덱서가 ${n(lag)}블록 뒤처짐` : '정상 — 은하 정보가 실시간으로 갱신되고 있습니다'}</b>
           <span class="end mono dim">${rate != null ? `${n(rate * 60, 1)} 블록/분` : '측정 중…'} · 지연 ${n(lag)}블록</span></div>
         <div class="spark">${heights.slice(-30).map(([, h], i, a) => { const d = i ? h - a[i - 1][1] : 0; return html`<i style="height:${Math.min(100, 20 + d * 20)}%" title="+${d}"></i>`; })}</div>
       </section>

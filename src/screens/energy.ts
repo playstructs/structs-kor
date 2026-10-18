@@ -72,9 +72,9 @@ function infusionPanel(e: Energy, inf: Inf, canSign: boolean): Safe {
     <form class="inf-form" data-act="infuseReal" data-on="submit">
       <label class="field"><span>리액터</span><input class="input mono" name="reactor" value="${inf.reactor}" placeholder="3-…" data-act="infReactor" required></label>
       <label class="field"><span>알파 (g)</span><input class="input mono" name="amount" value="${inf.amount}" inputmode="decimal" placeholder="1" data-act="infAmount" required></label>
-      <button class="btn gold" ${canSign && !inf.busy ? '' : 'disabled'}>${inf.busy ? '서명 중…' : '주입'}</button>
+      <button class="btn gold" ${canSign && !inf.busy ? '' : 'disabled'}>${inf.busy ? '처리 중…' : '주입'}</button>
     </form>
-    <p class="note">MsgReactorInfuse — 알파는 리액터 검증인에게 위임되어 용량이 되고, 회수(디퓨즈)는 체인의 해제 기간이 지나야 돌아옵니다.</p></div>`;
+    <p class="note">알파를 리액터에 주입하면 그만큼 전력 용량이 생깁니다. 회수하면 정해진 대기 시간이 지난 뒤에 돌아옵니다.</p></div>`;
 }
 
 function view(p: PlayerRow, e: Energy, structs: StructRow[], dropKw: number, cut: Set<string>, offline: boolean, isDemo: boolean, inf: Inf = { reactor: '', amount: '', busy: false }): Safe {
@@ -126,12 +126,12 @@ function view(p: PlayerRow, e: Energy, structs: StructRow[], dropKw: number, cut
           <button class="btn ghost" data-act="infuse" data-g="5" style="justify-content:space-between" ${demo.state.alpha < 5 ? 'disabled' : ''}>알파 5 g 주입 <span class="mono">+5 kW</span></button>` : infusionPanel(e, inf, canSign)}
         <a class="btn ghost" href="${href('/market')}" style="justify-content:space-between">여유 ${watts(spare)} 판매 <span class="mono c-cheong">거래소 →</span></a>
       </div>
-      <p class="note">부하가 용량을 넘으면 체인이 외부 할당을 생성 순서대로 삭제하고, 손실은 하위로 연쇄됩니다 (GridCascade).</p>
+      <p class="note">부하가 용량을 넘으면 가장 오래된 외부 할당부터 끊기고, 그 손실이 아래쪽으로 이어집니다.</p>
     </section>
   </div>
 
   <section class="card game-panel"><div class="card-head"><h2>구조체 전원</h2><span class="dim" style="font-size:13px">오프라인이면 건설·공격·채굴 불가 · 복구 행동은 가능</span></div>
-    ${canSign ? '' : html`<div class="notice">전원을 바꾸려면 지갑 잠금을 해제하세요 (트랜잭션 서명).</div>`}
+    ${canSign ? '' : html`<div class="notice">전원을 바꾸려면 계정 잠금을 해제하세요.</div>`}
     <div class="switches">
       ${live.map((s) => {
         const on = (s.status & ONLINE) !== 0;
@@ -169,7 +169,7 @@ const screen: Screen = {
     };
     const sign = (pr: Promise<string>, done: string) => {
       dist.busy = true; paint();
-      pr.then((h) => { sfx.play('confirm'); toast(`${done} · ${h.slice(0, 10)}…`); setTimeout(() => void load(), 6000); })
+      pr.then(() => { sfx.play('confirm'); toast(done); setTimeout(() => void load(), 6000); })
         .catch((err) => { sfx.play('error'); toast('실패: ' + (err as Error).message, 5000); })
         .finally(() => { dist.busy = false; paint(); });
     };
@@ -189,7 +189,7 @@ const screen: Screen = {
         if (isDemo) { const m = demo.toggle(id); if (m) { sfx.play('error'); toast(m); } else { sfx.play(on ? 'click' : 'confirm'); load(); } return; }
         (el as HTMLButtonElement).disabled = true;
         (on ? actions.structDeactivate(id) : actions.structActivate(id))
-          .then((h) => { sfx.play('confirm'); toast(`전송됨 · ${h.slice(0, 10)}…`); })
+          .then(() => { sfx.play('confirm'); toast('명령을 내렸습니다'); })
           .catch((err) => { sfx.play('error'); toast('실패: ' + (err as Error).message, 5000); })
           .finally(() => { (el as HTMLButtonElement).disabled = false; });
       },
@@ -213,8 +213,8 @@ const screen: Screen = {
         try {
           const v = await validatorOf(inf.reactor);
           if (!v) throw new Error(`${inf.reactor}의 검증인을 찾지 못했습니다`);
-          const h = await actions.reactorInfuse(v, Math.round(g * 1e6));
-          sfx.play('coin'); notify('리액터 주입', `알파 ${g} g → ${inf.reactor} · ${h.slice(0, 10)}…`, 'hwang', null);
+          await actions.reactorInfuse(v, Math.round(g * 1e6));
+          sfx.play('coin'); notify('리액터 주입', `알파 ${g} g → ${inf.reactor}`, 'hwang', null);
           setTimeout(() => void load(), 6000);
         } catch (err) { sfx.play('error'); toast('주입 실패: ' + (err as Error).message, 5000); }
         inf.busy = false; paint();
@@ -227,8 +227,8 @@ const screen: Screen = {
         try {
           const v = await validatorOf(id);
           if (!v) throw new Error('검증인을 찾지 못했습니다');
-          const h = await actions.reactorDefuse(v, Math.round(Math.min(g, fuel) * 1e6));
-          sfx.play('confirm'); toast(`회수 시작 · ${h.slice(0, 10)}…`);
+          await actions.reactorDefuse(v, Math.round(Math.min(g, fuel) * 1e6));
+          sfx.play('confirm'); toast('회수를 시작했습니다');
           setTimeout(() => void load(), 6000);
         } catch (err) { toast('회수 실패: ' + (err as Error).message, 5000); }
       },

@@ -46,7 +46,7 @@ export async function replicate(i: number, role: Role): Promise<void> {
   const s = wallet.signMessage(i, `GUILD${GUILD_ID}ADDRESS${k.address}NONCE0`);
   await guildApi.signup({ primary_address: k.address, signature: s.signature, pubkey: s.pubkey, guild_id: GUILD_ID, username: name });
   setDoctrine({ roles: { ...doctrine().roles, [`idx:${i}`]: role } });
-  duty(`#${i} ${name} 복제 신청 — 체인 기록 대기`, 'cheong');
+  duty(`#${i} ${name} 복제 신청 — 사령부 등록 대기`, 'cheong');
 }
 
 /** Send every replicant's alpha above `above` g home to the commander, keeping `keep` g each. */

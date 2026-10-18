@@ -4,6 +4,7 @@
  * chain's RPC. This site asks the Guild API first (REQ-TX-1/2/3: account sequence, broadcast,
  * result) so a player's browser only ever talks to their guild, and falls back to the chain's LCD.
  * Proto encoding: src/wallet/{proto,encode,schema.gen}.ts, from structs-xyz. */
+import { playerMessage } from './errors';
 import { endpoints } from '../config';
 import { wallet } from '../wallet/wallet';
 import { Writer, any, coin } from '../wallet/proto';
@@ -81,14 +82,14 @@ export function act(name: string, value: MsgValue, index = 0): Promise<string> {
 }
 async function send(name: string, value: MsgValue, index: number): Promise<string> {
   // The dev mock is a pretend guild: nothing it shows may be signed against the real chain.
-  if (MOCK) throw new Error('모의 모드: 체인 거래는 보내지 않습니다');
+  if (MOCK) throw new Error('모의 모드: 실제 명령은 보내지 않습니다');
   const key = wallet.key(index);
   const [chain, fetched] = await Promise.all([chainId(), account(key.address)]);
   const local = nextSeq.get(key.address);
   const seq = local !== undefined && local > BigInt(fetched.sequence) ? local : BigInt(fetched.sequence);
   const r = await broadcastBytes(signTx(key, [{ typeUrl: typeUrlOf(name), value: { creator: key.address, ...value } }], chain, { ...fetched, sequence: String(seq) }));
   // A refusal at broadcast (sync mode) consumed no sequence: trust the chain's count next time.
-  if (r.code) { nextSeq.delete(key.address); noteRefused(name, index, r.raw_log || `체인 오류 ${r.code}`); throw new Error(r.raw_log || `체인 오류 ${r.code}`); }
+  if (r.code) { nextSeq.delete(key.address); noteRefused(name, index, r.raw_log || `code ${r.code}`); throw new Error(playerMessage(r.raw_log || `code ${r.code}`)); }
   nextSeq.set(key.address, seq + 1n);
   track(r.txhash, name, index, txResult);
   return r.txhash;
@@ -99,7 +100,7 @@ async function send(name: string, value: MsgValue, index: number): Promise<strin
  * and sequence line up and the message's own checks pass. Simulation does NOT verify the signature
  * (the SDK skips that), so only a real broadcast proves signing. Each step is reported to `step`. */
 export async function simulate(name: string, value: MsgValue, step: (what: string, detail: string) => void, index = 0): Promise<{ gasUsed: string }> {
-  if (MOCK) throw new Error('모의 모드에서는 체인 점검을 하지 않습니다');
+  if (MOCK) throw new Error('모의 모드에서는 연결 점검을 하지 않습니다');
   const key = wallet.key(index);
   const chain = await chainId(); step('체인', chain);
   const fetched = await account(key.address);

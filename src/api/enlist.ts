@@ -30,7 +30,7 @@ export async function enlist(onStep: (s: EnlistStep) => void, signal: { stopped:
   onStep('key');
   if (wallet.state === 'empty') await wallet.createDevice();
   else if (wallet.state === 'locked') await wallet.restore();
-  if (wallet.state !== 'unlocked') throw new Error('이 브라우저의 지갑이 잠겨 있습니다. 로그인 화면에서 잠금을 해제하세요.');
+  if (wallet.state !== 'unlocked') throw new Error('이 브라우저의 계정이 잠겨 있습니다. 로그인 화면에서 잠금을 해제하세요.');
 
   const k = wallet.key(0);
   let pid = wallet.commander?.playerId ?? (await guildApi.playerIdFor(k.address, GUILD_ID));
@@ -51,7 +51,7 @@ export async function enlist(onStep: (s: EnlistStep) => void, signal: { stopped:
       pid = await guildApi.playerIdFor(k.address, GUILD_ID).catch(() => null);
     }
     if (signal.stopped) return;
-    if (!pid) throw new Error('길드 가입이 아직 체인에 기록되지 않았습니다. 잠시 후 다시 시도하세요.');
+    if (!pid) throw new Error('사령부 등록이 아직 끝나지 않았습니다. 잠시 후 다시 시도하세요.');
   }
 
   wallet.setPlayerId(0, pid);

@@ -2,6 +2,7 @@
  * objectives, defence by ambit, live feed and a hotkey command bar around it. Live data comes from one
  * read (REQ-AGG-1) refreshed by GRASS events; the demo base (src/game/demo.ts) feeds the same view
  * block by block, raids included. */
+import { playerMessage } from '../api/errors';
 import type { Screen } from '../router';
 import { share } from '../social/share';
 import { baseSituation } from '../social/situations';
@@ -45,7 +46,7 @@ function workOf(id: string): BoardWork | null {
   if (!t || t.kind === 'RAID') return null;
   const done = t.status === 'ready' || t.status === 'submitting' || t.status === 'sent';
   const wait = t.best ? blocksUntil(t, t.best.zeros, pow.height) : Infinity, age = Math.max(0, pow.height - t.blockStart);
-  const label = t.status === 'ready' ? '제출 대기' : t.status === 'submitting' || t.status === 'sent' ? '전송 중' : t.status === 'failed' ? '재시도' : Number.isFinite(wait) ? `${wait}블록` : pow.running ? '탐색 중' : '해시 정지';
+  const label = t.status === 'ready' ? '마무리 대기' : t.status === 'submitting' || t.status === 'sent' ? '마무리 중' : t.status === 'failed' ? '재시도' : Number.isFinite(wait) ? `${Math.max(1, Math.round((wait * BLOCK_SECONDS) / 60))}분` : pow.running ? '진행 중' : '작업 정지';
   return { kind: t.kind, label, p: done ? 1 : Number.isFinite(wait) ? age / Math.max(1, age + wait) : null, done };
 }
 
@@ -114,7 +115,7 @@ const screen: Screen = {
           // 공격 targeting, during a real raid: the selected struct fires on the clicked raider.
           if (mode === 'attack' && !isDemo && liveRaiders.length && panel?.kind === 'struct') {
             const me = panel.id;
-            if (wallet.state !== 'unlocked') { toast('공격하려면 지갑 잠금을 해제하세요', 3000); return; }
+            if (wallet.state !== 'unlocked') { toast('공격하려면 계정 잠금을 해제하세요', 3000); return; }
             mode = null; markRaiders(); paint();
             signOnce(`attack|${me}`, () => actions.attack(me, id));
             return;
@@ -198,7 +199,7 @@ const screen: Screen = {
       const pips = (k: number, cls: string) => html`<span class="dp ${cls}">${Array.from({ length: Math.min(k, 6) }, () => html`<i></i>`)}${k > 6 ? html`<small>+${k - 6}</small>` : ''}${k ? '' : html`<small>0</small>`}</span>`;
       const open = rows.filter((x) => x.st[0] === 'open'), blind = rows.filter((x) => x.st[0] === 'blind');
       return html`<section class="card game-panel defence"><div class="card-head"><h2>방어 현황</h2><span class="end label ${raiding ? 'c-jeok' : 'c-cheong'}">${raiding ? `적 ${foes.length}기` : '이상 없음'}</span></div>
-        <div class="def-sum"><span title="행성 보호막">보호막 <b class="${(sh ?? 100) < 35 ? 'bad' : ''}">${sh == null ? '—' : sh + '%'}</b></span><span title="정제되지 않은 광석은 습격에 빼앗깁니다">노출 광석 <b class="${raiding && ore ? 'bad' : ore ? 'warn' : ''}">${n(ore)}</b></span>${r?.eta ? html`<span>도착 <b class="bad">${r.eta}블록</b></span>` : ''}</div>
+        <div class="def-sum"><span title="행성 보호막">보호막 <b class="${(sh ?? 100) < 35 ? 'bad' : ''}">${sh == null ? '—' : sh + '%'}</b></span><span title="정제되지 않은 광석은 습격에 빼앗깁니다">노출 광석 <b class="${raiding && ore ? 'bad' : ore ? 'warn' : ''}">${n(ore)}</b></span>${r?.eta ? html`<span>도착 <b class="bad">${playTime(r.eta)}</b></span>` : ''}</div>
         <table class="def-tab"><thead><tr><th scope="col">구역</th><th scope="col">적</th><th scope="col" title="이 구역을 칠 수 있는 가동 중 무기">아군 화력</th><th scope="col"><span class="sr">상태</span></th></tr></thead>
           <tbody>${rows.map((x) => html`<tr class="${x.st[0]}"><th scope="row"><b>${AMBIT[x.a]}</b><small>${AMBIT_EN[x.a]}</small></th><td>${pips(x.foe, 'foe')}</td><td>${pips(x.guns, 'gun')}</td><td><span class="def-st ${x.st[0]}">${x.st[1]}</span></td></tr>`)}</tbody></table>
         ${open.length ? html`<p class="note c-jeok">${open.map((x) => AMBIT[x.a]).join('·')}의 적을 칠 무기가 없습니다. 그 구역을 겨누는 구조체를 켜거나 지으세요.</p>`
@@ -227,25 +228,31 @@ const screen: Screen = {
         <p class="note">순위 = 알파 + 광석 가치 + 구조체 + 연구. 습격은 내 함대로 직접 출격합니다.</p></section>`;
     };
 
-    /* 작업 증명: the work this commander owes the chain, hashed here and sent when it qualifies. */
+    /* 작업: the work this commander owes the chain (builds, mining, refining, raids), hashed here and sent
+     * when it qualifies. Players see it as construction progress and time left. */
     const KIND_KO: Record<string, string> = { BUILD: '건설', MINE: '채굴', REFINE: '정제', RAID: '습격' };
+    /** Minutes of play for a wait in blocks ("약 25분", "약 1.5시간"). */
+    const playTime = (blocks: number) => { const min = Math.round((blocks * BLOCK_SECONDS) / 60); return min >= 60 ? `약 ${(min / 60).toFixed(1)}시간` : `약 ${Math.max(1, min)}분`; };
+    /** What a work row is about, by name: the struct's type, or the fleet for a raid. */
+    const workName = (t: { kind: string; objectId: string }) => t.kind === 'RAID' ? '함대 습격' : STRUCT_TYPE[d?.structs.find((x) => x.id === t.objectId)?.type ?? 0] ?? t.objectId;
     const powCard = (): Safe => {
       const tasks = [...pow.tasks.values()];
       const canSign = wallet.state === 'unlocked';
-      return html`<section class="card game-panel pow"><div class="card-head"><h2>작업 증명</h2><span class="end mono ${pow.running ? 'c-cheong' : 'faint'}">${pow.running ? `● ${n(Math.round(pow.rate))} H/s · ${pow.threads}스레드` : '대기'}</span></div>
+      return html`<section class="card game-panel pow"><div class="card-head"><h2>작업</h2><span class="end mono ${pow.running ? 'c-cheong' : 'faint'}" title="${pow.running ? `${n(Math.round(pow.rate))} H/s · ${pow.threads}스레드` : ''}">${pow.running ? '● 작업 중' : '정지'}</span></div>
         ${tasks.length ? tasks.map((t) => {
-          const need = pow.required(t), have = t.best?.zeros ?? 0;
-          const wait = t.best ? blocksUntil(t, have, pow.height) : Infinity;
-          const label = t.status === 'sent' ? '전송됨' : t.status === 'submitting' ? '전송 중…' : t.status === 'ready' ? '제출 가능' : t.status === 'failed' ? '재시도 대기' : t.status === 'hashing' ? (Number.isFinite(wait) ? `약 ${wait}블록 후` : '탐색 중') : '대기';
-          return html`<div class="pow-task ${t.status}"><div class="mission-top"><b>${KIND_KO[t.kind] ?? t.kind} · <span class="mono">${t.objectId}</span></b><span class="mono ${t.status === 'ready' || t.status === 'sent' ? 'c-cheong' : 'dim'}">${label}</span></div>
-            <div class="pow-bar" title="필요 0의 개수 ${need} · 찾은 최고 ${have}"><i style="width:${Math.min(100, (have / Math.max(1, need)) * 100)}%"></i></div>
-            <div class="mission-bot"><span class="mono dim">선행 0 ${have}개 / 필요 ${need}개 · ${n(t.hashes)} 해시</span>${(t.status === 'ready' && !pow.autoSubmit) || (t.status === 'failed' && (t.tries ?? 0) >= 3) ? html`<button class="btn primary" style="min-height:30px;padding:0 10px" data-act="powSubmit" data-id="${t.id}" ${canSign ? '' : 'disabled'}>${t.status === 'failed' ? '다시 제출' : '제출'}</button>` : ''}</div>
-            ${t.error ? html`<span class="c-jeok" style="font-size:12px">${t.error.slice(0, 80)}</span>` : ''}</div>`;
-        }) : html`<p class="note">진행 중인 작업이 없습니다. 건설·채굴·정제를 시작하면 여기서 증명을 계산합니다.</p>`}
+          const have = t.best?.zeros ?? 0;
+          const wait = t.best ? blocksUntil(t, have, pow.height) : Infinity, age = Math.max(0, pow.height - t.blockStart);
+          const pct = t.status === 'ready' || t.status === 'submitting' || t.status === 'sent' ? 100 : Number.isFinite(wait) ? Math.round((age / Math.max(1, age + wait)) * 100) : 0;
+          const label = t.status === 'sent' ? '완료' : t.status === 'submitting' ? '마무리 중…' : t.status === 'ready' ? '마무리 가능' : t.status === 'failed' ? '재시도 대기' : t.status === 'hashing' ? (Number.isFinite(wait) ? `${playTime(wait)} 남음` : '진행 중') : '대기';
+          return html`<div class="pow-task ${t.status}"><div class="mission-top"><b>${KIND_KO[t.kind] ?? t.kind} · ${workName(t)}</b><span class="mono ${t.status === 'ready' || t.status === 'sent' ? 'c-cheong' : 'dim'}">${label}</span></div>
+            <div class="pow-bar" title="진행 ${pct}%"><i style="width:${pct}%"></i></div>
+            <div class="mission-bot"><span class="mono dim">진행 ${pct}%</span>${(t.status === 'ready' && !pow.autoSubmit) || (t.status === 'failed' && (t.tries ?? 0) >= 3) ? html`<button class="btn primary" style="min-height:30px;padding:0 10px" data-act="powSubmit" data-id="${t.id}" ${canSign ? '' : 'disabled'}>${t.status === 'failed' ? '다시 시도' : '마무리'}</button>` : ''}</div>
+            ${t.error ? html`<span class="c-jeok" style="font-size:12px">${playerMessage(t.error)}</span>` : ''}</div>`;
+        }) : html`<p class="note">진행 중인 작업이 없습니다. 건설·채굴·정제를 시작하면 여기서 진행됩니다.</p>`}
         ${tasks.length ? html`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <button class="btn ${pow.running ? 'ghost' : 'primary'}" data-act="powToggle">${pow.running ? '해시 정지' : '해시 시작'}</button>
-          <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-act="powAuto" ${pow.autoSubmit ? 'checked' : ''}> 자동 제출</label></div>
-          ${canSign ? '' : html`<p class="note">증명을 제출하려면 지갑 잠금을 해제하세요. 해시 계산은 지금도 할 수 있습니다.</p>`}` : ''}
+          <button class="btn ${pow.running ? 'ghost' : 'primary'}" data-act="powToggle">${pow.running ? '작업 정지' : '작업 시작'}</button>
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-act="powAuto" aria-label="자동 마무리" ${pow.autoSubmit ? 'checked' : ''}> 자동 마무리</label></div>
+          ${canSign ? '' : html`<p class="note">공사를 마무리하려면 계정 잠금을 해제하세요. 작업은 지금도 진행됩니다.</p>`}` : ''}
       </section>`;
     };
     const paintPow = () => { const h = root.querySelector('#pow-host'); if (h) h.innerHTML = powCard().s; };
@@ -305,7 +312,7 @@ const screen: Screen = {
               ${i < 9 ? html`<kbd>${String(i + 1)}</kbd>` : ''}<span class="lbl">${name}</span>
               <small class="val"><span class="pips" aria-hidden="true">${Array.from({ length: 5 }, (_, k) => html`<i class="${short ? 'over' : k < on ? 'on' : ''}"></i>`)}</span><span>${need.toFixed(1)}kW</span></small></span></button>`;
           })}${escKey('취소', true)}</div></div>
-          ${isDemo || wallet.state === 'unlocked' ? '' : html`<div class="ab-head" style="font-weight:400">착공하려면 지갑 잠금을 해제하세요</div>`}`;
+          ${isDemo || wallet.state === 'unlocked' ? '' : html`<div class="ab-head" style="font-weight:400">착공하려면 계정 잠금을 해제하세요</div>`}`;
       }
       if (panel?.kind === 'struct') {
         const id = panel.id, s = d.structs.find((x) => x.id === id);
@@ -335,7 +342,7 @@ const screen: Screen = {
               <span title="전력 소비"><i class="si icon-unpowered"></i>${watts(t?.passiveDraw)}</span>
               ${t?.primaryWeaponDamage ? html`<span title="주무기"><i class="si icon-dmg"></i><b>${t.primaryWeaponDamage}×${t.primaryWeaponShots}</b></span>` : ''}
               <span class="${building != null ? 'warn' : online ? '' : 'gold'}">${building != null ? (bw ? `건설 · ${bw.label}` : `건설 ${Math.round(building * 100)}%`) : dead ? '잔해' : online ? '가동' : '꺼짐'}</span>
-              ${bw && bw.kind !== 'BUILD' ? html`<span class="${bw.done ? 'gold' : ''}" title="작업 증명"><i class="si icon-${bw.kind === 'MINE' ? 'mine' : 'refine'}"></i>${bw.kind === 'MINE' ? '채굴' : '정제'} · ${bw.label}</span>` : ''}
+              ${bw && bw.kind !== 'BUILD' ? html`<span class="${bw.done ? 'gold' : ''}" title="작업 진행"><i class="si icon-${bw.kind === 'MINE' ? 'mine' : 'refine'}"></i>${bw.kind === 'MINE' ? '채굴' : '정제'} · ${bw.label}</span>` : ''}
               ${guard ? html`<span title="방어 중"><i class="si icon-defend"></i>${STRUCT_TYPE[guard.type] ?? guard.id}</span>` : ''}
               ${kills ? html`<span class="gold" title="전과">${v ? '★'.repeat(v) : ''} 격파 ${kills}</span>` : ''}
               ${building != null ? html`<div class="ab-prog" style="width:100%">${Array.from({ length: 10 }, (_, i) => html`<i class="${i < Math.round(building * 10) ? 'on' : ''}"></i>`)}</div>` : ''}
@@ -343,7 +350,7 @@ const screen: Screen = {
             </div>
             <div class="ab-btns">${btns}${escKey('닫기')}</div>
           </div>
-          ${!isDemo && !canSign ? html`<div class="ab-head" style="font-weight:400">명령을 서명하려면 지갑 잠금을 해제하세요</div>` : ''}`;
+          ${!isDemo && !canSign ? html`<div class="ab-head" style="font-weight:400">명령을 내리려면 계정 잠금을 해제하세요</div>` : ''}`;
       }
       // Nothing selected: the base's command card.
       const pw = d.power, use = pw ? Number(pw.total_load) / Math.max(1, Number(pw.total_capacity)) : 0;
@@ -355,7 +362,7 @@ const screen: Screen = {
           sub: locked ? RANKS[a.rank] : left ? `${left}블록` : idle ? '대기' : '준비', cd: left && !locked ? 1 - left / a.cooldown : undefined,
           title: `${a.name} · ${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : idle ? (a.id === 'overshield' ? '습격 때 사용' : '습격 함대 도착 후') : a.what}`, data: { id: a.id } });
       }) : [];
-      return html`<div class="ab-head">기지 명령<span class="sub">${d.planet?.name || `행성 ${d.player.planet_id || '—'}`} · 블록 ${d.height == null ? '—' : '#' + n(d.height)}</span></div>
+      return html`<div class="ab-head">기지 명령<span class="sub">${d.planet?.name || (d.player.planet_id ? `행성 ${d.player.planet_id}` : '행성 없음')}</span></div>
         <div class="ab-row">
           <div class="ab-props scr">
             <span title="알파 매터 (약탈되지 않음)" class="gold"><i class="si icon-refine"></i><b>${micro(d.player.alpha)}</b>g</span>
@@ -398,7 +405,7 @@ const screen: Screen = {
       return html`<div class="ab-bar enemy" role="region" aria-label="적">
         <div class="ab-edge l"></div>
         <div class="ab-chunk grow">
-          <div class="ab-head">${picked ? `${STRUCT_TYPE[picked.typeId] ?? '적'} · ${picked.health}/${picked.maxHealth}` : name}<span class="sub">${eta ? `${eta}블록 후 도착` : r || live ? '교전 중' : ''}</span></div>
+          <div class="ab-head">${picked ? `${STRUCT_TYPE[picked.typeId] ?? '적'} · ${picked.health}/${picked.maxHealth}` : name}<span class="sub">${eta ? `${playTime(eta)} 후 도착` : r || live ? '교전 중' : ''}</span></div>
           <div class="ab-row">
             <div class="ab-props scr">
               ${r ? html`<span><i class="si icon-fleet-tile"></i><b>${r.structs.length}</b>기</span>` : ''}
@@ -434,7 +441,7 @@ const screen: Screen = {
       if (!r && !live) return html``;
       const eta = r?.eta ?? 0;
       return html`<section class="raid-alarm ${eta ? '' : 'live'}" role="region" aria-label="습격 경보">
-        <strong>${eta ? `▲ 적 함대 접근 · ${eta}블록` : '▲ 행성 습격 진행 중'}</strong>
+        <strong>${eta ? `▲ 적 함대 접근 · ${playTime(eta)}` : '▲ 행성 습격 진행 중'}</strong>
         <span>${r ? `${r.name} 함대 ${r.fleetId} · ${r.structs.length}기` : `함대 ${live!.fleet_id}${live!.fleet_owner ? ` (${live!.fleet_owner})` : ''}`} · 노출된 광석 <b class="mono">${n(Math.floor(Number(d?.player.ore ?? 0)))}</b></span>
         ${r && eta ? html`<span class="stance" role="group" aria-label="대응 태세"><button class="btn ${r.stance === 'intercept' ? 'danger' : 'ghost'}" data-act="stance" data-v="intercept" aria-pressed="${r.stance === 'intercept'}" title="함포 추가 피해 확률 +30%p · 강타당할 확률도 늘어남">요격 <kbd>A</kbd></button><button class="btn ${r.stance === 'entrench' ? 'primary' : 'ghost'}" data-act="stance" data-v="entrench" aria-pressed="${r.stance === 'entrench'}" title="방어막 차단 확률 1.6배 · 강타 확률 절반 · 함포 추가 피해 확률 −10%p · 시한까지 방어막 ${demo.entrenchHold()}% 이상이면 적이 철수">참호 <kbd>S</kbd></button></span>` : r?.stance ? html`<span class="chip ${r.stance === 'intercept' ? 'jeok' : 'cheong'}">${r.stance === 'intercept' ? '요격 태세' : `참호 태세 · 버팀선 ${demo.entrenchHold()}%`}</span>` : ''}
         ${r ? (() => { const f = demo.raidForecast(); if (!f) return ''; const p = (x: number) => `${Math.round(x * 100)}%`, tone = (x: number) => (x >= 0.7 ? 'cheong' : x >= 0.4 ? 'hwang' : 'jeok');
@@ -473,7 +480,7 @@ const screen: Screen = {
     })}</ol>`;
 
     /* Intel dock, right: one tab at a time (or none). */
-    const INTEL: [string, string][] = isDemo ? [['radar', '방어'], ['power', '세력'], ['engine', '엔진']] : [['radar', '방어'], ['power', '세력'], ['pow', '증명']];
+    const INTEL: [string, string][] = isDemo ? [['radar', '방어'], ['power', '세력'], ['engine', '엔진']] : [['radar', '방어'], ['power', '세력'], ['pow', '작업']];
     const intel = (): Safe => {
       const threat = !!((isDemo && demo.raid) || d?.active_raid);
       const body = intelTab === 'radar' ? defence() : intelTab === 'power' ? standings() : intelTab === 'engine' ? engine() : intelTab === 'pow' ? html`<div id="pow-host">${powCard()}</div>` : html``;
@@ -581,7 +588,7 @@ const screen: Screen = {
       nav: (el: HTMLElement) => go(el.dataset.to!),
       explore: (el: HTMLElement) => {
         if (isDemo || !d || d.player.planet_id) return;
-        if (wallet.state !== 'unlocked') { sfx.play('error'); toast('탐사하려면 지갑 잠금을 해제하세요', 3000); return; }
+        if (wallet.state !== 'unlocked') { sfx.play('error'); toast('탐사하려면 계정 잠금을 해제하세요', 3000); return; }
         (el as HTMLButtonElement).disabled = true;
         void actions.planetExplore(pid)
           .then(() => { sfx.play('confirm'); notify('탐사 시작', '정착할 행성을 찾는 중입니다', 'cheong', null); void load(); })
@@ -643,7 +650,7 @@ const screen: Screen = {
         if (!panel || panel.kind !== 'build') return;
         const p = panel;
         if (!isDemo) {
-          if (wallet.state !== 'unlocked') { sfx.play('error'); toast('착공하려면 지갑 잠금을 해제하세요', 3000); return; }
+          if (wallet.state !== 'unlocked') { sfx.play('error'); toast('착공하려면 계정 잠금을 해제하세요', 3000); return; }
           const type = Number(el.dataset.type);
           (el as HTMLButtonElement).disabled = true;
           void actions.structBuild(pid, type, p.ambit, p.slot)

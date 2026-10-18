@@ -21,7 +21,6 @@ import { wallet } from '../wallet/wallet';
 import { portraitHtml, seededPfp } from '../game/portrait';
 import { sfx } from '../game/sfx';
 import { banner } from '../game/fx';
-import { ask } from '../ui/sheet';
 import { share } from '../social/share';
 import { guildSituation } from '../social/situations';
 import { matrix } from '../chat/matrix';
@@ -114,7 +113,7 @@ const screen: Screen = {
             ${mine() ? html`<select class="input rank-sel" data-act="rank" data-on="change" data-id="${m.id}" aria-label="계급" ${unlocked() ? '' : 'disabled'}><option value="">계급…</option>${[1, 2, 3, 4, 5].map((r) => html`<option value="${r}">${r === 1 ? '1 · 운영진' : r === 2 ? '2 · 장교' : r === 3 ? '3 · 정예' : r === 4 ? '4 · 대원' : '5 · 신입'}</option>`)}</select>
             <button class="btn outline-danger sm" data-act="kick" data-id="${m.id}" ${unlocked() ? '' : 'disabled'}>추방</button>` : ''}`}</span></article>`)}</div>
         ${list.length ? '' : html`<p class="empty">맞는 길드원이 없습니다.</p>`}
-        <p class="note">계급 변경과 추방은 길드 권한이 있는 운영진만 체인에서 승인됩니다.</p></section>`;
+        <p class="note">계급 변경과 추방은 길드 권한이 있는 운영진만 할 수 있습니다.</p></section>`;
     };
 
     const appsTab = (): Safe => {
@@ -140,7 +139,7 @@ const screen: Screen = {
       </tbody></table></div></section>`;
 
     const admin = (): Safe => html`<section class="card game-panel" style="max-width:860px"><h2>길드 관리</h2>
-      ${owner() ? '' : html`<div class="notice">이 설정은 길드장(또는 권한을 받은 운영진)만 바꿀 수 있습니다. 보내면 체인이 권한을 확인합니다.</div>`}
+      ${owner() ? '' : html`<div class="notice">이 설정은 길드장(또는 권한을 받은 운영진)만 바꿀 수 있습니다.</div>`}
       <div class="admin-grid">
         <form data-act="setName" data-on="submit"><label class="field"><span>길드 이름</span><input class="input" name="v" value="${guild?.name ?? ''}" required></label><button class="btn ghost sm">이름 변경</button></form>
         <form data-act="setEndpoint" data-on="submit"><label class="field"><span>길드 API 주소 (endpoint)</span><input class="input" name="v" value="${guild?.endpoint ?? ''}" placeholder="https://…"></label><button class="btn ghost sm">주소 변경</button></form>
@@ -148,7 +147,7 @@ const screen: Screen = {
         <form data-act="setMin" data-on="submit"><label class="field"><span>가입 최소 주입 (g)</span><input class="input mono" name="v" type="number" step="any" min="0" value="${guild ? Number(guild.join_infusion_minimum) / 1e6 : 0}"></label><button class="btn ghost sm">최소값 변경</button></form>
         <form data-act="setEntry" data-on="submit"><label class="field"><span>신입 기본 계급 (1–5)</span><input class="input mono" name="v" type="number" min="1" max="99" value="5"></label><button class="btn ghost sm">기본 계급 변경</button></form>
       </div>
-      <p class="note">모든 변경은 체인 거래로 서명됩니다. 수수료는 0입니다.</p></section>`;
+      <p class="note">변경 사항은 바로 적용됩니다.</p></section>`;
 
     const view = (): Safe => html`${head()}${tab === 'home' ? home() : tab === 'members' ? members() : tab === 'apps' ? appsTab() : tab === 'find' ? find() : admin()}`;
     const paint = () => {
@@ -159,7 +158,7 @@ const screen: Screen = {
     };
     const sign = (p: Promise<string>, done = '보냈습니다', after?: () => void) => {
       busy = true; paint();
-      p.then((h) => { sfx.play('confirm'); toast(`${done} · ${h.slice(0, 10)}…`); after?.(); setTimeout(() => void load().then(paint).catch(() => null), 6000); })
+      p.then(() => { sfx.play('confirm'); toast(done); after?.(); setTimeout(() => void load().then(paint).catch(() => null), 6000); })
         .catch((e) => toast('실패: ' + (e as Error).message, 5000)).finally(() => { busy = false; paint(); });
     };
     /** Under the mock nothing is signed; the fixture just moves so the screen can be exercised. */
@@ -173,7 +172,7 @@ const screen: Screen = {
       pay: (el: HTMLElement) => void openTransfer({ to: el.dataset.id }),
       shareGuild: () => { if (guild) share({ kind: 'situation', s: guildSituation({ id: guild.id, name: guild.name, tag: guild.tag, members: count || roster.length, ratio: bank.find((b) => b.guild_id === guild!.id)?.ratio as number | undefined ?? null, note: guild.description, by: me?.username }) }); },
       request: () => sign(actions.guildRequest(gid(), pid, guild?.entry_substation_id ?? ''), '가입 신청을 보냈습니다'),
-      requestTo: async (el: HTMLElement) => { if (await ask('가입 신청', `${el.dataset.g} 길드에 가입을 신청합니다. 승인되면 지금 길드를 떠나게 됩니다.`, '신청', 'hwang')) sign(actions.guildRequest(el.dataset.g!, pid), '가입 신청을 보냈습니다'); },
+      requestTo: (el: HTMLElement) => { sign(actions.guildRequest(el.dataset.g!, pid), '가입 신청을 보냈습니다'); },
       requestRevoke: (el: HTMLElement) => sign(actions.guildRequestRevoke(el.dataset.g!, pid), '신청을 취소했습니다'),
       inviteAccept: (el: HTMLElement) => sign(actions.guildInviteApprove(el.dataset.g!, pid), '초대를 수락했습니다', () => banner({ kicker: '길드 가입', title: el.dataset.g!, sub: '새 길드에 합류했습니다', tone: 'gold' })),
       inviteDeny: (el: HTMLElement) => sign(actions.guildInviteDeny(el.dataset.g!, pid), '초대를 거절했습니다'),
@@ -187,7 +186,7 @@ const screen: Screen = {
         if (MOCK) { apps = [...apps, { guildId: gid(), playerId: who, joinType: 'invite', status: 'proposed', proposer: pid, substationId: guild?.entry_substation_id ?? '' }]; toast('초대했습니다 (모의)'); paint(); return; }
         sign(actions.guildInvite(gid(), who, guild?.entry_substation_id ?? ''), '초대를 보냈습니다');
       },
-      kick: async (el: HTMLElement) => { if (await ask('길드원 추방', `${el.dataset.id}을(를) 길드에서 추방합니다. 되돌릴 수 없습니다.`, '추방', 'jeok')) sign(actions.guildKick(gid(), el.dataset.id!), '추방했습니다'); },
+      kick: (el: HTMLElement) => { sign(actions.guildKick(gid(), el.dataset.id!), '추방했습니다'); },
       rank: (el: HTMLElement) => { const r = Number((el as HTMLSelectElement).value); if (r) sign(actions.guildRank(gid(), el.dataset.id!, r), `계급 ${r}로 변경했습니다`); },
       setName: (el: HTMLElement) => sign(actions.guildName(gid(), String(new FormData(el as HTMLFormElement).get('v'))), '이름을 바꿨습니다'),
       setEndpoint: (el: HTMLElement) => sign(actions.guildEndpoint(gid(), String(new FormData(el as HTMLFormElement).get('v'))), '주소를 바꿨습니다'),

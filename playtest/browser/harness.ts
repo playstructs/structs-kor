@@ -161,7 +161,7 @@ export class Harness {
       const msg = d.message();
       if (msg.includes('pt-xss')) { this.find('security.xss', 'blocker', `typed markup ran as script on ${new URL(page.url()).pathname}`); void d.dismiss().catch(() => {}); return; }
       // Chain transactions and contract changes go through only with --chain-actions; the wallet is never wiped.
-      const chain = /체인에 서명|계약을 해지/.test(msg), wipe = /지갑을 지울|지갑을 삭제/.test(msg);
+      const chain = /체인에 서명|계약을 해지/.test(msg), wipe = /(지갑|계정)을 (지울|삭제)/.test(msg);
       const accept = d.type() === 'confirm' && !wipe && (!chain || !!this.allow.chain);
       this.dialogs.push({ step: this.step, type: d.type(), message: msg.slice(0, 160), answer: accept ? 'accepted' : 'dismissed', why: wipe ? 'wallet wipe: never' : chain ? (this.allow.chain ? 'chain action (--chain-actions)' : 'chain action: declined without --chain-actions') : 'game confirmation' });
       if (d.type() === 'alert') this.find('ui.native-dialog', 'minor', `a native browser alert interrupted play: "${msg.slice(0, 80)}"`);

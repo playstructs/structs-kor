@@ -90,7 +90,7 @@ export function share(t: ShareTarget) {
     <label class="field"><span>한마디 (선택)</span><textarea class="input" name="comment" rows="2" maxlength="400" data-act="comment" placeholder="${t.kind === 'object' ? '예: 이 행성 같이 칠 사람?' : '예: 방어 도와주세요!'}">${comment}</textarea></label>
     <div class="share-to">
       <div class="field"><span>통신 대화방</span>
-        ${!canChat ? html`<p class="note">통신에 보내려면 지갑 잠금을 해제하고 길드에 로그인하세요.</p>`
+        ${!canChat ? html`<p class="note">통신에 보내려면 계정 잠금을 해제하고 길드에 로그인하세요.</p>`
         : chat === 'loading' ? html`<p class="note">대화방 불러오는 중…</p>`
         : chat === 'off' ? html`<p class="note">${err || '통신에 연결할 수 없습니다.'}</p>`
         : html`<select class="input" name="room" data-act="room" data-on="change">${rooms.map((r) => html`<option value="${r.id}" ${r.id === room ? 'selected' : ''}>${r.name}</option>`)}</select>`}

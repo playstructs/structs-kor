@@ -69,7 +69,7 @@ const screen: Screen = {
             <button class="hud-btn" data-act="shareT" data-id="${t.p.id}" title="표적 공유" aria-label="표적 공유"><i class="si icon-link-out"></i></button><button class="hud-btn" data-act="veto" data-id="${t.p.id}" title="공격 금지에 추가" aria-label="공격 금지"><i class="si icon-blocked"></i></button></span></td></tr>`)
         : html`<tr><td colspan="6" class="empty">조건에 맞는 표적이 없습니다.</td></tr>`}
         </tbody></table></div>
-        <p class="note" style="padding:0 16px 14px">같은 길드와 공격 금지 목록은 자동으로 제외됩니다. 점수는 참고용이며, 아무것도 자동으로 서명하지 않습니다.</p></section>`;
+        <p class="note" style="padding:0 16px 14px">같은 길드와 공격 금지 목록은 자동으로 제외됩니다. 점수는 참고용이며, 명령은 직접 내려야 합니다.</p></section>`;
     };
     const listBox = (title: string, key: 'grudges' | 'vetoes' | 'priority', hint: string, ph: string): Safe => html`<section class="card game-panel"><div class="card-head"><h2>${title}</h2><span class="end mono dim">${L[key].length}</span></div>
       <p class="note">${hint}</p>

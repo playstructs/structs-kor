@@ -126,12 +126,12 @@ export function shell(root: HTMLElement) {
     plate.title = `총 ${r.xp} XP`;
   };
   // Signed in: the commander's own on-chain portrait; otherwise the local one (editable in 전적).
-  let chainPfp: string | null = null, chainFor: string | null = null;
+  let chainPfp: string | null = null, chainFor: string | null = null, chainName: string | null = null;
   session.onChange((st) => {
-    if (st.state !== 'in' || !st.playerId) { chainPfp = null; chainFor = null; paintPlate(); return; }
+    if (st.state !== 'in' || !st.playerId) { chainPfp = null; chainFor = null; chainName = null; paintPlate(); return; }
     if (chainFor === st.playerId) return;
     chainFor = st.playerId;
-    void guildApi.player(st.playerId).then((p) => { chainPfp = p?.pfp || null; paintPlate(); }).catch(() => null);
+    void guildApi.player(st.playerId).then((p) => { chainPfp = p?.pfp || null; chainName = p?.username || null; paintPlate(); paintWho(); }).catch(() => null);
   });
   career.onChange(paintPlate);
   onPfp(paintPlate);
@@ -199,7 +199,7 @@ export function shell(root: HTMLElement) {
     const s = session.status;
     const me = wallet.commander;
     career.use(s.state === 'in' ? s.playerId : null);
-    const profile = me ? `<a class="btn ghost" href="${href('/profile')}" style="min-height:36px;position:relative">${s.state === 'in' ? `<span class="mono c-cheong">● ${esc(s.playerId)}</span>` : '내 정보'}${wallet.backedUp ? '' : '<span title="복구 문구를 아직 확인하지 않았습니다" style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;background:var(--hwang)"></span>'}</a>` : '';
+    const profile = me ? `<a class="btn ghost" href="${href('/profile')}" style="min-height:36px;position:relative">${s.state === 'in' ? `<span class="c-cheong" title="${esc(s.playerId)}">● ${esc(chainName || s.playerId)}</span>` : '내 정보'}${wallet.backedUp ? '' : '<span title="백업 코드를 아직 확인하지 않았습니다" style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;background:var(--hwang)"></span>'}</a>` : '';
     who.innerHTML = s.state === 'in'
       ? profile
       : `${profile}<a class="btn ghost" href="${href('/login')}" style="min-height:36px">로그인</a>${me ? '' : `<a class="btn primary" href="${href('/start')}" style="min-height:36px">바로 플레이</a>`}`;

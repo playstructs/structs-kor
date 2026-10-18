@@ -120,7 +120,7 @@ async function reactorCard(id: string): Promise<RefCard | null> {
   if (!o) return null;
   return {
     id, kind: 'reactor', glyph: 'icon-computer', title: `리액터 ${id}`, subtitle: `길드 ${str(pick(o, 'guild_id', 'guildId')) || '—'}`,
-    rows: [['검증인', str(pick(o, 'validator')).slice(0, 18) || '—'], ['수수료', pick(o, 'default_commission', 'defaultCommission') != null ? n(num(pick(o, 'default_commission', 'defaultCommission')) * 100, 1) + '%' : '—']],
+    rows: [['운영 노드', str(pick(o, 'validator')).slice(0, 18) || '—'], ['수수료', pick(o, 'default_commission', 'defaultCommission') != null ? n(num(pick(o, 'default_commission', 'defaultCommission')) * 100, 1) + '%' : '—']],
     actions: [], guildId: str(pick(o, 'guild_id', 'guildId')) || undefined,
   };
 }

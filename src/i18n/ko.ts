@@ -30,3 +30,16 @@ export const ACTIVITY: Record<string, string> = {
 export const activityLabel = (c: string) => ACTIVITY[c] ?? c.replace(/_/g, ' ');
 
 export const WORK: Record<string, string> = { BUILD: '건설', MINE: '채굴', REFINE: '정제', RAID: '습격' };
+
+/** Orders as a player names them (the chain's message types stay out of the UI). */
+export const ORDER_KO: Record<string, string> = {
+  MsgStructBuildInitiate: '착공', MsgStructBuildComplete: '공사 완료', MsgStructOreMinerComplete: '채굴', MsgStructOreRefineryComplete: '정제',
+  MsgPlanetRaidComplete: '습격 완료', MsgPlanetExplore: '행성 탐사', MsgFleetMove: '함대 이동', MsgStructAttack: '공격',
+  MsgStructDefenseSet: '방어 지정', MsgStructDefenseClear: '방어 해제', MsgStructActivate: '가동', MsgStructDeactivate: '정지',
+  MsgStructStealthActivate: '은신', MsgStructStealthDeactivate: '은신 해제', MsgPlayerSend: '송금', MsgReactorInfuse: '리액터 주입',
+  MsgReactorDefuse: '리액터 회수', MsgAgreementOpen: '전력 계약', MsgAgreementClose: '계약 해지', MsgAgreementDurationIncrease: '계약 연장',
+  MsgProviderCreate: '공급자 등록', MsgProviderDelete: '공급자 삭제', MsgGuildMembershipRequest: '가입 신청', MsgPlayerUpdateName: '이름 변경',
+  MsgPlayerUpdatePfp: '초상화 변경', MsgPlanetUpdateName: '행성 이름 변경', MsgAllocationCreate: '할당 생성', MsgAllocationDelete: '할당 삭제',
+  MsgGuildBankMint: '토큰 발행', MsgGuildBankRedeem: '토큰 상환', MsgGuildBankConvert: '토큰 교환', MsgSubstationPlayerConnect: '변전소 연결',
+};
+export const orderName = (msg: string) => ORDER_KO[msg] ?? msg.replace(/^Msg/, '');
