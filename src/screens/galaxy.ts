@@ -106,19 +106,28 @@ const screen: Screen = {
     const clampCam = () => { cam.z = Math.max(1, Math.min(4, cam.z)); const lim = 150 - 150 / cam.z; cam.x = Math.max(-lim, Math.min(lim, cam.x)); cam.y = Math.max(-lim, Math.min(lim, cam.y)); };
     const applyCam = () => { clampCam(); root.querySelector('svg.gx')?.setAttribute('viewBox', viewBox(cam)); };
     const zoom = (f: number) => { cam.z *= f; applyCam(); };
-    const onWheel = (e: WheelEvent) => { if (!(e.target as Element).closest?.('svg.gx')) return; e.preventDefault(); zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2); };
-    let drag: { x: number; y: number; moved: boolean } | null = null;
-    const onDown = (e: PointerEvent) => { if (!(e.target as Element).closest?.('svg.gx') || (e.target as Element).closest('.gx-node')) return; drag = { x: e.clientX, y: e.clientY, moved: false }; };
+    // Scaled by how far the wheel moved, so a trackpad glides instead of slamming to the limit.
+    const onWheel = (e: WheelEvent) => { if (!(e.target as Element).closest?.('svg.gx') || !e.deltaY) return; e.preventDefault(); zoom(Math.exp(-Math.max(-200, Math.min(200, e.deltaY)) * 0.002)); };
+    // One pointer at a time, captured, so a release outside the window can't leave the map panning.
+    let drag: { x: number; y: number; id: number } | null = null;
+    const onDown = (e: PointerEvent) => {
+      const svg = (e.target as Element).closest?.('svg.gx');
+      if (!svg || (e.target as Element).closest('.gx-node') || drag) return;
+      e.preventDefault();
+      drag = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      try { (svg as SVGSVGElement).setPointerCapture(e.pointerId); } catch { /* fine */ }
+    };
     const onMove = (e: PointerEvent) => {
-      if (!drag) return;
+      if (!drag || e.pointerId !== drag.id) return;
+      if (e.pointerType === 'mouse' && !(e.buttons & 1)) { drag = null; return; }
       const svg = root.querySelector<SVGSVGElement>('svg.gx'); if (!svg) return;
       const k = 300 / cam.z / Math.max(1, svg.getBoundingClientRect().width);
       cam.x -= (e.clientX - drag.x) * k; cam.y -= (e.clientY - drag.y) * k;
-      drag.x = e.clientX; drag.y = e.clientY; drag.moved = true; applyCam();
+      drag.x = e.clientX; drag.y = e.clientY; applyCam();
     };
-    const onUp = () => { drag = null; };
+    const onUp = (e: PointerEvent) => { if (drag && e.pointerId === drag.id) drag = null; };
     root.addEventListener('wheel', onWheel, { passive: false });
-    root.addEventListener('pointerdown', onDown); addEventListener('pointermove', onMove); addEventListener('pointerup', onUp);
+    root.addEventListener('pointerdown', onDown); addEventListener('pointermove', onMove); addEventListener('pointerup', onUp); addEventListener('pointercancel', onUp);
 
     const map = (): Safe => {
       const raid = demo.raid;
@@ -201,9 +210,9 @@ const screen: Screen = {
         </div>
         ${TEMPER[r.id] ? html`<p class="note"><span class="chip ${TEMPER[r.id].raid >= 3 ? 'jeok' : TEMPER[r.id].raid === 1 ? 'hwang' : 'cheong'}">${TEMPER[r.id].name}</span> ${TEMPER[r.id].note}</p>` : ''}
         ${sc ? html`<div class="scout"><span class="label c-cheong">정찰 보고 · 다음 교전 함대</span>${fleet.map((u) => html`<div class="scout-u">${pixel(u.type)}<span>${STRUCT_TYPE[u.type]}</span><small class="mono">${AMBIT[u.ambit]}</small></div>`)}</div>
-          ${oddsChip(r)}`
+          ${demo.ally?.id === r.id ? '' : oddsChip(r)}`
           : html`<button class="btn ghost" data-act="scout" style="justify-content:space-between">정찰기 파견 <span class="mono c-hwang">1 g · <kbd>S</kbd></span></button>`}
-        ${demo.ally?.id === r.id ? html`<div class="notice">동맹 · ${demo.ally.left}블록 남음. 이 세력은 당신을 습격하지 않고, 당신의 습격에 함선 ${ALLY.ships.length}척을 보냅니다. 공작을 벌이면 동맹이 깨집니다.</div>`
+        ${demo.ally?.id === r.id ? html`<div class="notice">동맹 · ${demo.ally.left}블록 남음. 이 세력은 당신을 습격하지 않고, 당신의 습격에 빈 슬롯만큼 함선을 최대 ${ALLY.ships.length}척 보냅니다. 공작을 벌이면 동맹이 깨집니다.</div>`
           : html`<button class="btn ghost" data-act="ally" ${demo.ally || demo.state.alpha < ALLY.cost || r.id === '1-666' ? 'disabled' : ''} style="justify-content:space-between">${r.id === '1-666' ? '동맹 불가 · 누구와도 손잡지 않음' : `동맹 제안 · ${ALLY.term}블록`} <span class="mono">${ALLY.cost} g</span></button>`}
         <div class="ops"><span class="label dim">공작${(r.sabotaged ?? 0) > demo.state.height ? html` · <span class="c-cheong">사보타주 ${(r.sabotaged ?? 0) - demo.state.height}블록</span>` : ''}</span>
           ${(r.opUntil ?? 0) > demo.state.height ? html`<span class="mono c-warn" style="font-size:12px">경계 태세 · ${(r.opUntil ?? 0) - demo.state.height}블록</span>` : ''}
@@ -211,7 +220,7 @@ const screen: Screen = {
           <small class="dim">발각되면 불가침이 깨지고 보복 함대가 옵니다.</small></div>
         <div class="loyal"><span class="label dim">복속까지 약탈 ${Math.min(r.raided, DOMINION.raidsToSubjugate)} / ${DOMINION.raidsToSubjugate}</span><div class="bar"><i style="width:${Math.min(100, (r.raided / DOMINION.raidsToSubjugate) * 100)}%;background:var(--hwang)"></i></div></div>
         ${r.raided >= DOMINION.raidsToSubjugate ? html`<button class="btn gold lg" data-act="subjugate" style="justify-content:space-between">♛ 복속 요구 <span class="mono">주둔군 ${DOMINION.cost} g · 함대 4기로</span></button>` : ''}
-        <a class="btn danger lg" href="${href('/sim?raid=' + r.id)}">습격 출격 · 예상 노획 ${n(Math.floor(r.ore * 0.6))}${demo.bounty?.target === r.id ? ` + 현상금 ${demo.bountyPayout()} α` : ''}${demo.pactLeft(r.id) ? ' · 불가침 파기' : ''}</a>
+        ${demo.ally?.id === r.id ? html`<p class="note">동맹은 습격할 수 없습니다.</p>` : html`<a class="btn danger lg" href="${href('/sim?raid=' + r.id)}">습격 출격 · 예상 노획 ${n(Math.floor(r.ore * 0.6))}${demo.bounty?.target === r.id ? ` + 현상금 ${demo.bountyPayout()} α` : ''}${demo.pactLeft(r.id) ? ' · 불가침 파기' : ''}</a>`}
         <p class="note">약탈 성공 시 이 세력의 함대가 1기 줄고, 다음 함대 구성이 바뀝니다.</p></section>`;
     };
 
@@ -298,7 +307,7 @@ const screen: Screen = {
     const offs = [demo.onBlock(paint), keys.scope({ s: () => sel && handlers.scout(), Escape: () => { sel = null; paint(); }, '=': () => zoom(1.25), '+': () => zoom(1.25), '-': () => zoom(1 / 1.25), '0': () => { cam.x = 0; cam.y = 0; cam.z = 1; applyCam(); } })];
     // First visit: a short tour of the map and its panel.
     if (!tourSeen('galaxy')) { const t = setTimeout(() => { if (root.isConnected) runTour('galaxy', GALAXY_TOUR); }, 700); offs.push(() => clearTimeout(t)); }
-    offs.push(() => { root.removeEventListener('wheel', onWheel); root.removeEventListener('pointerdown', onDown); removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); });
+    offs.push(() => { root.removeEventListener('wheel', onWheel); root.removeEventListener('pointerdown', onDown); removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onUp); });
     return () => { oddsStop?.(); offs.forEach((f) => f()); unbind(); setTiles([]); };
   },
 };

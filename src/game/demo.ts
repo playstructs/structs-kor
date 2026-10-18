@@ -371,7 +371,7 @@ function blockInner() {
   const pull = (target - last) * (s.event ? 0.18 : 0.08);
   // The weather changes.
   // A meteor shower: anything on the planet takes a hit now and then unless the shield holds.
-  if (ev('meteor') && s.shield < 50) {
+  if (!catching && ev('meteor') && s.shield < 50) {
     const r = rngFor(`meteor:${s.height}`);
     if (r() < 0.12) {
       const pool = s.structs.filter((x) => x.cat === 'planet' && x.hp > 0 && x.building == null);
@@ -469,7 +469,7 @@ function bountyStep() {
   if (s.bounty && s.height > s.bounty.until) { s.bounty = null; emit('cheong', '현상금 만료'); }
   if (s.bounty || s.height % BOUNTY.every !== 55) return;
   const r = rngFor(`bounty:${s.height}`);
-  const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height));
+  const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height) && x.id !== allyId());
   if (free.length < 2) return;
   const target = free.sort((a, b) => rivalWorth(b) - rivalWorth(a))[Math.floor(r() * Math.min(2, free.length))];
   const patrons = rivals().filter((x) => x !== target);
@@ -543,11 +543,12 @@ function covert(id: string, op: OpId): { ok: boolean; text: string } | string {
   const r = rivals().find((x) => x.id === id);
   if (!r) return '세력을 찾을 수 없습니다';
   if (r.vassal != null) return '속국에는 공작을 하지 않습니다';
-  if (allyId() === id) { s.ally = null; chronicle('jeok', `${r.name}과(와)의 동맹을 깨고 공작을 벌였다`); }
   const o = OPS[op];
   if ((r.opUntil ?? 0) > s.height) return `${r.name}의 경계가 높습니다 · ${r.opUntil! - s.height}블록 뒤에`;
   if (op === 'sabotage' && (r.sabotaged ?? 0) > s.height) return '이미 사보타주가 진행 중입니다';
   if (s.alpha < o.cost) return `공작 자금 ${o.cost} g 필요`;
+  // Spying on an ally ends the alliance (only once the op is really under way).
+  if (allyId() === id) { s.ally = null; chronicle('jeok', `${r.name}과(와)의 동맹을 깨고 공작을 벌였다`); }
   s.alpha -= o.cost;
   s.ops = (s.ops ?? 0) + 1;
   const hit = rngFor(`op:${s.height}:${id}:${s.ops}`)() < opOdds(op);
@@ -599,7 +600,7 @@ function contestStep() {
   if (s.height < s.nextContest) return;
   s.nextContest = s.height + OUTPOST.contestEvery;
   const mine = OUTPOSTS.filter((d) => holds(d.id));
-  const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height));
+  const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height) && x.id !== allyId());
   if (!free.length) return;
   const r = rngFor(`contest:${s.height}`);
   // An unclaimed site doesn't wait for you: now and then a rival plants its flag.
@@ -785,7 +786,7 @@ function decisionStep() {
   s.nextDecision = s.height + DECISION.every;
   const ids: DecisionId[] = ['orebuyer', 'pact', 'mercs', 'smuggler', 'ultimatum'];
   const n = (s.offered = (s.offered ?? 0) + 1);
-  const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height));
+  const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height) && x.id !== allyId());
   if (!free.length) ids.splice(ids.indexOf('pact'), 1), ids.splice(ids.indexOf('ultimatum'), 1);
   const id = ids[n % ids.length];
   const r = free[n % Math.max(1, free.length)] ?? rivals()[0];
@@ -1086,12 +1087,13 @@ export const demo = {
     if (s.raid?.owner === id) return '지금 당신을 습격 중인 세력입니다';
     if (s.alpha < ALLY.cost) return `동맹 예물 ${ALLY.cost} g 필요`;
     s.alpha -= ALLY.cost; s.ally = { id, until: s.height + ALLY.term };
+    if (s.bounty?.target === id) s.bounty = null; // no price on a friend's head
     chronicle('cheong', `${r.name}과(와) 동맹을 맺었다`);
     persist(); for (const f of changeFns) f();
     return null;
   },
   get outposts() {
-    const o = outposts(), strongest = Math.max(1, ...rivals().filter((r) => r.vassal == null && !((s.pacts?.[r.id] ?? 0) > s.height)).map((r) => r.fleet));
+    const o = outposts(), strongest = Math.max(1, ...rivals().filter((r) => r.vassal == null && !((s.pacts?.[r.id] ?? 0) > s.height) && r.id !== allyId()).map((r) => r.fleet));
     // For a site you hold, `odds` is its chance to hold against the strongest free rival's attempt.
     return OUTPOSTS.map((d) => { const mine = o[d.id].owner === DEMO_ID, guard = warships() + 2 * lv('fort') + o[d.id].garrison * 2 + d.garrison; return { ...d, ...o[d.id], mine, odds: mine ? guard / (guard + strongest) : claimOdds(d.id) }; });
   },
@@ -1239,7 +1241,7 @@ export const demo = {
     if (s.raid) return '습격을 막아 낸 뒤에 새 시대를 열 수 있습니다';
     if (s.loan) return '청룡 상단 대출을 먼저 갚아야 새 시대를 열 수 있습니다';
     // Running totals survive too (daily orders and medals count from them).
-    const keep = { era: (s.era ?? 0) + 1, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
+    const keep = { era: (s.era ?? 0) + 1, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
     s = fresh();
     Object.assign(s, keep);
     log('event', `제${keep.era + 1}시대 개막`);
