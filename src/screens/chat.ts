@@ -58,7 +58,7 @@ const screen: Screen = {
     const sent: string[] = []; let histAt = -1;
     let comp: (Completion & { i: number }) | null = null;
     const pfps = new Map<string, string>();
-    let stick = true, backfilling = false;
+    let stick = true, backfilling = false, shown = 150;
 
     root.innerHTML = `<div class="chatx">
       <nav class="comms-rail" aria-label="대화방 목록"></nav>
@@ -97,7 +97,7 @@ const screen: Screen = {
 
     const open = (id: string | null) => {
       if (active) drafts.set(active, input.value);
-      active = id; replyTo = null; editing = null; picker = null; confirmDelete = null; stick = true;
+      active = id; replyTo = null; editing = null; picker = null; confirmDelete = null; stick = true; shown = 150;
       if (id) { tabs = [id, ...tabs.filter((t) => t !== id)].slice(0, MAX_TABS); saveTabs(tabs); }
       const r = room();
       if (r) { r.unread = 0; r.highlight = 0; const last = r.events.filter((m) => !m.pending).at(-1); if (last) void matrix.read(r.id, last.id); }
@@ -206,11 +206,13 @@ const screen: Screen = {
       const atBottom = tl.scrollHeight - tl.scrollTop - tl.clientHeight < 40;
       const prevH = tl.scrollHeight, prevTop = tl.scrollTop;
       if (!r) { mount(tl, html`<div class="empty comms-blank">${err || (matrix.rooms.size ? html`<h2>통신</h2><p>왼쪽에서 대화방을 고르세요. <kbd>Ctrl</kbd>+<kbd>K</kbd>로 빠르게 찾을 수 있습니다.</p>` : '대화방을 불러오는 중…')}</div>`); typingEl.textContent = ''; return; }
-      const evs = r.events;
+      // Only a window of the newest messages is drawn; scrolling up widens it before asking the server.
+      const evs = r.events.slice(-shown);
+      const hiddenOlder = r.events.length > evs.length;
       const lastMine = [...evs].reverse().find((m) => m.mine && !m.pending);
       const seen = lastMine ? Object.entries(r.readUpTo).filter(([u, e]) => u !== matrix.me && e === lastMine.id).map(([u]) => matrix.displayName(r.id, u)) : [];
       mount(tl, html`
-        ${r.noMoreHistory ? html`<div class="comms-start">${r.name.replace(/^#/, '').split(':')[0]}의 처음입니다.</div>` : r.prevBatch ? html`<button class="btn ghost sm comms-more" data-act="more">이전 메시지 불러오기</button>` : ''}
+        ${hiddenOlder ? html`<button class="btn ghost sm comms-more" data-act="more">이전 메시지 ${r.events.length - evs.length}개 더 보기</button>` : r.noMoreHistory ? html`<div class="comms-start">${r.name.replace(/^#/, '').split(':')[0]}의 처음입니다.</div>` : r.prevBatch ? html`<button class="btn ghost sm comms-more" data-act="more">이전 메시지 불러오기</button>` : ''}
         ${evs.length ? evs.map((m, i) => {
           const prev = evs[i - 1];
           const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
@@ -251,7 +253,9 @@ const screen: Screen = {
       stick = false; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1600);
     };
     const loadOlder = async () => {
-      const r = room(); if (!r || backfilling || r.noMoreHistory) return;
+      const r = room(); if (!r || backfilling) return;
+      if (r.events.length > shown) { backfilling = true; stick = false; shown += 100; paintRoom(); backfilling = false; return; }
+      if (r.noMoreHistory) return;
       backfilling = true; stick = false;
       try { await matrix.backfill(r.id); } catch { /* try again later */ }
       paintRoom(); backfilling = false;

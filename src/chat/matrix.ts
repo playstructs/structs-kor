@@ -204,7 +204,8 @@ export class Matrix {
         if (ev.type === 'm.typing') room.typing = ((ev.content.user_ids as string[]) ?? []).filter((u) => u !== this.me);
         if (ev.type === 'm.receipt') for (const [eid, rc] of Object.entries(ev.content as Record<string, { 'm.read'?: Record<string, unknown> }>)) for (const u of Object.keys(rc['m.read'] ?? {})) room.readUpTo[u] = eid;
       }
-      room.events = room.events.slice(-400);
+      // Generous: history a reader scrolled back to must survive the next sync (only a window is drawn).
+      room.events = room.events.slice(-3000);
       room.unread = r.unread_notifications?.notification_count ?? room.unread;
       room.highlight = r.unread_notifications?.highlight_count ?? room.highlight;
       room.members = r.summary?.['m.joined_member_count'] ?? room.members ?? room.memberList.size;
