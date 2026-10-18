@@ -153,7 +153,7 @@ const screen: Screen = {
         close: (el) => { tabs = tabs.filter((t) => t !== el.dataset.id); saveTabs(tabs); if (active === el.dataset.id) open(tabs[0] ?? null); else paintHead(); },
       });
       if (!r) { headEl.innerHTML = ''; pinsEl.innerHTML = ''; return; }
-      mount(headEl, html`<div class="comms-title"><h1>${r.direct ? '@' : '#'}${r.name.replace(/^#/, '').split(':')[0]}</h1><small>${r.topic || (r.direct ? '다이렉트 메시지' : r.local ? '로컬 넷' : '갤럭시 넷')} · ${r.members || r.memberList.size}명</small></div>
+      mount(headEl, html`<button class="hud-btn comms-rooms" data-act="rooms" aria-label="대화방 목록"><i class="si icon-chevron-left"></i></button><div class="comms-title"><h1>${r.direct ? '@' : '#'}${r.name.replace(/^#/, '').split(':')[0]}</h1><small>${r.topic || (r.direct ? '다이렉트 메시지' : r.local ? '로컬 넷' : '갤럭시 넷')} · ${r.members || r.memberList.size}명</small></div>
         <div class="comms-tools">
           ${r.pinned.length ? html`<button class="hud-btn ${side === 'pins' ? 'on' : ''}" data-act="side" data-s="pins" title="고정 메시지" aria-label="고정 메시지 ${r.pinned.length}"><i class="si icon-key"></i><span class="tool-n">${r.pinned.length}</span></button>` : ''}
           <button class="hud-btn ${side === 'search' ? 'on' : ''}" data-act="side" data-s="search" title="검색 (Ctrl+F)" aria-label="검색"><i class="si icon-detected"></i></button>
@@ -161,6 +161,7 @@ const screen: Screen = {
           <button class="hud-btn" data-act="shareroom" title="이 방 링크 복사" aria-label="방 링크"><i class="si icon-link-out"></i></button>
         </div>`, {
         side: (el) => { const s = el.dataset.s as typeof side; side = side === s ? null : s; if (side === 'people') void matrix.members(r.id); paintHead(); paintSide(); },
+        rooms: () => { if (active) drafts.set(active, input.value); active = null; paintAll(); },
         shareroom: () => { void navigator.clipboard?.writeText(webRoot() + (`/chat?room=${encodeURIComponent(r.alias ?? r.id)}`)).then(() => toast('대화방 링크를 복사했습니다.')); },
       });
       const top = r.pinned[0] ? r.events.find((m) => m.id === r.pinned[0]) : null;

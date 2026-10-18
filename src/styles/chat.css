@@ -43,6 +43,7 @@
 .comms-head { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: var(--bg-raised); border-bottom: 1px solid var(--line); min-height: 52px; }
 .comms-head:empty { display: none; }
 .comms-title { flex: 1 1 auto; min-width: 0; }
+.comms-rooms { display: none; }
 .comms-title h1 { font-size: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .comms-title small { color: var(--text-dim); font-size: 12px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .comms-tools { display: flex; gap: 4px; }
@@ -144,6 +145,8 @@
   .comms-rail { display: none; }
   .chatx:not(:has(.comms-item.on)) .comms-rail { display: flex; }
   .chatx:not(:has(.comms-item.on)) .comms-room { display: none; }
+  .comms-rooms { display: grid; place-items: center; flex: none; }
+  .comms-tools .hud-btn:last-child { display: none; }
   .with-side .comms-side { position: absolute; inset: 0 0 0 auto; width: min(320px, 90vw); z-index: 5; }
 }
 
