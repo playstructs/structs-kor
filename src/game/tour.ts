@@ -16,7 +16,7 @@ export const BRIDGE_TOUR: Step[] = [
 
 export const GALAXY_TOUR: Step[] = [
   { sel: 'svg.gx', title: '은하', text: '청록은 내 행성, 붉은 점은 경쟁 세력, ▲는 거점, 보라는 공허 함대. 휠과 드래그로 확대·이동, 0으로 전체 보기.' },
-  { sel: '.gx-wrap aside .card', title: '정보', text: '행성이나 거점을 누르면 여기에 정찰·습격·공작·동맹·복속 명령이 나옵니다. 정찰하면 예상 승률이 보입니다.' },
+  { sel: '.gx-wrap aside .card', title: '정보', text: '행성이나 거점을 누르면 여기에 정찰·습격·공작·동맹·투자·복속 명령이 나옵니다. 정찰하면 예상 승률이 보입니다.' },
   { sel: '.hegemony', title: '패권 지수', text: '은하 전체 세력 중 내 몫. 25·40·55·70%에서 칭호를 받고, 70%면 은하 황제입니다. 55%를 넘으면 세력들이 연합해 맞섭니다.' },
 ];
 
