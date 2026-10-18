@@ -23,7 +23,7 @@ const SECTIONS: [string, string, Entry[]][] = [
     { icon: 1, title: '복속', body: html`${DOMINION.raidsToSubjugate}번 약탈한 세력에게 복속을 요구(${DOMINION.cost} g). 속국은 성장의 ${pct(DOMINION.tribute)}를 공물로 바치고 습격하지 않습니다. 함대가 ${DOMINION.rebelFleet}기가 되면 반란 위험: 함선 해체(${DOMINION.disarmCost} g)로 막으세요.`, go: ['/galaxy', '은하 지도'] },
     { icon: 6, title: '공작', body: html`${(Object.keys(OPS) as OpId[]).map((k) => `${OPS[k].name} ${OPS[k].cost} g · 성공 ${pct(OPS[k].odds)} · ${OPS[k].what}`).join(' / ')}. 발각되면 불가침이 깨지고 보복 함대가 옵니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 2, title: '현상금', body: html`${BOUNTY.every}블록마다 한 세력이 다른 세력에 현상금을 겁니다(지도의 ◆). ${BOUNTY.lasts}블록 안에 그 세력을 습격해 이기면 받습니다.`, go: ['/galaxy', '은하 지도'] },
-    { icon: 10, title: '거점', body: html`${OUTPOSTS.map((o) => `${o.name}(${o.perk})`).join(' · ')}. 공략 ${OUTPOST.claim} g · 성공률은 내 전함 대 수비대. 요새화 ${OUTPOST.fortify} g(최대 ${OUTPOST.maxGarrison}). ${OUTPOST.contestEvery}블록마다 경쟁 세력이 빼앗으려 합니다. 거점마다 세력 +40.`, go: ['/galaxy', '은하 지도'] },
+    { icon: 10, title: '거점', body: html`${OUTPOSTS.map((o) => `${o.name}(${o.perk})`).join(' · ')}. 공략 ${OUTPOST.claim} g · 성공률은 내 전함 대 (기본 수비 + 수비대 레벨×2 + 점령 세력 함대의 절반). 요새화 ${OUTPOST.fortify} g(최대 ${OUTPOST.maxGarrison}). ${OUTPOST.contestEvery}블록마다 경쟁 세력이 빼앗으려 합니다. 거점마다 세력 +40.`, go: ['/galaxy', '은하 지도'] },
     { icon: 4, title: '세력의 성향', body: html`${Object.entries(TEMPER).map(([, t]) => `${t.name}: ${t.note}`).join(' · ')}. 세력끼리도 ${WAR.every}블록마다 서로 습격합니다.`, go: ['/galaxy', '은하 지도'] },
   ]],
   ['결단과 위기', '은하가 당신에게 선택을 요구한다.', [
@@ -33,9 +33,9 @@ const SECTIONS: [string, string, Entry[]][] = [
   ]],
   ['성장', '오래 버틴 제국이 강하다.', [
     { icon: 15, title: '연구와 교리', body: html`연구는 영구 강화. 교리는 하나만: ${DOCTRINES.map((d) => `${d.name}(${d.perks.join(', ')})`).join(' · ')}. 첫 선택은 무료, 전환 ${DOCTRINE_SWITCH} g.`, go: ['/research', '연구소'] },
-    { icon: 8, title: '레플리칸트', body: html`${REPS.map((r) => `${r.role}(${r.hire} g, 급여 ${r.upkeep}/블록)`).join(' · ')}. 급여를 못 주면 떠납니다.`, go: ['/replicants', '레플리칸트'] },
+    { icon: 8, title: '레플리칸트', body: html`${REPS.map((r) => `${r.role}(${r.hire} g, 급여 ${r.upkeep} α/블록)`).join(' · ')}. 급여를 못 주면 떠납니다.`, go: ['/replicants', '레플리칸트'] },
     { icon: 18, title: '길드 전', body: html`세 길드가 ${RACE.season}블록 시즌으로 겨룹니다. 기부·격퇴·현상금이 점수. 시즌 시작 전부터 있던 우승 길드원은 ${RACE.prize} α.`, go: ['/guild', '길드'] },
-    { icon: 20, title: '패권과 시대', body: html`패권 지수 = 은하 전체 세력 중 내 몫. 칭호: ${HEGEMONY.map((h) => `${h.title} ${pct(h.at)}`).join(' → ')}. 월드 엔진(${ENGINE.map((e) => e.cost).join(' / ')} α)을 완공하면 새 시대를 열어 생산 +15%로 다시 시작합니다.`, go: ['/record', '전적'] },
+    { icon: 20, title: '패권과 시대', body: html`패권 지수 = 은하 전체 세력 중 내 몫. 칭호: ${HEGEMONY.map((h) => `${h.title} ${pct(h.at)}`).join(' → ')}. 월드 엔진(${ENGINE.map((e) => e.cost).join(' / ')} α)을 완공하면 새 시대를 열어 생산 +15%로 다시 시작합니다. 연구·교리·길드·거점·레플리칸트는 그대로 남습니다.`, go: ['/record', '전적'] },
   ]],
 ];
 

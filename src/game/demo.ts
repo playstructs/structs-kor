@@ -108,7 +108,7 @@ interface State {
   /** Outposts: who holds each (DEMO_ID for you), and your garrison level there. */
   outposts?: Record<OutpostId, { owner: string | null; garrison: number }>; nextContest?: number;
   /** Days in a row the commander came back (local dates), and the last one seen. */
-  streak?: { day: string; n: number };
+  streak?: { day: string; n: number; paidAt?: number };
   /** A loan from 청룡 상단: what's owed and the block it falls due. */
   loan?: { owed: number; due: number } | null; loanBan?: number;
   /** Covert operations attempted (seeds each roll). */
@@ -197,6 +197,7 @@ function leading(): boolean {
 }
 /** Take the stored base if it's newer than ours (another tab saved since, or we were frozen). */
 function adoptStored(): boolean {
+  if (busy) return false;
   try {
     const raw = localStorage.getItem(KEY + '.state');
     if (!raw) return false;
@@ -214,14 +215,15 @@ function checkStreak() {
   const st = s.streak;
   if (st?.day === today) return;
   const n = st?.day === dayKey(y) ? st.n + 1 : 1;
-  s.streak = { day: today, n };
-  if (n >= 2) {
+  // A day on the calendar must also be a stretch of play: winding the clock forward pays nothing.
+  const played = s.height - (st?.paidAt ?? 0) >= 200;
+  s.streak = { day: today, n, paidAt: played && n >= 2 ? s.height : st?.paidAt };
+  if (n >= 2 && played) {
     const g = Math.min(20, 2 * n);
     s.alpha += g;
     chronicle('cheong', `연속 ${n}일 복귀 · +${g} α`);
     emit('streak', `${n}|${g}`);
   }
-  persist();
 }
 /** One beat of the clock in this tab: lead (catching up on whatever the last leader missed) or follow. */
 function beat() {
@@ -230,6 +232,7 @@ function beat() {
     adoptStored();
     const r = catchUp();
     if (r) { if (awayFns.size) for (const f of awayFns) f(r); else pendingReport = r; }
+    checkStreak();
   }
   wasLeader = lead;
   if (lead) block();
@@ -307,7 +310,11 @@ function ownKw() { return capacityKw() - s.contracts.filter((c) => c.dir === 'bu
 function soldKw() { return s.contracts.filter((c) => c.dir !== 'buy').reduce((a, c) => a + c.kw, 0); }
 
 /* ── The block ── */
-function block() {
+/* While a block or a raid settlement is running, the base must not be swapped for another tab's save
+ * mid-way (listeners it fires, like a promotion paying a bonus, would otherwise do that). */
+let busy = 0;
+function block() { busy++; try { blockInner(); } finally { busy--; } }
+function blockInner() {
   s.height++;
   const live = (t: number) => s.structs.filter((x) => x.type === t && x.online && x.building == null && x.hp > 0);
   // Brownout: the chain cuts allocations oldest first, then structs can't stay online.
@@ -388,6 +395,8 @@ function block() {
   repsStep();
   loanStep();
   if (catching) return;
+  // A tab left open across midnight counts the new day too.
+  if (s.streak && s.streak.day !== dayKey()) checkStreak();
   contestStep();
   raceStep();
   bossStep();
@@ -546,7 +555,7 @@ export type OutpostId = 'asteroid' | 'relay' | 'bastion';
 export const OUTPOSTS: { id: OutpostId; name: string; perk: string; index: number; garrison: number }[] = [
   { id: 'asteroid', name: '광물 소행성대', perk: '채굴 +15%', index: 640, garrison: 2 },
   { id: 'relay', name: '중계 기지', perk: '전력 판매가 +5%', index: 980, garrison: 3 },
-  { id: 'bastion', name: '요새 위성', perk: '방어막 회복 +1/블록', index: 300, garrison: 4 },
+  { id: 'bastion', name: '요새 위성', perk: '방어막 발생기 회복 +1/블록', index: 300, garrison: 4 },
 ];
 export const OUTPOST = { claim: 12, fortify: 10, maxGarrison: 3, contestEvery: 160 };
 function outposts() {
@@ -567,7 +576,7 @@ function contestStep() {
   if (s.height < s.nextContest) return;
   s.nextContest = s.height + OUTPOST.contestEvery;
   const mine = OUTPOSTS.filter((d) => holds(d.id));
-  const free = rivals().filter((x) => x.vassal == null);
+  const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height));
   if (!mine.length || !free.length) return;
   const r = rngFor(`contest:${s.height}`);
   const target = mine[Math.floor(r() * mine.length)], attacker = free[Math.floor(r() * free.length)];
@@ -791,7 +800,7 @@ function raidStep() {
     if (r.eta === 0) {
       log('fleet_arrive', r.fleetId); log('raid_status', 'ongoing'); emit('alarm', `${r.name} 습격 개시!`);
       // Your guild answers the alarm: shield support, more from a bigger guild.
-      if (s.guild) { const lv = guildLevel(), add = 8 * lv; s.shield = Math.min(100, s.shield + add); emit('guildhelp', `${GUILDS.find((g) => g.id === s.guild!.id)!.name} 방어막 지원 +${add}%`); }
+      if (s.guild) { const lv = guildLevel(), before = s.shield; s.shield = Math.min(100, s.shield + 8 * lv); const got = Math.round(s.shield - before); if (got > 0) emit('guildhelp', `${GUILDS.find((g) => g.id === s.guild!.id)!.name} 방어막 지원 +${got}%`); }
     }
     return;
   }
@@ -874,8 +883,8 @@ export const demo = {
     if (!on || timer) return;
     // Only the leading tab advances the clock; the others follow its saves (and take over if it closes).
     wasLeader = leading();
-    if (wasLeader) checkStreak();
-    if (wasLeader) { const r = catchUp(); if (r) { if (awayFns.size) for (const f of awayFns) f(r); else pendingReport = r; } }
+    // Catch up first (its clock is the last save), then count the day.
+    if (wasLeader) { const r = catchUp(); if (r) { if (awayFns.size) for (const f of awayFns) f(r); else pendingReport = r; } checkStreak(); }
     timer = setInterval(beat, BLOCK_MS);
   },
   /** The "while you were away" report, delivered once to the first listener that asks. */
@@ -1010,7 +1019,11 @@ export const demo = {
     return null;
   },
   covert,
-  get outposts() { const o = outposts(); return OUTPOSTS.map((d) => ({ ...d, ...o[d.id], mine: o[d.id].owner === DEMO_ID, odds: claimOdds(d.id) })); },
+  get outposts() {
+    const o = outposts(), strongest = Math.max(1, ...rivals().filter((r) => r.vassal == null).map((r) => r.fleet));
+    // For a site you hold, `odds` is its chance to hold against the strongest free rival's attempt.
+    return OUTPOSTS.map((d) => { const mine = o[d.id].owner === DEMO_ID, guard = warships() + o[d.id].garrison * 2 + d.garrison; return { ...d, ...o[d.id], mine, odds: mine ? guard / (guard + strongest) : claimOdds(d.id) }; });
+  },
   /** Send the fleet at an outpost: pay the sortie, roll against its defenders. */
   claimOutpost(id: OutpostId): { ok: boolean; text: string } | string {
     adoptStored();
@@ -1019,6 +1032,10 @@ export const demo = {
     if (!warships()) return '출격할 전함이 없습니다';
     if (s.alpha < OUTPOST.claim) return `출격 비용 ${OUTPOST.claim} g 필요`;
     s.alpha -= OUTPOST.claim;
+    // Taking a site from a pact partner or a vassal is an act of war, as a raid would be.
+    const holder = o.owner && o.owner !== DEMO_ID ? rivals().find((r) => r.id === o.owner) : null;
+    if (holder && holder.vassal != null) { holder.vassal = null; holder.raided = 0; chronicle('jeok', `${holder.name}의 거점을 노려 복속이 깨졌다`); }
+    if (holder && (s.pacts?.[holder.id] ?? 0) > s.height) { delete s.pacts![holder.id]; s.rebel = holder.id; s.nextRaid = Math.min(s.nextRaid, 6); }
     const odds = claimOdds(id);
     s.ops = (s.ops ?? 0) + 1;
     const ok = rngFor(`claim:${s.height}:${id}:${s.ops}`)() < odds;
@@ -1026,8 +1043,8 @@ export const demo = {
     if (ok) { const was = o.owner; o.owner = DEMO_ID; o.garrison = 0; text = `${d.name} 장악 · ${d.perk}`; chronicle('hwang', `${d.name} 장악${was ? ` (${rivals().find((r) => r.id === was)?.name ?? '세력'}에게서)` : ''}`); }
     else {
       // A failed sortie costs a ship's worth of damage.
-      const ship = s.structs.find((x) => x.cat === 'fleet' && x.type !== 1 && x.hp > 0);
-      if (ship) ship.hp = Math.max(0, ship.hp - 2);
+      const ship = s.structs.find((x) => x.cat === 'fleet' && x.type !== 1 && x.hp > 0 && x.building == null);
+      if (ship) { ship.hp = Math.max(0, ship.hp - 2); if (ship.hp <= 0) { ship.online = false; ship.oc = false; } }
       text = `${d.name} 공략 실패 · 함선 손상`;
     }
     log('event', text);
@@ -1143,7 +1160,8 @@ export const demo = {
   },
   get chronicle() { backfillChronicle(); return s.chronicle ?? []; },
   /** Begin a new era: once the World Engine runs, the galaxy starts over around a stronger base.
-   * Kept: era (production +15% each), doctrine, guild, research. Rivals grow 20% faster per era. */
+   * Kept: era (production +15% each), doctrine, guild, research, outposts, hired replicants, the
+   * streak, the chronicle and running totals. Rivals grow 20% faster per era. */
   newEra(): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
     if (engineStage() < ENGINE.length) return '월드 엔진을 완공해야 새 시대를 열 수 있습니다';
@@ -1253,6 +1271,10 @@ export const demo = {
   },
   /** Settle a counter-raid: the fleet comes home as hurt as it fought; a win loots the rival. */
   settleRaid(rivalId: string, won: boolean, hp: Record<string, number>): { ore: number; alpha: number } {
+    adoptStored(); // another tab may have moved on: act on the newest base
+    // Held still while settling: the bounty, grant and promotion it sets off must not swap the base.
+    busy++;
+    try {
     for (const x of s.structs) if (x.id in hp) { x.hp = hp[x.id]; if (x.hp <= 0) x.online = false; }
     if (rivalId === 'void') {
       if (!won || !s.boss) { if (s.boss) s.boss.engaged = undefined; persist(); for (const f of changeFns) f(); return { ore: 0, alpha: 0 }; }
@@ -1286,6 +1308,7 @@ export const demo = {
     } else log('raid_status', `${r?.name ?? rivalId} 습격 실패`);
     persist(); for (const f of changeFns) f();
     return loot;
+      } finally { busy--; }
   },
   level: (t: TechId) => lv(t),
   /** Alpha won outside the base (a campaign clear): straight into the treasury, written in the chronicle. */

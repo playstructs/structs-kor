@@ -53,7 +53,8 @@ export const career = {
     notify(`+${xp} XP`, why, 'hwang', 'coin');
     if (after.i > before) {
       // A promotion also pays the demo base: 5 α a rank (each rank pays once per career).
-      const bonus = demo.on ? Array.from({ length: after.i - before }, (_, k) => 5 * (before + k + 1)).reduce((a, x) => a + x, 0) : 0;
+      // Only the demo commander's own promotions pay the demo base (a signed-in career never does).
+      const bonus = demo.on && who === 'demo' ? Array.from({ length: after.i - before }, (_, k) => 5 * (before + k + 1)).reduce((a, x) => a + x, 0) : 0;
       if (bonus) demo.grant(bonus, `${after.name} 진급 상여`);
       setTimeout(() => {
         sfx.play('levelup');

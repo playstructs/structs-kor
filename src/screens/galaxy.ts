@@ -134,7 +134,7 @@ const screen: Screen = {
         const holder = site.owner && !site.mine ? demo.rivals().find((r) => r.id === site.owner) : null;
         return html`<section class="card game-panel accent intel"><div class="card-head"><h2>▲ ${site.name}</h2><span class="chip ${site.mine ? 'cheong' : holder ? 'jeok' : ''} mono">${site.mine ? '내 거점' : holder ? holder.name : '중립'}</span></div>
           <p class="note">장악하면: <b>${site.perk}</b> · 세력 +40</p>
-          <div class="g2" style="gap:8px"><div class="stat"><small>수비대</small><strong>${site.garrison} / ${OUTPOST.maxGarrison}</strong></div><div class="stat"><small>${site.mine ? '방어' : '공략 성공률'}</small><strong class="${site.odds >= 0.6 ? 'c-cheong' : site.odds >= 0.35 ? 'c-hwang' : 'c-jeok'}">${site.mine ? `수비대 ${site.garrison}` : `${Math.round(site.odds * 100)}%`}</strong></div></div>
+          <div class="g2" style="gap:8px"><div class="stat"><small>수비대</small><strong>${site.garrison} / ${OUTPOST.maxGarrison}</strong></div><div class="stat"><small>${site.mine ? '방어 성공률 (최강 세력 기준)' : '공략 성공률'}</small><strong class="${site.odds >= 0.6 ? 'c-cheong' : site.odds >= 0.35 ? 'c-hwang' : 'c-jeok'}">${Math.round(site.odds * 100)}%</strong></div></div>
           ${site.mine ? html`<button class="btn gold" data-act="fortify" data-id="${site.id}" ${site.garrison >= OUTPOST.maxGarrison || demo.state.alpha < OUTPOST.fortify ? 'disabled' : ''}>요새화 · ${OUTPOST.fortify} g</button>
             <p class="note">경쟁 세력이 때때로 거점을 노립니다. 전함과 수비대가 많을수록 버팁니다.</p>`
           : html`<button class="btn danger lg" data-act="claim" data-id="${site.id}" ${demo.state.alpha < OUTPOST.claim ? 'disabled' : ''}>거점 공략 · ${OUTPOST.claim} g</button>
