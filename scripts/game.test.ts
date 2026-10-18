@@ -849,6 +849,7 @@ test('entrench: a shield that holds to the deadline sends the raiders home', () 
   assert.equal(demo.report!.won, true, `${name} withdrew`);
   assert.ok(s.ore >= ore, 'no ore lost');
   assert.equal(demo.revenge, null, 'they left intact: no opening');
+  assert.equal(s.withdrawals, 1);
 });
 
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
