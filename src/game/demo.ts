@@ -966,6 +966,8 @@ function raidWeights(): [Rival, number][] {
   const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height) && x.id !== allyId());
   return free.map((x) => [x, (TEMPER[x.id]?.raid ?? 2) * (1 + GRUDGE.per * (x.grudge ?? 0)) * (x.id === '1-313' && rivalWorth(x) < demo.netWorth() ? 0.3 : 1) * (x.id === '1-87' && s.ore > 50 ? 1.5 : 1)]);
 }
+/** 참호: how much shield must still stand when their time runs out for the raiders to give up. */
+const entrenchHold = (r: DemoRaid) => 20 + 8 * r.structs.filter((x) => x.hp > 0).length;
 function raidStep() {
   if (!s.raid) {
     if ((s.nextRaid -= ev('pirates') ? 2 : 1) > 0) return;
@@ -1047,6 +1049,15 @@ function raidStep() {
     if ([1, 10, 25, 50, 100].includes(s.raidsRepelled)) chronicle('cheong', `습격 ${s.raidsRepelled}회째 격퇴 · ${r.name}`);
     return;
   }
+  // 참호: dug in behind a shield that still holds when their time runs out, they give up and go home
+  // (no ore lost; but they lose no ship, and nobody is exposed to a counter-raid).
+  if (s.height - r.startedAt > RATE.raidEta + 8 && r.stance === 'entrench' && s.shield >= entrenchHold(r) && s.structs.some((x) => x.cat === 'fleet' && x.hp > 0)) {
+    fileReport(r, true);
+    s.raid = null; s.raidsRepelled++; s.nextRaid = raidGap(); jobRepelled(r.startedAt);
+    log('raid_status', 'attackerRetreated');
+    emit('victory', `${r.name} 함대 철수 · 참호가 버텼습니다`);
+    return;
+  }
   if (s.height - r.startedAt > RATE.raidEta + 8 || !s.structs.some((x) => x.cat === 'fleet' && x.hp > 0)) {
     // The raiders break through and take every gram of unrefined ore.
     r.seized = Math.floor(s.ore * (1 - 0.25 * lv('bunker')) * (inGuild('blue') ? 0.85 : 1)); s.ore -= r.seized; s.shield = 0;
@@ -1078,11 +1089,12 @@ function attack(a: DemoStruct, t: DemoStruct, dmg: number, evaded: boolean, shie
 /** 전황 예측: play the raid out many times on a copy of the base (same rules, its own dice) and count
  * the wins for each stance. Nothing real is touched: the copy is thrown away, events and saves muted. */
 export type Forecast = Record<'none' | Stance, number>;
-let forecastMemo: { key: string; f: Forecast } | null = null;
-function raidForecast(n = 40): Forecast | null {
+const forecastMemo = new Map<string, Forecast>();
+/** `what` names a what-if applied to the copy first ('overshield': the shield 40% higher). */
+function raidForecast(n = 40, what: '' | 'overshield' = ''): Forecast | null {
   if (!s.raid) return null;
-  const key = `${s.height}:${s.seq}:${s.shield}:${s.structs.map((x) => x.hp).join('')}:${s.raid.structs.map((x) => x.hp).join('')}`;
-  if (forecastMemo?.key === key) return forecastMemo.f;
+  const key = `${s.height}:${s.seq}:${s.shield}:${s.structs.map((x) => x.hp).join('')}:${s.raid.structs.map((x) => x.hp).join('')}:${what}`;
+  const hit = forecastMemo.get(key); if (hit) return hit;
   const real = s, fid = s.raid.fleetId;
   const f: Forecast = { none: 0, intercept: 0, entrench: 0 };
   forecasting = true;
@@ -1091,16 +1103,18 @@ function raidForecast(n = 40): Forecast | null {
       let won = 0;
       for (let i = 0; i < n; i++) {
         s = structuredClone(real);
+        if (what === 'overshield') s.shield = Math.min(100, s.shield + 40);
         // Whole blocks, as the clock would run them (shield regen, repairs, the lot), with this stance.
         if (s.raid!.eta > 0) s.raid!.stance = st === 'none' ? undefined : st;
-        forecastRng = rngFor(`forecast:${key}:${st}:${i}`);
+        forecastRng = rngFor(`forecast:${key.slice(0, key.lastIndexOf(':'))}:${st}:${i}`);
         for (let b = 0; b < 40 && s.raid?.fleetId === fid; b++) blockInner();
         if (s.raidsRepelled > real.raidsRepelled) won++;
       }
       f[st] = won / n;
     }
   } finally { s = real; forecasting = false; forecastRng = null; }
-  forecastMemo = { key, f };
+  if (forecastMemo.size > 8) forecastMemo.clear();
+  forecastMemo.set(key, f);
   return f;
 }
 
@@ -1304,6 +1318,8 @@ export const demo = {
     return null;
   },
   raidForecast,
+  /** 참호: the shield a dug-in base must still hold at the raid's deadline. */
+  entrenchHold: () => (s.raid ? entrenchHold(s.raid) : 0),
   /** The likeliest next raider while none is on its way (null otherwise): name, chance, blocks to go. */
   nextRaider() {
     if (s.raid) return null;

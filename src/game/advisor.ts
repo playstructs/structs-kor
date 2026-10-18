@@ -29,7 +29,12 @@ export function advise(rank = 99): Tip[] {
   // Abilities, when they'd turn a raid; at most one tip, so the base's other troubles still show.
   const cap = demo.surgeCap();
   if (raid && raid.eta > 0 && st.ore >= 20 && refining && cap >= st.ore * 0.5 && ready('surge')) tips.push({ pri: 101, tone: 'hwang', text: `습격 전에 긴급 정제[7]: 광석 ${Math.floor(Math.min(cap, st.ore))} 단위를 지금 알파로 바꿔 약탈을 피하세요.`, go: '/console', cta: '함교' });
-  else if (raid && raid.eta <= 2 && st.shield < 60 && ready('overshield')) tips.push({ pri: 96, tone: 'hwang', text: `방어막 ${Math.round(st.shield)}% · 방어막 과충전[8]으로 방어막을 40% 올리고 맞서세요.`, go: '/console', cta: '함교' });
+  else if (raid && raid.eta <= 2 && st.shield < 60 && ready('overshield')) {
+    // Say what it's worth: the forecast with and without the overcharge.
+    const k = raid.stance ?? 'none', now = demo.raidForecast()?.[k], boosted = demo.raidForecast(40, 'overshield')?.[k];
+    const gain = now != null && boosted != null && boosted > now ? ` (승률 ${Math.round(now * 100)}% → ${Math.round(boosted * 100)}%)` : '';
+    tips.push({ pri: 96, tone: 'hwang', text: `방어막 ${Math.round(st.shield)}% · 방어막 과충전[8]으로 방어막을 40% 올리고 맞서세요${gain}.`, go: '/console', cta: '함교' });
+  }
   else if (raid && raid.eta === 0 && ready('strike') && raid.structs.some((x) => x.hp > 0 && x.type !== 1)) tips.push({ pri: 96, tone: 'hwang', text: `교전 중 · 궤도 포격[0]으로 가장 단단한 호위함을 지우세요.`, go: '/console', cta: '함교' });
   else if (raid && raid.eta === 0 && ready('rally')) tips.push({ pri: 95, tone: 'hwang', text: `교전 중 · 총동원[9]으로 모든 함포를 사격시키세요.`, go: '/console', cta: '함교' });
   if (raid?.partner && raid.eta > 0) tips.push({ pri: 99, tone: 'jeok', text: `연합 전선 · ${raid.name} 함대 ${raid.structs.length}기. 평소보다 ${COALITION.extra}척 많습니다 · 방어막 과충전과 총동원을 아끼지 마세요.`, go: '/console', cta: '함교' });

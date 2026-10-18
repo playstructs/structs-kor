@@ -836,6 +836,21 @@ test('investing: a stake pays from the house, counts as your worth, and robbing 
   assert.match(demo.invest('1-87', 250) ?? '', /최대|필요/);
 });
 
+test('entrench: a shield that holds to the deadline sends the raiders home', () => {
+  demo.reset();
+  const s = demo.state;
+  s.raidsRepelled = 12; s.raidsLost = 1; s.nextRaid = 1; demo.step();
+  assert.equal(demo.setStance('entrench'), null);
+  const name = demo.raid!.name, ore = (s.ore = 80);
+  // Keep the shield topped up and the guns silent: only the deadline can end it.
+  for (const x of s.structs) if (x.cat === 'fleet' || x.type === 19) x.online = false;
+  for (let i = 0; i < 30 && demo.raid; i++) { s.shield = 100; demo.step(); }
+  assert.equal(demo.raid, null);
+  assert.equal(demo.report!.won, true, `${name} withdrew`);
+  assert.ok(s.ore >= ore, 'no ore lost');
+  assert.equal(demo.revenge, null, 'they left intact: no opening');
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);
