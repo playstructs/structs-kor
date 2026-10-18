@@ -7,7 +7,8 @@
  *
  * VITE_TRANSPORT overrides the default either way. */
 
-const env = import.meta.env;
+// Outside Vite (node tests) there is no import.meta.env: fall back to the defaults below.
+const env = (import.meta.env ?? {}) as ImportMetaEnv;
 export type Transport = 'relay' | 'direct';
 export const TRANSPORT: Transport = (env.VITE_TRANSPORT as Transport) || (env.DEV ? 'relay' : 'direct');
 

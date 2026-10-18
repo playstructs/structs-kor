@@ -132,5 +132,4 @@ export const actions = {
     act('MsgProviderCreate', { ...p, capacityMinimum: String(p.capacityMinimum), capacityMaximum: String(p.capacityMaximum), durationMinimum: String(p.durationMinimum), durationMaximum: String(p.durationMaximum) }),
 };
 
-/** ~6 s blocks (structs-ai: charge grows about one a block, every 6 s). */
-export const BLOCKS_PER_DAY = 14_400;
+export { BLOCKS_PER_DAY } from './rates';

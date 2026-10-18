@@ -28,7 +28,8 @@ const authFns = new Set<() => void>();
 export function onAuthLost(f: () => void) { authFns.add(f); return () => authFns.delete(f); }
 
 /** Dev only: `?mock=1` answers from src/api/mock.ts (planned routes 404 as they do today). */
-export const MOCK = import.meta.env.DEV && (() => {
+// typeof first: node tests have no import.meta.env; Vite still folds .DEV, so prod drops the mock.
+export const MOCK = typeof import.meta.env !== 'undefined' && import.meta.env.DEV && (() => {
   try {
     const q = new URLSearchParams(location.search).get('mock');
     if (q != null) localStorage.setItem('structs-kor.mock', q);

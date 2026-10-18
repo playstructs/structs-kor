@@ -6,15 +6,15 @@ import { html, mount, n, micro, toast, type Safe } from '../ui/dom';
 import { needSession, errorCard, loading } from '../ui/gate';
 import { guildApi, type AgreementRow, type BankRow, type ProviderRow } from '../api/guild';
 import { marketStats, quote, quoteLocal, type MarketStat, type Quote } from '../api/planned';
-import { actions, BLOCKS_PER_DAY } from '../api/actions';
+import { actions } from '../api/actions';
+import { KW, BLOCKS_PER_DAY, perKwDay as chainPerKwDay, chainRate, MIN_PER_KW_DAY } from '../api/rates';
 import { wallet } from '../wallet/wallet';
 import { DEMO_ID } from '../game/demo';
 import { sfx } from '../game/sfx';
 import { demoExchange } from './exchange-demo';
 
 type Tab = 'buy' | 'mine' | 'sell' | 'bank';
-const KW = 1e6; // mW per kW
-const perKwDay = (p: ProviderRow) => Number(p.rate_amount) * KW * BLOCKS_PER_DAY;
+const perKwDay = (p: ProviderRow) => chainPerKwDay(p.rate_amount);
 const denomName = (d: string) => (d === 'ualpha' ? 'α' : d.startsWith('uguild.') ? d.replace('uguild.', '토큰 ') : d);
 const POLICY: Record<string, string> = { openMarket: '공개', 'open-market': '공개', guildMarket: '길드 전용', 'guild-market': '길드 전용', closedMarket: '비공개', 'closed-market': '비공개' };
 
@@ -79,8 +79,8 @@ function sell(): Safe {
     <form data-act="create" data-on="submit" style="display:flex;flex-direction:column;gap:14px">
       <div class="g2" style="gap:12px">
         <label class="field"><span>판매 변전소</span><input class="input" name="sub" placeholder="4-…" required></label>
-        <label class="field"><span>통화</span><input class="input" name="denom" value="ualpha" required></label>
-        <label class="field"><span>요율 (kW·일당, 통화 단위)</span><input class="input" name="rate" type="number" step="any" min="0" required></label>
+        <label class="field"><span>통화 (체인 단위: ualpha = 알파)</span><input class="input" name="denom" value="ualpha" required></label>
+        <label class="field"><span>요율 (알파 또는 토큰 / kW·일 · 체인 최소 ${n(MIN_PER_KW_DAY)})</span><input class="input" name="rate" type="number" step="any" min="${MIN_PER_KW_DAY}" required></label>
         <label class="field"><span>접근 정책</span><select class="input" name="policy"><option value="openMarket">공개</option><option value="guildMarket">길드 전용</option><option value="closedMarket">비공개</option></select></label>
         <label class="field"><span>최소 용량 (kW)</span><input class="input" name="cmin" type="number" step="any" value="1"></label>
         <label class="field"><span>최대 용량 (kW)</span><input class="input" name="cmax" type="number" step="any" value="20"></label>
@@ -128,9 +128,11 @@ const screen: Screen = {
       create: (el: HTMLElement) => {
         const f = new FormData(el as HTMLFormElement);
         const num = (k: string) => Number(f.get(k));
-        const ratePerMwBlock = (num('rate') * 1e6) / (KW * BLOCKS_PER_DAY);
+        // The chain takes whole µ per mW·block: say what the ask really lists at before signing.
+        const rate = chainRate(num('rate'));
+        if (rate.changed && !confirm(`체인 요율은 µ/mW·블록 정수라서 입력한 ${n(num('rate'), 2)}이(가) 아니라 ${n(rate.listed, 2)} / kW·일로 등록됩니다. 이대로 등록할까요?`)) return;
         sign(actions.providerCreate({
-          substationId: String(f.get('sub')), rate: { denom: String(f.get('denom')), amount: String(Math.max(1, Math.round(ratePerMwBlock))) },
+          substationId: String(f.get('sub')), rate: { denom: String(f.get('denom')), amount: rate.amount },
           accessPolicy: String(f.get('policy')) as 'openMarket', capacityMinimum: Math.round(num('cmin') * KW), capacityMaximum: Math.round(num('cmax') * KW),
           durationMinimum: Math.round(num('dmin') * BLOCKS_PER_DAY), durationMaximum: Math.round(num('dmax') * BLOCKS_PER_DAY),
           consumerCancellationPenalty: String(f.get('pc')), providerCancellationPenalty: String(f.get('pp')),
