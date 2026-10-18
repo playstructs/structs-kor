@@ -1716,6 +1716,8 @@ export const demo = {
       loot = { ore: Math.min(Math.floor(r.ore), Math.floor(r.ore * 0.6 * (inGuild('iron') ? 1.25 : 1) * (doc('war') ? 1.3 : 1) * (rev ? REVENGE.bonus : 1))), alpha: 0 };
       if (rev) { chronicle('cheong', `보복 성공 · ${r.name} 약탈 ${loot.ore}`); s.revengeWins = (s.revengeWins ?? 0) + 1; }
       r.ore -= loot.ore; r.fleet = Math.max(2, r.fleet - 1); r.raided++; r.grudge = Math.min(GRUDGE.max, (r.grudge ?? 0) + 1);
+      // A house pushed far enough says so, on the wire.
+      if (r.grudge === 3 || r.grudge === GRUDGE.max) { const text = r.grudge === GRUDGE.max ? `${r.name}, 한빛 IV를 숙적으로 선포 · 함대가 당신을 노립니다` : `${r.name}이(가) 복수를 다짐했습니다`; s.news = [{ h: s.height, text }, ...(s.news ?? [])].slice(0, 8); emit('news', text); }
       s.ore += loot.ore;
       log('raid_status', `${r.name} 약탈 +${loot.ore}`);
     } else log('raid_status', `${r?.name ?? rivalId} 습격 실패`);
