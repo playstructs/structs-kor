@@ -54,15 +54,16 @@ The English desktop client (structs-universe) is the reference; this client matc
 | Debug tab, Diagnostics | `/diag` |
 | GRASS Stream | 은하 통계 → 실시간 스트림 |
 | Simulator challenge | `/sim?vs=<player>`: their real fleet against yours, with win odds |
+| Play live (simulator-live.js, matrix/sim.rs) | 실시간 대전: `/sim?duel=<player>` hosts (mirrored fleets, random, or a shared battle's with `&from=`), the offer goes to your DM as a card, `/sim?join=` answers it. Lobby (offer → join → both ready), the host's blocks replayed on the guest's own chain (`src/sim/live.ts` over `src/chat/duel.ts`), 30 s of silence forfeits, head-to-head debrief and record. Also from the people panel, someone else's replay card and `/duel` in 통신 |
 | Game Stats | `/stats` |
 | War: targets, grudges, vetoes, incidents, live raids | `/war` |
 | Map Viewer (watch any planet) | `/o/<planet>` on the battle board, fights animated live from GRASS; watched planets raise the alarm when raided |
 | Sound designer | 소리 설정 (내 정보 or palette `소리`): master volume, each cue on/off, your own file per cue (IndexedDB) |
 | Native notifications per channel | 내 정보 → 시스템 알림 (`src/game/native.ts`) |
 
-What stays desktop-only: GPU hashing, the MCP server for AI agents, live head-to-head simulator matches and shared proof-of-work (here: asynchronous challenges, `/sim?from=`), and loops that run while the app is closed (here, standing orders run while the tab is open).
+What stays desktop-only: GPU hashing, the MCP server for AI agents, shared proof-of-work, watchers and the WebRTC fast path of a live match (here every frame goes through the DM), and loops that run while the app is closed (here, standing orders run while the tab is open).
 
-Dev: `?mock=1` also brings up a pretend Matrix homeserver (`src/chat/mockserver.ts`) with seeded rooms, guildmates who type and answer, and an invite.
+Dev: `?mock=1` also brings up a pretend Matrix homeserver (`src/chat/mockserver.ts`) with seeded rooms, guildmates who type and answer, and an invite. Tabs share it over a BroadcastChannel, and `&as=1-7` signs a tab in as another fixture commander (kept for that tab), so a live duel can be played between two tabs: host at `/sim?mock=1&duel=1-7`, answer from 1-7's DM with 테스트 사령관 (`/chat?mock=1&as=1-7`).
 
 ## Search and sharing
 
@@ -171,7 +172,7 @@ Starting the work is signed in the browser too: the bridge's build menu sends `M
 | `/record` | 전적: commander portrait (editable for guests; on-chain `pfp` when signed in), rank ladder, career numbers, medals and every objective. The HUD's rank plate opens it. |
 | `sfx.ts`, `fx.ts`, `keys.ts`, `attract.ts` | Synthesised sound (M mutes), rolling counters, banners, shake; hotkeys (`?` lists them); the title screen's live AI-vs-AI battle. |
 
-The simulator adds a fleet editor on a point budget, a five-round 연전 (gauntlet: survivors carry their damage, each win offers a reinforcement — from structs-xyz `sim/fleets.ts`) and 1×/2×/4× speed. In battle a selected unit can fire, guard an ally (D), move the flagship to another battlefield (M) or toggle stealth (S), all as chain messages on the local chain. Every battle records its orders: the debrief replays it on the board, and a share link (`/sim?replay=…`, structs-xyz's replay codec plus starting charge) plays it for anyone — the seeded chain reproduces it exactly (checked in `pnpm test`).
+The simulator adds a fleet editor on a point budget, a five-round 연전 (gauntlet: survivors carry their damage, each win offers a reinforcement — from structs-xyz `sim/fleets.ts`) and 1×/2×/4× speed. In battle a selected unit can fire, guard an ally (D), move the flagship to another battlefield (M) or toggle stealth (S), all as chain messages on the local chain. A live duel runs the same loop with a person in the computer's seat: the host submits its order and the guest's latest move each block and sends the block's transactions with a state checksum; the guest applies them to its own chain, so both boards animate the same events and a lost tick is asked for again. Every battle records its orders: the debrief replays it on the board, and a share link (`/sim?replay=…`, structs-xyz's replay codec plus starting charge) plays it for anyone — the seeded chain reproduces it exactly (checked in `pnpm test`).
 
 ## Where things came from
 

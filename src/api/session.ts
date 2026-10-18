@@ -29,7 +29,7 @@ export const session = {
   /** Resume a session this browser already holds (token or cookie). */
   async resume() {
     // Dev mock: signed in as this browser's commander if it enlisted against the mock, else the fixture.
-    if (MOCK) { set({ state: 'in', playerId: wallet.commander?.playerId ?? '1-42', why: '' }); return; }
+    if (MOCK) { set({ state: 'in', playerId: mockAs() ?? wallet.commander?.playerId ?? '1-42', why: '' }); return; }
     const pid = wallet.commander?.playerId;
     if (!pid) return;
     try {
@@ -83,3 +83,13 @@ export const session = {
 };
 
 onAuthLost(() => { if (status.state === 'in') set({ state: 'out', why: '세션이 만료되었습니다.' }); });
+
+/** Dev mock only: `?as=1-7` signs this tab in as another fixture commander, so two tabs can be two
+ * players (a live duel over the mock homeserver, which relays between tabs). Kept per tab. */
+function mockAs(): string | null {
+  try {
+    const q = new URLSearchParams(location.search).get('as');
+    if (q && /^1-\d{1,9}$/.test(q)) sessionStorage.setItem('structs-kor.mock.as', q);
+    return sessionStorage.getItem('structs-kor.mock.as');
+  } catch { return null; }
+}

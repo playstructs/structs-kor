@@ -264,6 +264,30 @@ const MSG_KEYS: Record<string, string[]> = {
 const TYPE_LIST = Object.keys(MSG_KEYS);
 const STRUCT_ID = /^5-\d{1,9}$/;
 
+/** One order, strictly: a known message type with every field in its one legal shape (anything else,
+ * markup or odd ids, is refused). Replay links and live match frames come from other people. */
+export function parseMsg(o: unknown): Msg | null {
+  if (!o || typeof o !== 'object') return null;
+  const src = o as Record<string, unknown>;
+  const type = src['@type'];
+  if (typeof type !== 'string' || !MSG_KEYS[type]) return null;
+  const msg: Record<string, unknown> = { '@type': type };
+  for (const k of MSG_KEYS[type]) {
+    const v = src[k];
+    const ok = k === 'targetStructId' ? Array.isArray(v) && v.length >= 1 && v.length <= 4 && v.every((x) => typeof x === 'string' && STRUCT_ID.test(x))
+      : k === 'weaponSystem' ? v === 'primaryWeapon' || v === 'secondaryWeapon'
+      : k === 'ambit' ? AMBITS.includes(v as Ambit)
+      : k === 'slot' ? Number.isInteger(v) && (v as number) >= 0 && (v as number) < 8
+      : k === 'locationType' ? v === 'fleet' || v === 'planet'
+      : typeof v === 'string' && STRUCT_ID.test(v);
+    if (!ok) return null;
+    msg[k] = v;
+  }
+  // A ship firing on itself is something the battle screen can't order; a link that does is forged.
+  if (Array.isArray(msg.targetStructId) && msg.targetStructId.includes(msg.operatingStructId)) return null;
+  return msg as unknown as Msg;
+}
+
 export function encodeReplay(r: ReplayCode): string {
   const o = {
     u: r.units.map((u) => [u.id, u.type, u.ambit, u.slot, u.protects, u.health ?? null]),
@@ -295,22 +319,11 @@ export function decodeReplay(code: string): ReplayCode | null {
       prev = off;
       const type = TYPE_LIST[Number(row[2])];
       if (!type) throw new Error('bad tx');
-      const msg: Record<string, unknown> = { '@type': type };
-      MSG_KEYS[type].forEach((k, i) => {
-        const v = row[3 + i];
-        // Every field has one legal shape; anything else (markup, odd ids) rejects the link.
-        const ok = k === 'targetStructId' ? Array.isArray(v) && v.length >= 1 && v.length <= 4 && v.every((x) => typeof x === 'string' && STRUCT_ID.test(x))
-          : k === 'weaponSystem' ? v === 'primaryWeapon' || v === 'secondaryWeapon'
-          : k === 'ambit' ? AMBITS.includes(v as Ambit)
-          : k === 'slot' ? Number.isInteger(v) && (v as number) >= 0 && (v as number) < 8
-          : k === 'locationType' ? v === 'fleet' || v === 'planet'
-          : typeof v === 'string' && STRUCT_ID.test(v);
-        if (!ok) throw new Error('bad tx field');
-        msg[k] = v;
-      });
-      // A ship firing on itself is something the battle screen can't order; a link that does is forged.
-      if (Array.isArray(msg.targetStructId) && msg.targetStructId.includes(msg.operatingStructId)) throw new Error('self-target');
-      return { height: o.h + Number(row[0]), signer: row[1] === 0 ? YOU.id : CPU.id, msg: msg as unknown as Msg };
+      const fields: Record<string, unknown> = {};
+      MSG_KEYS[type].forEach((k, i) => { fields[k] = row[3 + i]; });
+      const msg = parseMsg({ '@type': type, ...fields });
+      if (!msg) throw new Error('bad tx field');
+      return { height: o.h + Number(row[0]), signer: row[1] === 0 ? YOU.id : CPU.id, msg };
     });
     const end = Number.isInteger(o.e) && o.e >= 0 && o.e <= 100000 ? o.h + o.e : undefined;
     const stalemate = o.k === 'moves' || o.k === 'quiet' || o.k === 'time' ? o.k : undefined;

@@ -1,7 +1,12 @@
 /* Dev only (`?mock=1`): a pretend Matrix homeserver in this tab, so 통신 can be driven without a guild.
  * Rooms are seeded with guild talk that names real fixture objects (so cards unfurl), guildmates type
  * and answer, react, and one of them invites you to a room. Never in a production build: matrix.ts
- * imports it only behind MOCK, which Vite folds to false outside dev. */
+ * imports it only behind MOCK, which Vite folds to false outside dev.
+ *
+ * Tabs of this origin share one homeserver: what a tab's commander sends (messages, rooms, live match
+ * frames) is relayed to the others over a BroadcastChannel. Sign a second tab in as another fixture
+ * commander with `?mock=1&as=1-7` and the two can DM each other and play a live duel; a guildmate who
+ * is really another tab no longer answers for itself. */
 import type { MatrixEvent, SyncBody } from './matrix';
 
 const HS = 'mock.structs';
@@ -18,15 +23,53 @@ let me = uid('1-42');
 let waiters: (() => void)[] = [];
 let seeded = false;
 let typing = new Map<string, Set<string>>();
+/** Commanders signed in on other tabs: real people here, so no scripted answers for them. */
+const peers = new Set<string>();
+const relay = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('structs-kor.mock-matrix') : null;
+type RelayMsg = { kind: 'hello'; me: string; reply?: boolean } | { kind: 'event'; room: Omit<MRoom, 'history'>; ev: MatrixEvent };
+/** Everything that went through the relay, either way: a tab that loads later (each page load starts
+ * a fresh homeserver) is caught up from it when it says hello. */
+const relayed: Extract<RelayMsg, { kind: 'event' }>[] = [];
+const keep = (m: Extract<RelayMsg, { kind: 'event' }>) => { relayed.push(m); if (relayed.length > 3000) relayed.splice(0, relayed.length - 3000); };
 
-const evId = () => `$m${++seq}${Math.random().toString(36).slice(2, 6)}`;
-function push(room: string, ev: Partial<MatrixEvent> & { type: string; sender: string; content: Record<string, unknown> }, ephemeral = false) {
+const evId = () => `$m${++seq}${Math.random().toString(36).slice(2, 8)}`;
+/** `share`: this tab's commander did it, so the other tabs hear it too. */
+function push(room: string, ev: Partial<MatrixEvent> & { type: string; sender: string; content: Record<string, unknown> }, ephemeral = false, share = false) {
   const full = { event_id: evId(), origin_server_ts: Date.now(), ...ev } as MatrixEvent;
   if (!ephemeral) rooms.get(room)?.history.push(full);
   log.push({ pos: log.length + 1, room, ev: full, ephemeral });
   const w = waiters; waiters = []; for (const f of w) f();
+  const r = rooms.get(room);
+  if (share && relay && r && !ephemeral) { const { history: _h, ...meta } = r; const m: RelayMsg = { kind: 'event', room: { ...meta, members: [...meta.members] }, ev: full }; keep(m); relay.postMessage(m); }
   return full;
 }
+/* Another tab's event: into the same room here (made if this tab never had it), never relayed back. */
+relay?.addEventListener('message', (e: MessageEvent<RelayMsg>) => {
+  const m = e.data;
+  if (!m || !seeded) return;
+  if (m.kind === 'hello') {
+    if (m.me !== me) peers.add(m.me);
+    if (!m.reply) { relay.postMessage({ kind: 'hello', me, reply: true } satisfies RelayMsg); for (const x of relayed) relay.postMessage(x); }
+    return;
+  }
+  if (m.kind !== 'event') return;
+  // Already here (my own, or heard before)? Event ids are unique across tabs.
+  if (rooms.get(m.room.id)?.history.some((x) => x.event_id === m.ev.event_id)) return;
+  if (m.ev.sender !== me) peers.add(m.ev.sender);
+  let r = rooms.get(m.room.id);
+  if (!r) {
+    if (!m.room.members.includes(me)) return;
+    r = addRoom({ id: m.room.id, name: m.room.name, alias: m.room.alias, topic: m.room.topic, members: m.room.members, direct: m.room.direct });
+    if (m.room.direct) direct[m.ev.sender] = [...new Set([...(direct[m.ev.sender] ?? []), r.id])];
+    for (const st of stateOf(r)) push(r.id, st, false);
+  }
+  keep(m);
+  for (const u of m.room.members) if (!r.members.includes(u)) r.members.push(u);
+  if (m.ev.type === 'm.room.pinned_events') r.pinned = (m.ev.content.pinned as string[]) ?? [];
+  r.history.push(m.ev);
+  log.push({ pos: log.length + 1, room: r.id, ev: m.ev });
+  const w = waiters; waiters = []; for (const f of w) f();
+});
 const say = (room: string, who: string, body: string, ago = 0) => {
   const ev = push(room, { type: 'm.room.message', sender: uid(who), content: { msgtype: 'm.text', body } });
   ev.origin_server_ts = Date.now() - ago;
@@ -52,7 +95,8 @@ function seed(user: string) {
   me = user;
   const self = user.replace(/^@/, '').split(':')[0];
   NAMES[self] ??= '테스트 사령관';
-  const all = [user, uid('1-7'), uid('1-9'), uid('1-13'), uid('1-21')];
+  // Whoever this tab is, the fixture commanders (1-42 among them) are all in the guild.
+  const all = [...new Set([user, uid('1-42'), uid('1-7'), uid('1-9'), uid('1-13'), uid('1-21')])];
   const H = 3_600_000;
   const corp = addRoom({ id: `!sncorp:${HS}`, name: 'sn-corp', alias: `#sn-corp:${HS}`, topic: 'SN Corp 길드 본부 · 공지와 작전', members: all });
   say(corp.id, '1-7', '좋은 아침, 사령관들. 오늘 채굴 할당량 확인해 주세요.', 26 * H);
@@ -72,12 +116,15 @@ function seed(user: string) {
   say(raid.id, '1-9', '목표 후보: 2-77, 2-512. 방어가 약해요.', 6 * H);
   const desk = addRoom({ id: `!desk:other.net`, name: 'help-desk', alias: '#help-desk:other.net', topic: '갤럭시 넷 공용 안내소', members: [user, uid('1-13')] });
   say(desk.id, '1-13', 'Welcome to the galaxy net. 한국어도 환영!', 50 * H);
-  const dm = addRoom({ id: `!dm7:${HS}`, name: '', topic: '', members: [user, uid('1-7')], direct: true });
+  // The DM between 1-42 and 1-7, whichever of them this tab is: two tabs share it.
+  const buddy = self === '1-7' ? '1-42' : '1-7';
+  const dm = addRoom({ id: `!dm7:${HS}`, name: '', topic: '', members: [user, uid(buddy)], direct: true });
   say(dm.id, '1-7', '어서 와요! 모르는 거 있으면 언제든 물어봐요. 알파가 필요하면 말해요.', 4 * H);
-  direct[uid('1-7')] = [dm.id];
+  direct[uid(buddy)] = [dm.id];
   const op = addRoom({ id: `!op21:${HS}`, name: '흑룡 작전', topic: '흑룡의 비밀 작전방', members: [uid('1-21'), uid('1-9')] });
   say(op.id, '1-21', '작전 개시는 자정입니다.', H);
   invites.set(op.id, { room: op, from: uid('1-21') });
+  relay?.postMessage({ kind: 'hello', me } satisfies RelayMsg);
 }
 
 /* Guildmates answer: someone types, then replies; sometimes a reaction. */
@@ -85,7 +132,7 @@ const REPLIES = ['좋아요, 저도 갈게요!', '확인했습니다 👍', '그
 function answer(roomId: string, text: string) {
   const r = rooms.get(roomId);
   if (!r) return;
-  const others = r.members.filter((m) => m !== me);
+  const others = r.members.filter((m) => m !== me && !peers.has(m));
   if (!others.length) return;
   const who = others[Math.floor(Math.random() * others.length)];
   const set = typing.get(roomId) ?? new Set(); set.add(who); typing.set(roomId, set);
@@ -149,12 +196,13 @@ export async function mockMatrix<T>(path: string, init: RequestInit, user: strin
     if (!r) throw new Error('M_NOT_FOUND');
     switch (seg[4]) {
       case 'send': {
-        const ev = push(roomId, { type: seg[5], sender: me, content: body, unsigned: { transaction_id: seg[6] } });
-        if (seg[5] === 'm.room.message' && body.msgtype !== 'm.image' && !(body['m.relates_to'] as { rel_type?: string } | undefined)?.rel_type) answer(roomId, String(body.body ?? ''));
+        const ev = push(roomId, { type: seg[5], sender: me, content: body, unsigned: { transaction_id: seg[6] } }, false, true);
+        // A guildmate answers what people say (not a live match's offer, not what nobody reads).
+        if (seg[5] === 'm.room.message' && body.msgtype !== 'm.image' && !(body['m.relates_to'] as { rel_type?: string } | undefined)?.rel_type && !Object.keys(body).some((k) => k.startsWith('structs.'))) answer(roomId, String(body.body ?? ''));
         return ok({ event_id: ev.event_id });
       }
-      case 'redact': { const ev = push(roomId, { type: 'm.room.redaction', sender: me, content: {}, redacts: seg[5] }); return ok({ event_id: ev.event_id }); }
-      case 'state': { r.pinned = (body.pinned as string[]) ?? []; push(roomId, { type: seg[5], sender: me, content: body, state_key: '' }); return ok({}); }
+      case 'redact': { const ev = push(roomId, { type: 'm.room.redaction', sender: me, content: {}, redacts: seg[5] }, false, true); return ok({ event_id: ev.event_id }); }
+      case 'state': { r.pinned = (body.pinned as string[]) ?? []; push(roomId, { type: seg[5], sender: me, content: body, state_key: '' }, false, true); return ok({}); }
       case 'typing': return ok({});
       case 'receipt': return ok({});
       case 'leave': r.members = r.members.filter((m) => m !== me); invites.delete(roomId); return ok({});
@@ -177,8 +225,8 @@ export async function mockMatrix<T>(path: string, init: RequestInit, user: strin
   }
   if (p === '/v3/createRoom') {
     const inv = (body.invite as string[]) ?? [];
-    const r = addRoom({ id: `!new${seq}:${HS}`, name: String(body.name ?? ''), topic: '', members: [me, ...inv], direct: !!body.is_direct });
-    push(r.id, { type: 'm.room.create', sender: me, content: {}, state_key: '' });
+    const r = addRoom({ id: `!new${seq}${Math.random().toString(36).slice(2, 7)}:${HS}`, name: String(body.name ?? ''), topic: '', members: [me, ...inv], direct: !!body.is_direct });
+    push(r.id, { type: 'm.room.create', sender: me, content: {}, state_key: '' }, false, true);
     return ok({ room_id: r.id });
   }
   if (seg[2] === 'user' && seg[4] === 'account_data') {

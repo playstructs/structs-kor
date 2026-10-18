@@ -17,6 +17,7 @@ export const COMMANDS: Command[] = [
   { name: 'pay', args: '<플레이어> [g]', help: '알파 보내기 (서명 전에 검토)', aliases: ['send'] },
   { name: 'rent', args: '<공급자 ID>', help: '전력 임대 창 열기' },
   { name: 'sim', args: '[플레이어]', help: '전투 시뮬레이터로 도전' },
+  { name: 'duel', args: '[플레이어]', help: '실시간 대전 신청 (DM에서는 상대에게)', aliases: ['대전'] },
   { name: 'base', args: '', help: '내 기지 현황을 상황 카드로 공유' },
   { name: 'search', args: '<검색어>', help: '메시지 검색', aliases: ['find'] },
 ];

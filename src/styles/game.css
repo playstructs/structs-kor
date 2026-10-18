@@ -711,3 +711,14 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 
 /* Desktop app: a new signed release is ready (src/core/desktop.ts). */
 .app-update { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: calc(100vw - 32px); padding: 10px 14px; background: var(--cheong-bg); border: 2px solid var(--cheong-mid); box-shadow: 0 6px 0 #0E0D1C88; }
+
+/* 실시간 대전: the lobby in the deploy view (src/screens/sim.ts lobbyPanel) */
+.duel-lobby { background: var(--sunken); border-color: var(--line-strong); border-left-color: var(--hwang); }
+.duel-lobby .label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.duel-lobby .field { margin: 0; }
+.duel-seats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.duel-seats li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; background: var(--bg-raised); border: 2px solid var(--line); }
+.duel-seats li.on { border-color: var(--cheong); }
+.duel-seats li .mono { margin-left: auto; }
+.bt-mid .chip { font-size: 11px; white-space: nowrap; }
+@media (max-width: 560px) { .duel-seats { grid-template-columns: 1fr; } }

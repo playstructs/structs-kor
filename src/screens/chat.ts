@@ -186,7 +186,7 @@ const screen: Screen = {
           ${reply ? html`<button class="cm-quote" data-act="jump" data-id="${reply.id}"><b>${matrix.displayName(r.id, reply.sender)}</b> ${reply.redacted ? '삭제된 메시지' : reply.body.slice(0, 90)}</button>` : ''}
           ${m.image ? html`<button class="cm-img" data-mxc="${m.image.mxc}" style="aspect-ratio:${m.image.w && m.image.h ? `${m.image.w} / ${m.image.h}` : '4 / 3'}" aria-label="이미지 ${m.body}"><span class="faint">이미지 불러오는 중…</span></button>` : ''}
           ${m.image && /^[^\s]+\.(png|jpe?g|gif|webp)$/i.test(m.body) ? '' : html`<p class="cm-text ${m.emote ? 'emote' : ''}">${m.emote ? html`<b>* ${matrix.displayName(r.id, m.sender)}</b> ` : ''}${raw(messageHtml(m.body, base))}${m.edited ? html` <small class="faint">(수정됨)</small>` : ''}</p>`}
-          ${sits.length || ids.length || chal ? html`<div class="cm-cards">${chal ? raw(challengeSlot(m.body, base)) : ''}${sits.map((s) => raw(situationHtml(s, base)))}${ids.map((id) => raw(refSlot(id, { compact: true, base, me: pid })))}</div>` : ''}
+          ${sits.length || ids.length || chal ? html`<div class="cm-cards">${chal ? raw(challengeSlot(m.body, base, { id: localpart(m.sender), mine: m.mine })) : ''}${sits.map((s) => raw(situationHtml(s, base)))}${ids.map((id) => raw(refSlot(id, { compact: true, base, me: pid })))}</div>` : ''}
           ${reactionChip(m)}
           ${m.pending === 'failed' ? html`<span class="cm-fail">전송 실패 · <button class="linkish" data-act="retry" data-id="${m.id}">다시 보내기</button></span>` : m.pending === 'sending' ? html`<span class="cm-sending faint">보내는 중…</span>` : ''}
         </div>
@@ -281,7 +281,7 @@ const screen: Screen = {
         const list = people();
         mount(sideEl, html`<div class="side-head"><h2>참여자 <small>${list.length}</small></h2><button class="hud-btn" data-act="x" aria-label="닫기"><i class="si icon-close"></i></button></div>
           ${list.length ? html`<ul class="people">${list.map((p) => html`<li>${raw(portraitHtml(pfps.get(p.id) || seededPfp(p.id), 32))}<div><a href="${href(`/o/${p.id}`)}"><b>${p.name}</b></a><small class="mono">${p.id}</small></div>
-            ${p.uid === matrix.me ? html`<span class="chip cheong">나</span>` : html`<span class="people-acts"><button class="hud-btn" data-act="dm" data-id="${p.id}" title="메시지" aria-label="${p.name}에게 메시지"><i class="si icon-phone"></i></button><button class="hud-btn" data-act="pay" data-id="${p.id}" title="알파 보내기" aria-label="${p.name}에게 알파 보내기"><i class="si icon-send-alpha"></i></button><a class="hud-btn" href="${href(`/sim?vs=${p.id}`)}" title="실전 예측으로 도전" aria-label="${p.name}에게 도전"><i class="si icon-combat-log"></i></a></span>`}</li>`)}</ul>` : html`<p class="note">${r ? '참여자를 불러오는 중…' : '대화방을 고르세요.'}</p>`}
+            ${p.uid === matrix.me ? html`<span class="chip cheong">나</span>` : html`<span class="people-acts"><button class="hud-btn" data-act="dm" data-id="${p.id}" title="메시지" aria-label="${p.name}에게 메시지"><i class="si icon-phone"></i></button><button class="hud-btn" data-act="pay" data-id="${p.id}" title="알파 보내기" aria-label="${p.name}에게 알파 보내기"><i class="si icon-send-alpha"></i></button><a class="hud-btn" href="${href(`/sim?vs=${p.id}`)}" title="실전 예측으로 도전" aria-label="${p.name}에게 도전"><i class="si icon-combat-log"></i></a><a class="hud-btn" href="${href(`/sim?duel=${p.id}`)}" title="실시간 대전 신청" aria-label="${p.name}에게 실시간 대전 신청"><i class="si icon-raid"></i></a></span>`}</li>`)}</ul>` : html`<p class="note">${r ? '참여자를 불러오는 중…' : '대화방을 고르세요.'}</p>`}
           <button class="btn ghost sm" data-act="group">그룹 대화 만들기</button>`, sideHandlers);
       } else if (side === 'search') {
         mount(sideEl, html`<div class="side-head"><h2>검색</h2><button class="hud-btn" data-act="x" aria-label="닫기"><i class="si icon-close"></i></button></div>
@@ -368,6 +368,12 @@ const screen: Screen = {
         case 'pay': { const p = playerArg(args[0] ?? '', ppl); void openTransfer({ to: p ?? undefined, amount: Number(args[1]) || undefined }); return; }
         case 'rent': { const c = args[0] ? await resolveRef(args[0]) : null; if (c?.provider) openRent(c.provider); else notice('공급자 ID를 적어주세요. 예: /rent 10-3'); return; }
         case 'sim': go(`/sim${args[0] ? `?vs=${encodeURIComponent(playerArg(args[0], ppl) ?? args[0])}` : ''}`); return;
+        case 'duel': {
+          // In a DM the other person is who you mean.
+          const id = args[0] ? playerArg(args[0], ppl) ?? args[0] : r?.direct ? ppl.find((p) => p.uid !== matrix.me)?.id : undefined;
+          if (!id || !/^1-\d{1,9}$/.test(id)) { notice('대전할 플레이어를 적어주세요. 예: /duel 1-7'); return; }
+          go(`/sim?duel=${id}`); return;
+        }
         case 'base': { const s = await baseSituation(pid!); if (s) share({ kind: 'situation', s }); return; }
         case 'search': searchTerm = rest; side = 'search'; paintHead(); paintSide(); void runSearch(); return;
       }

@@ -47,8 +47,15 @@ export class Matrix {
   private directIds = new Set<string>();
   private relations = new Map<string, { reactions: Map<string, { key: string; sender: string; target: string }> }>();
   private edits = new Map<string, { sender: string; body: string }>();
+  private timelineFns = new Set<(roomId: string, ev: Ev, initial: boolean) => void>();
+  /** Events only our own clients read (a `structs.*` type, or a `structs.*` key on a message), kept a
+   * while for a screen that loads after they arrived: a live match offer, its lobby. */
+  readonly custom: { roomId: string; ev: Ev; initial: boolean }[] = [];
 
   onChange(f: () => void) { this.fns.add(f); return () => this.fns.delete(f); }
+  /** Every timeline event as it arrives, whatever its type: live match frames are events no person
+   * reads (src/chat/duel.ts). `initial` marks the first sync's, which are history, not news. */
+  onTimeline(f: (roomId: string, ev: Ev, initial: boolean) => void) { this.timelineFns.add(f); return () => this.timelineFns.delete(f); }
   /** One listener's failure must not stop the others, or the sync loop that calls this. */
   private emit() { for (const f of this.fns) { try { f(); } catch (e) { console.error(e); } } }
   get server() { return this.grant?.user_id.split(':').slice(1).join(':') ?? ''; }
@@ -89,6 +96,7 @@ export class Matrix {
   reset() {
     this.stop();
     this.grant = null; this.since = null; this.state = 'idle';
+    this.custom.length = 0;
     this.rooms.clear(); this.invites.clear(); this.directIds.clear(); this.relations.clear(); this.edits.clear(); this.receipted.clear();
     for (const p of this.blobs.values()) void p.then((u) => { if (u) URL.revokeObjectURL(u); });
     this.blobs.clear();
@@ -107,7 +115,7 @@ export class Matrix {
     await this.signIn();
     if (this.rooms.size || this.running) return;
     const body = await this.req<SyncBody>(`/v3/sync?filter=${this.filter(1)}&timeout=0`);
-    this.ingest(body);
+    this.ingest(body, true);
     this.emit();
   }
 
@@ -121,8 +129,9 @@ export class Matrix {
         this.ctl = new AbortController();
         const q = `/v3/sync?filter=${this.filter(40)}&timeout=${this.since ? 30000 : 0}${this.since ? '&since=' + encodeURIComponent(this.since) : ''}`;
         const body = await this.req<SyncBody>(q, { signal: this.ctl.signal });
+        const initial = !this.since;
         this.since = body.next_batch;
-        this.ingest(body);
+        this.ingest(body, initial);
         fails = 0;
         this.state = 'live';
         this.emit();
@@ -210,7 +219,7 @@ export class Matrix {
     }
   }
 
-  private ingest(b: SyncBody) {
+  private ingest(b: SyncBody, initial = false) {
     for (const ev of b.account_data?.events ?? []) if (ev.type === 'm.direct') for (const ids of Object.values(ev.content as Record<string, string[]>)) for (const id of ids) this.directIds.add(id);
     for (const [id, r] of Object.entries(b.rooms?.join ?? {})) {
       this.invites.delete(id);
@@ -219,7 +228,14 @@ export class Matrix {
       // A gap (limited): what we held is no longer contiguous with now; history resumes from the new edge.
       if (r.timeline?.limited) { room.events = room.events.filter((m) => m.pending); room.prevBatch = r.timeline.prev_batch ?? null; room.noMoreHistory = false; }
       else if (r.timeline?.prev_batch && !room.prevBatch) room.prevBatch = r.timeline.prev_batch;
-      for (const ev of r.timeline?.events ?? []) this.apply(room, ev);
+      for (const ev of r.timeline?.events ?? []) {
+        this.apply(room, ev);
+        if (ev.type.startsWith('structs.') || (ev.type === 'm.room.message' && Object.keys(ev.content ?? {}).some((k) => k.startsWith('structs.')))) {
+          this.custom.push({ roomId: id, ev, initial });
+          if (this.custom.length > 600) this.custom.splice(0, this.custom.length - 600);
+        }
+        for (const f of this.timelineFns) { try { f(id, ev, initial); } catch (e) { console.error(e); } }
+      }
       for (const ev of r.ephemeral?.events ?? []) {
         if (ev.type === 'm.typing') room.typing = ((ev.content.user_ids as string[]) ?? []).filter((u) => u !== this.me);
         if (ev.type === 'm.receipt') for (const [eid, rc] of Object.entries(ev.content as Record<string, { 'm.read'?: Record<string, unknown> }>)) for (const u of Object.keys(rc['m.read'] ?? {})) room.readUpTo[u] = eid;
@@ -254,6 +270,8 @@ export class Matrix {
   private put(roomId: string, type: string, content: unknown, txn = this.txn()) {
     return this.req<{ event_id: string }>(`/v3/rooms/${encodeURIComponent(roomId)}/send/${type}/${txn}`, { method: 'PUT', body: JSON.stringify(content) });
   }
+  /** Any event into a room, as is (no local echo): custom types such as live match frames. */
+  sendEvent(roomId: string, type: string, content: unknown) { return this.put(roomId, type, content); }
   /** Send a message with a local echo (shown at once, marked failed if it does not go). */
   async send(roomId: string, body: string, o: { emote?: boolean; replyTo?: string } = {}) {
     const txn = this.txn();
