@@ -124,6 +124,8 @@ interface State {
   /** Bounties collected, all time (survives new eras). */
   bountiesClaimed?: number;
   /** 의뢰 게시판: offers on the board, when it refreshes, and the job in hand. */
+  /** 보복: the rival whose raid you just broke is exposed until `until`. */
+  revenge?: { rival: string; until: number } | null;
   black?: { next: number; until: number; offers: BlackOffer[]; deals?: number };
   jobs?: { offers: Job[]; next: number; active?: Job & { until: number; count: number; taken?: number } | null; done?: number };
   /** Commander abilities: the block each is ready again; and total mobilisation's end. */
@@ -706,6 +708,8 @@ export const REFITS: Record<RefitId, { name: string; what: string; cost: number 
  * Prices are rolled per visit; each deal sells once. Nothing here undercuts the contract board. ── */
 export type BlackId = 'shield' | 'bribe' | 'scrap' | 'cool' | 'patch';
 export interface BlackOffer { id: BlackId; price: number }
+/** 보복 출격: hit back at a raider you just broke, within the window, for more of its ore. */
+export const REVENGE = { window: 40, bonus: 1.5 };
 export const BLACK = { every: 180, stays: 30, scrapRate: 0.9, scrapMax: 40, bribe: 60 };
 export const BLACK_DEALS: Record<BlackId, { name: string; what: string }> = {
   shield: { name: '방어막 충전기', what: '방어막 즉시 100%' },
@@ -986,6 +990,7 @@ function raidStep() {
     if (owner) owner.fleet = Math.max(2, owner.fleet - 1);
     log('raid_status', 'attackerDefeated');
     emit('victory', `${r.name} 함대 격퇴!`);
+    if (owner) { s.revenge = { rival: owner.id, until: s.height + REVENGE.window }; emit('revenge', `${owner.name} 함대가 무너졌습니다 · ${REVENGE.window}블록 안에 반격하면 노획 +${Math.round((REVENGE.bonus - 1) * 100)}%`); }
     if ([1, 10, 25, 50, 100].includes(s.raidsRepelled)) chronicle('cheong', `습격 ${s.raidsRepelled}회째 격퇴 · ${r.name}`);
     return;
   }
@@ -1221,6 +1226,8 @@ export const demo = {
     return null;
   },
   raidForecast,
+  /** The rival open to a counter-raid, and for how long. */
+  get revenge() { const v = s.revenge; return v && s.height <= v.until ? { rival: v.rival, left: v.until - s.height, name: rivals().find((x) => x.id === v.rival)?.name ?? v.rival } : null; },
   get black() { const b = s.black; return b && b.offers.length && s.height <= b.until ? { offers: b.offers, left: b.until - s.height, deals: b.deals ?? 0 } : { offers: [] as BlackOffer[], left: 0, next: Math.max(0, (b?.next ?? s.height) - s.height), deals: b?.deals ?? 0 }; },
   /** Why a black-market deal can't be bought now (null = it can). */
   blackBlocked(id: BlackId): string | null {
@@ -1638,8 +1645,12 @@ export const demo = {
       log('raid_status', `현상금 +${b.reward} α`);
       emit('bounty', `${patron?.name ?? '의뢰인'}이(가) 현상금 ${b.reward} α를 지급했습니다`);
     }
+    // A counter-raid inside the window takes more; win or lose, the opening is spent.
+    const rev = !!r && s.revenge?.rival === r.id && s.height <= s.revenge.until;
+    if (rev) s.revenge = null;
     if (won && r) {
-      loot = { ore: Math.min(Math.floor(r.ore), Math.floor(r.ore * 0.6 * (inGuild('iron') ? 1.25 : 1) * (doc('war') ? 1.3 : 1))), alpha: 0 };
+      loot = { ore: Math.min(Math.floor(r.ore), Math.floor(r.ore * 0.6 * (inGuild('iron') ? 1.25 : 1) * (doc('war') ? 1.3 : 1) * (rev ? REVENGE.bonus : 1))), alpha: 0 };
+      if (rev) chronicle('cheong', `보복 성공 · ${r.name} 약탈 ${loot.ore}`);
       r.ore -= loot.ore; r.fleet = Math.max(2, r.fleet - 1); r.raided++;
       s.ore += loot.ore;
       log('raid_status', `${r.name} 약탈 +${loot.ore}`);

@@ -12,7 +12,7 @@ import { pow } from '../pow/engine';
 import { errorCard, loading } from '../ui/gate';
 import { needSession } from '../ui/gate';
 import { setTiles } from '../ui/shell';
-import { demo, DEMO_ID, DOMINION, TEMPER, OPS, OUTPOST, opOdds, withAllies, ALLY, type Rival, type OpId, type OutpostId } from '../game/demo';
+import { demo, DEMO_ID, DOMINION, TEMPER, OPS, OUTPOST, opOdds, withAllies, ALLY, type Rival, type OpId, type OutpostId, REVENGE } from '../game/demo';
 import { hegemonyMeter, powerChart } from '../game/meter';
 import { hash32, mulberry } from '../core/util';
 import { layout } from '../sim/fleets';
@@ -220,7 +220,7 @@ const screen: Screen = {
           <small class="dim">발각되면 불가침이 깨지고 보복 함대가 옵니다.</small></div>
         <div class="loyal"><span class="label dim">복속까지 약탈 ${Math.min(r.raided, DOMINION.raidsToSubjugate)} / ${DOMINION.raidsToSubjugate}</span><div class="bar"><i style="width:${Math.min(100, (r.raided / DOMINION.raidsToSubjugate) * 100)}%;background:var(--hwang)"></i></div></div>
         ${r.raided >= DOMINION.raidsToSubjugate ? html`<button class="btn gold lg" data-act="subjugate" style="justify-content:space-between">♛ 복속 요구 <span class="mono">주둔군 ${DOMINION.cost} g · 함대 4기로</span></button>` : ''}
-        ${demo.ally?.id === r.id ? html`<p class="note">동맹은 습격할 수 없습니다.</p>` : html`<a class="btn danger lg" href="${href('/sim?raid=' + r.id)}">습격 출격 · 예상 노획 ${n(Math.floor(r.ore * 0.6))}${demo.bounty?.target === r.id ? ` + 현상금 ${demo.bountyPayout()} α` : ''}${demo.pactLeft(r.id) ? ' · 불가침 파기' : ''}</a>`}
+        ${demo.ally?.id === r.id ? html`<p class="note">동맹은 습격할 수 없습니다.</p>` : html`<a class="btn danger lg" href="${href('/sim?raid=' + r.id)}">${demo.revenge?.rival === r.id ? `보복 출격 (${demo.revenge.left}블록) · 예상 노획 ${n(Math.floor(Math.min(r.ore, r.ore * 0.6 * REVENGE.bonus)))}` : `습격 출격 · 예상 노획 ${n(Math.floor(r.ore * 0.6))}`}${demo.bounty?.target === r.id ? ` + 현상금 ${demo.bountyPayout()} α` : ''}${demo.pactLeft(r.id) ? ' · 불가침 파기' : ''}</a>`}
         <p class="note">약탈 성공 시 이 세력의 함대가 1기 줄고, 다음 함대 구성이 바뀝니다.</p></section>`;
     };
 

@@ -716,6 +716,23 @@ test('refits: one module per hull, armour adds hull and survives a launched raid
   assert.ok(ship.hp <= ship.max);
 });
 
+test('revenge: a broken raid opens a window for a richer counter-raid, once', () => {
+  demo.reset();
+  const s = demo.state;
+  s.nextRaid = 1; demo.step();
+  const owner = demo.raid!.owner;
+  for (const x of s.raid!.structs) x.hp = 0;
+  s.raid!.eta = 0; demo.step();
+  assert.equal(demo.revenge?.rival, owner, 'the raider is exposed');
+  const r = demo.rivals().find((x) => x.id === owner)!;
+  r.ore = 100;
+  const got = demo.settleRaid(owner, true, {});
+  assert.equal(got.ore, 90, '60% × 1.5');
+  assert.equal(demo.revenge, null, 'spent');
+  r.ore = 100;
+  assert.equal(demo.settleRaid(owner, true, {}).ore, 60, 'back to the plain share');
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);

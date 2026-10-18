@@ -80,6 +80,9 @@ demo.onEvent((kind, text) => {
     const b = demo.bounty;
     if (b && text.includes('현상금')) setTimeout(() => transmit(b.patron, 'bounty'), 700);
     notify('은하 전황', text, 'hwang', null);
+  } else if (kind === 'revenge') {
+    // After the victory fanfare: the opening.
+    setTimeout(() => notify('보복 기회', `${text}${away ? '' : ' · 은하 지도에서 출격'}`, 'hwang', null), away ? 0 : 3600);
   } else if (kind === 'black') {
     sfx.play('coin');
     notify('암시장', text, 'hwang', null);
