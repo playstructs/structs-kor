@@ -32,7 +32,7 @@ export const vetRank = (kills = 0) => (kills >= 15 ? 3 : kills >= 8 ? 2 : kills 
 export type Stance = 'intercept' | 'entrench';
 /** 전투 보고: the last defence of the base, as the bridge shows it afterwards. */
 export interface RaidReport { h: number; won: boolean; name: string; stance?: Stance; kills: { id: string; type: number; n: number; name?: string }[]; blocked: number; hits: number; seized: number; promoted: { id: string; type: number; rank: number; name?: string }[] }
-export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number; /** Chosen while it approaches. */ stance?: Stance; /** Tally for the after-action report. */ tally?: { kills: Record<string, number>; blocked: number; hits: number } }
+export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number; /** Chosen while it approaches. */ stance?: Stance; /** A coalition's second house (연합 전선). */ partner?: string; /** Tally for the after-action report. */ tally?: { kills: Record<string, number>; blocked: number; hits: number } }
 interface Contract { id: string; kw: number; rate: number; left: number; buyer: string; dir?: 'buy' | 'sell' }
 
 /* ── Galactic events: the weather of the economy. One at a time, a few dozen blocks each. ── */
@@ -129,6 +129,7 @@ interface State {
   /** 보복: the rival whose raid you just broke is exposed until `until`. */
   revenge?: { rival: string; until: number } | null;
   report?: RaidReport | null;
+  coalitions?: number;
   black?: { next: number; until: number; offers: BlackOffer[]; deals?: number };
   jobs?: { offers: Job[]; next: number; active?: Job & { until: number; count: number; taken?: number } | null; done?: number };
   /** Commander abilities: the block each is ready again; and total mobilisation's end. */
@@ -712,6 +713,8 @@ export const REFITS: Record<RefitId, { name: string; what: string; cost: number 
 export type BlackId = 'shield' | 'bribe' | 'scrap' | 'cool' | 'patch';
 export interface BlackOffer { id: BlackId; price: number }
 /** 보복 출격: hit back at a raider you just broke, within the window, for more of its ore. */
+/** 연합 전선: past this hegemony, some raids come under two banners with two more escorts. */
+export const COALITION = { at: 0.55, chance: 0.35, extra: 2 };
 export const REVENGE = { window: 40, bonus: 1.5 };
 export const BLACK = { every: 180, stays: 30, scrapRate: 0.9, scrapMax: 40, bribe: 60 };
 export const BLACK_DEALS: Record<BlackId, { name: string; what: string }> = {
@@ -950,15 +953,20 @@ function raidStep() {
     for (const x of free) { roll -= weight(x); if (roll <= 0) { pick = x; break; } }
     const rv = (s.rebel && free.find((x) => x.id === s.rebel)) || pick;
     s.rebel = null;
-    const [name, owner] = rv ? [rv.name, rv.id] : ['떠돌이 해적', '1-9'];
+    // The galaxy closes ranks against an empire: a second house joins the raid (no RNG drawn before then).
+    const others = rv ? free.filter((x) => x.id !== rv.id) : [];
+    const partner = rv && others.length && hegemony() >= COALITION.at && rnd() < COALITION.chance ? others[Math.floor(rnd() * others.length)] : null;
+    if (partner && !s.coalitions) chronicle('jeok', `은하가 당신에게 맞서 연합했다 · ${rv!.name}·${partner.name}`);
+    if (partner) s.coalitions = (s.coalitions ?? 0) + 1;
+    const [name, owner] = rv ? [partner ? `${rv.name}·${partner.name} 연합` : rv.name, rv.id] : ['떠돌이 해적', '1-9'];
     const fid = `9-${300 + Math.floor(rnd() * 600)}`;
     const R = (i: number, type: number, ambit: Ambit, slot: number): DemoStruct => ({ id: `5-r${s.height}${i}`, type, ambit, slot, cat: 'fleet', online: true, hp: TYPES_BY_ID[type].maxHealth, max: TYPES_BY_ID[type].maxHealth, building: null, buildBlocks: 0, protects: null });
     // The first raids are a lesson, not a beating: one escort each until three have come and gone.
-    const size = rookie() ? 1 : 2 + Math.min(4, Math.floor(Math.max(0, s.raidsRepelled - 3) / 3));
+    const size = Math.min(6, (rookie() ? 1 : 2 + Math.min(4, Math.floor(Math.max(0, s.raidsRepelled - 3) / 3))) + (partner ? COALITION.extra : 0));
     const pool: [number, Ambit][] = [[3, 'space'], [5, 'air'], [9, 'land'], [12, 'water'], [8, 'land'], [4, 'space']];
-    s.raid = { fleetId: fid, owner, name, eta: RATE.raidEta, seized: 0, startedAt: s.height, structs: [R(0, 1, 'space', 0), ...pool.slice(0, size).map(([t, a], i) => R(i + 1, t, a, i % 2))] };
+    s.raid = { fleetId: fid, owner, name, eta: RATE.raidEta, seized: 0, startedAt: s.height, structs: [R(0, 1, 'space', 0), ...pool.slice(0, size).map(([t, a], i) => R(i + 1, t, a, i % 2))], partner: partner?.id };
     log('fleet_depart', `${fid} → ${PLANET}`);
-    emit('alarm', `${name} 함대 ${fid} 접근 중 · ${RATE.raidEta}블록 후 도착`);
+    emit('alarm', `${partner ? '연합 전선 · ' : ''}${name} 함대 ${fid} 접근 중 · ${RATE.raidEta}블록 후 도착`);
     return;
   }
   const r = s.raid;
@@ -1005,6 +1013,8 @@ function raidStep() {
     // A broken raid costs its owner a ship.
     const owner = rivals().find((x) => x.id === r.owner);
     if (owner) owner.fleet = Math.max(2, owner.fleet - 1);
+    const ally2 = r.partner ? rivals().find((x) => x.id === r.partner) : null;
+    if (ally2) ally2.fleet = Math.max(2, ally2.fleet - 1);
     log('raid_status', 'attackerDefeated');
     emit('victory', `${r.name} 함대 격퇴!`);
     if (owner) { s.revenge = { rival: owner.id, until: s.height + REVENGE.window }; emit('revenge', `${owner.name} 함대가 무너졌습니다 · ${REVENGE.window}블록 안에 반격하면 노획 +${Math.round((REVENGE.bonus - 1) * 100)}%`); }

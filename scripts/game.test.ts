@@ -758,6 +758,25 @@ test('after-action report: a home defence credits kills and files a report', () 
   assert.equal(demo.report, null);
 });
 
+test('coalition: a dominant empire draws two-house raids with more escorts', () => {
+  demo.reset();
+  const s = demo.state;
+  for (const r of demo.rivals()) { r.alpha = 0; r.ore = 0; r.fleet = 2; }
+  s.alpha = 100_000; s.raidsRepelled = 20;
+  assert.ok(demo.hegemony() >= 0.55);
+  let seen = 0;
+  for (let i = 0; i < 40; i++) {
+    s.raid = null; s.nextRaid = 1; demo.step();
+    if (demo.raid?.partner) { seen++; assert.match(demo.raid.name, /연합/); assert.equal(demo.raid.structs.length, 7, 'capped at six escorts'); }
+  }
+  assert.ok(seen > 0 && seen < 40, `some raids are coalitions (${seen}/40)`);
+  demo.reset();
+  const t = demo.state;
+  t.raidsRepelled = 4;
+  assert.ok(demo.hegemony() < 0.55);
+  for (let i = 0; i < 20; i++) { t.raid = null; t.nextRaid = 1; demo.step(); assert.ok(demo.raid, 'a raid came'); assert.equal(demo.raid!.partner, undefined, 'not for a small power'); }
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);
