@@ -241,7 +241,7 @@ export class Harness {
       const de = document.documentElement;
       const vis = (el: Element) => { const b = el.getBoundingClientRect(); const cs = getComputedStyle(el); return b.width > 0 && b.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
       const unnamed = [...document.querySelectorAll('button, a[href], [role="button"], input, select, textarea')].filter(vis).filter((el) => {
-        const name = (el.getAttribute('aria-label') || el.getAttribute('title') || (el as HTMLElement).innerText || el.getAttribute('placeholder') || (el.id && document.querySelector(`label[for="${el.id}"]`)?.textContent) || el.querySelector('img[alt]')?.getAttribute('alt') || '').trim();
+        const name = (el.getAttribute('aria-label') || el.getAttribute('title') || (el as HTMLElement).innerText || el.getAttribute('placeholder') || [...((el as HTMLInputElement).labels ?? [])].map((l) => l.textContent ?? '').join(' ') || (el.id && document.querySelector(`label[for="${el.id}"]`)?.textContent) || el.querySelector('img[alt]')?.getAttribute('alt') || '').trim();
         return !name;
       }).map((el) => el.outerHTML.slice(0, 120));
       // Small tap targets (WCAG 2.5.8: 24×24 CSS px minimum).
