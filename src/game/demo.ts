@@ -582,8 +582,17 @@ function contestStep() {
   s.nextContest = s.height + OUTPOST.contestEvery;
   const mine = OUTPOSTS.filter((d) => holds(d.id));
   const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height));
-  if (!mine.length || !free.length) return;
+  if (!free.length) return;
   const r = rngFor(`contest:${s.height}`);
+  // An unclaimed site doesn't wait for you: now and then a rival plants its flag.
+  const neutral = OUTPOSTS.filter((d) => !outposts()[d.id].owner);
+  if (neutral.length && r() < 0.35) {
+    const site = neutral[Math.floor(r() * neutral.length)], taker = free[Math.floor(r() * free.length)];
+    outposts()[site.id] = { owner: taker.id, garrison: 1 };
+    emit('news', `${taker.name}이(가) 중립 거점 ${site.name}을(를) 장악했습니다`);
+    return;
+  }
+  if (!mine.length) return;
   const target = mine[Math.floor(r() * mine.length)], attacker = free[Math.floor(r() * free.length)];
   const o = outposts()[target.id];
   const def = warships() + 2 * lv('fort') + o.garrison * 2 + target.garrison;

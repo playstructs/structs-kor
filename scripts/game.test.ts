@@ -549,3 +549,10 @@ test('dominion research: the arts of empire lift tribute, ops and outposts', () 
   assert.ok(demo.outposts.find((o) => o.id === 'asteroid')!.odds > odds0, 'outpost odds up');
   assert.match(demo.research('spy', 0) ?? '', /계급/, 'officers only');
 });
+
+test('outposts: left alone, a neutral site is eventually taken by a rival', () => {
+  demo.reset();
+  let taken = false;
+  for (let i = 0; i < 3000 && !taken; i++) { if (demo.raid) demo.state.raid = null; demo.step(); taken = !!demo.outposts.find((o) => o.id === 'asteroid')!.owner; }
+  assert.ok(taken);
+});
