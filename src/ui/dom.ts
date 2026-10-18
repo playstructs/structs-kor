@@ -37,7 +37,18 @@ const bound = new WeakMap<HTMLElement, () => void>();
 /** Mount an HTML string into `root`, routing data-act events to `handlers`. Returns an unbind. */
 export function mount(root: HTMLElement, view: Safe, handlers: Handlers = {}): () => void {
   bound.get(root)?.();
+  // A repaint while typing keeps the field focused, caret and all (screens repaint on input).
+  const was = document.activeElement as HTMLInputElement | null;
+  const key = was && root.contains(was) && /^(INPUT|TEXTAREA|SELECT)$/.test(was.tagName)
+    ? `${was.tagName}${was.name ? `[name="${CSS.escape(was.name)}"]` : ''}${was.dataset.act ? `[data-act="${CSS.escape(was.dataset.act)}"]` : ''}${was.dataset.id ? `[data-id="${CSS.escape(was.dataset.id)}"]` : ''}${was.id ? `#${CSS.escape(was.id)}` : ''}`
+    : null;
+  let sel: [number | null, number | null] = [null, null];
+  try { if (key && 'selectionStart' in was!) sel = [was!.selectionStart, was!.selectionEnd]; } catch { /* number inputs */ }
   root.innerHTML = view.s;
+  if (key) {
+    const again = root.querySelector<HTMLInputElement>(key);
+    if (again) { again.focus({ preventScroll: true }); try { if (sel[0] != null) again.setSelectionRange(sel[0], sel[1]); } catch { /* not a text field */ } }
+  }
   const on = (ev: Event) => {
     const t = (ev.target as HTMLElement | null)?.closest<HTMLElement>('[data-act]');
     if (!t || !root.contains(t)) return;

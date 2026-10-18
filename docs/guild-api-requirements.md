@@ -178,6 +178,14 @@ Today: the client falls back to the LCD (`/cosmos/auth/v1beta1/accounts`, `/cosm
 
 Today: seeded locally from the date, with no shared ladder.
 
+### REQ-WAL-1 · Wallet balances
+
+`GET /api/account/{address}/balances` → `[{ denom, amount }]`: ualpha and every `uguild.<id>` token the address holds. The Send and Exchange screens show what a commander (or a replicant) can spend. Fallback: the chain LCD's bank module (`/cosmos/bank/v1beta1/balances/{address}`), which is a second origin for the browser to reach.
+
+### REQ-GLD-1 · Guild membership applications
+
+`GET /api/guild/membership/applications?guild_id=&player_id=` → `[{ guildId, playerId, joinType, registrationStatus, proposer, substationId }]`: open join requests and invites. Officers approve or deny requests from the guild screen; a commander sees invites waiting for them. Fallback: the LCD's `/structs/guild_membership_application` (every guild's, paginated), filtered in the browser.
+
 ### REQ-I18N-1 · Korean struct names
 
 `GET /api/struct/type?locale=ko`: adds `name_localized` and `description_localized`. Today: a client table (`src/i18n/ko.ts`).

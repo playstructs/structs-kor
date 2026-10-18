@@ -1,126 +1,199 @@
-/* 길드: who you fight beside. Signed in, the real guild from the Guild API (roster with portraits,
- * members' alpha, the guild bank). On the demo base, three NPC guilds with their own perks: join
- * one, pool alpha, and every level lifts everyone's mining. */
+/* 길드: who you fight beside, and running it.
+ *
+ *   개요       banner, figures (members, bank, power), share a recruiting card, open guild chat
+ *   길드원     the roster: search and sort; card, message and pay anyone; officers kick and set ranks
+ *   가입 신청  join requests to approve or deny, invites out (revoke), invites waiting for me
+ *   길드 찾기  every guild in the directory: open its card, request to join
+ *   관리       the owner's settings: name, endpoint, entry substation, join minimum, entry rank
+ *
+ * Every write is a chain message from the commander (MsgGuildMembership*, MsgGuildUpdate*,
+ * MsgPlayerUpdateGuildRank); the chain decides who may. ?id=0-x shows another guild. */
 import type { Screen } from '../router';
-import { href } from '../router';
-import { html, mount, n, micro, raw, toast, type Safe } from '../ui/dom';
+import { href, go } from '../router';
+import { html, mount, n, micro, raw, toast, watts, type Safe } from '../ui/dom';
 import { needSession, errorCard, loading } from '../ui/gate';
 import { setTiles } from '../ui/shell';
-import { guildApi, type GuildRow, type RosterRow, type BankRow } from '../api/guild';
-import { demo, DEMO_ID, GUILDS, GUILD_LEVELS, type GuildId } from '../game/demo';
-import { portraitHtml, seededPfp, myPfp } from '../game/portrait';
+import { guildApi, type GuildRow, type RosterRow, type BankRow, type DirectoryRow, type PlayerRow } from '../api/guild';
+import { actions } from '../api/actions';
+import { applications, mockResolve, type Application } from '../api/chain';
+import { MOCK } from '../api/http';
+import { wallet } from '../wallet/wallet';
+import { portraitHtml, seededPfp } from '../game/portrait';
 import { sfx } from '../game/sfx';
-import { banner, float } from '../game/fx';
+import { banner } from '../game/fx';
+import { ask } from '../ui/sheet';
+import { share } from '../social/share';
+import { guildSituation } from '../social/situations';
+import { openTransfer } from '../social/transfer';
+
+type Tab = 'home' | 'members' | 'apps' | 'find' | 'admin';
 
 const screen: Screen = {
-  render(root) {
-    const pid = needSession(root, '길드', { demo: true });
+  async render(root, params) {
+    const pid = needSession(root, '길드');
     if (!pid) return;
-    return pid === DEMO_ID ? demoGuild(root) : realGuild(root, pid);
+    mount(root, loading('길드 불러오는 중…'));
+    let me: PlayerRow | null = null, guild: GuildRow | null = null, roster: RosterRow[] = [], bank: BankRow[] = [], count = 0, power: Record<string, unknown> | null = null;
+    let dir: DirectoryRow[] = [], apps: Application[] = [], myApps: Application[] = [];
+    let tab: Tab = (params.get('tab') as Tab) || 'home', q = '', sort: 'alpha' | 'name' = 'alpha', busy = false;
+    const viewing = () => params.get('id');
+    const unlocked = () => wallet.state === 'unlocked';
+
+    const load = async () => {
+      me = await guildApi.player(pid);
+      const gid = viewing() || me.guild_id;
+      const soft = <T,>(p: Promise<T>, d: T) => p.catch(() => d);
+      [guild, roster, bank, count, power, dir, apps, myApps] = await Promise.all([
+        soft(guildApi.guild(gid), null), soft(guildApi.roster(gid), [] as RosterRow[]), soft(guildApi.bank(), [] as BankRow[]),
+        soft(guildApi.memberCount(gid).then((c) => c.count), 0), soft(guildApi.guildPower(gid) as Promise<Record<string, unknown>>, null),
+        soft(guildApi.directory(), [] as DirectoryRow[]), soft(applications({ guildId: gid }), [] as Application[]), soft(applications({ playerId: pid }), [] as Application[]),
+      ]);
+    };
+    const mine = () => !!me && !!guild && me.guild_id === guild.id;
+    const owner = () => !!me && !!guild && guild.owner === me.id;
+
+    /* ── Pieces ── */
+    const head = (): Safe => html`
+      <div class="guild-hero">
+        <div class="guild-crest big">${guild?.tag || '?'}</div>
+        <div class="guild-hero-txt"><span class="label c-hwang">GUILD · ${guild?.id ?? ''}</span><h1>${guild?.name ?? '길드'}</h1>${guild?.description ? html`<p>${guild.description}</p>` : ''}</div>
+        <div class="guild-hero-acts">
+          ${mine() ? html`<a class="btn ghost" href="${href('/chat?room=%23sn-corp')}">길드 통신</a>` : html`<button class="btn gold" data-act="request" ${busy || !unlocked() ? 'disabled' : ''}>가입 신청</button>`}
+          <button class="btn primary" data-act="shareGuild">모집 카드 공유</button>
+          ${viewing() && !mine() ? html`<a class="btn ghost" href="${href('/guild')}">내 길드로</a>` : ''}
+        </div>
+      </div>
+      <div class="tabs" role="tablist">${([['home', '개요'], ['members', `길드원 ${n(count || roster.length)}`], ['apps', `가입 신청${apps.length ? ' · ' + apps.length : ''}`], ['find', '길드 찾기'], ...(mine() ? [['admin', owner() ? '관리' : '관리 (권한 필요)']] : [])] as [Tab, string][]).map(([t, l]) => html`<button class="tab ${tab === t ? 'on' : ''}" role="tab" aria-selected="${tab === t}" data-act="tab" data-t="${t}">${l}</button>`)}</div>`;
+
+    const home = (): Safe => {
+      const b = bank.find((x) => x.guild_id === guild?.id);
+      const cap = Number(power?.capacity ?? 0), load = Number(power?.load ?? 0);
+      const top = [...roster].sort((a, z) => Number(z.alpha) - Number(a.alpha)).slice(0, 5);
+      const rank = [...dir].sort((a, z) => Number(z.alpha) - Number(a.alpha)).findIndex((d) => d.guild_id === guild?.id);
+      return html`<div class="guild-wrap">
+        <section class="card game-panel"><h2>길드 현황</h2>
+          <div class="stat-grid">
+            <div class="stat"><small>길드원</small><strong class="mono">${n(count || roster.length)}</strong></div>
+            <div class="stat"><small>알파 순위</small><strong class="mono c-hwang">${rank >= 0 ? `${rank + 1}위 / ${dir.length}` : '—'}</strong></div>
+            <div class="stat"><small>길드 은행 담보율</small><strong class="mono" style="color:${b && Number(b.ratio) < 1 ? 'var(--jeok)' : 'var(--cheong)'}">${b ? n(b.ratio, 3) : '—'}</strong></div>
+            <div class="stat"><small>토큰 발행량</small><strong class="mono">${b ? micro(b.supply, 0) : '—'}</strong></div>
+            <div class="stat"><small>주 리액터</small><strong class="mono"><a href="${href(`/o/${guild?.primary_reactor_id ?? ''}`)}">${guild?.primary_reactor_id || '—'}</a></strong></div>
+            <div class="stat"><small>가입 변전소</small><strong class="mono"><a href="${href(`/o/${guild?.entry_substation_id ?? ''}`)}">${guild?.entry_substation_id || '—'}</a></strong></div>
+            <div class="stat"><small>기본 수수료</small><strong class="mono">${guild?.default_commission ? n(Number(guild.default_commission) * 100, 1) + '%' : '—'}</strong></div>
+            <div class="stat"><small>가입 최소 주입</small><strong class="mono">${guild ? micro(guild.join_infusion_minimum, 1) + ' g' : '—'}</strong></div>
+          </div>
+          ${cap ? html`<div><small class="dim">길드 전력 ${watts(load)} / ${watts(cap)}</small><div class="meter"><i style="width:${Math.min(100, (load / cap) * 100)}%"></i></div></div>` : ''}
+          <p class="note">길드장 <a href="${href(`/o/${guild?.owner ?? ''}`)}">${guild?.owner ?? '—'}</a>${guild?.website ? html` · <a href="${guild.website}" target="_blank" rel="noopener">웹사이트</a>` : ''}</p>
+        </section>
+        <section class="card game-panel"><div class="card-head"><h2>알파 상위 길드원</h2><button class="linkish end" data-act="tab" data-t="members">모두 보기</button></div>
+          <ol class="standings">${top.map((m, i) => html`<li class="${m.id === pid ? 'me' : ''}"><span class="rk mono">${i + 1}</span>${raw(portraitHtml(m.pfp || seededPfp(m.id), 32))}<div><a href="${href(`/o/${m.id}`)}"><b>${m.username || m.id}</b></a><small class="mono">알파 ${micro(m.alpha_p ?? m.alpha, 1)} g</small></div>${m.id === pid ? html`<span class="chip cheong">나</span>` : ''}</li>`)}</ol>
+          ${top.length ? '' : html`<p class="empty">길드원 정보가 없습니다.</p>`}
+        </section>
+        ${myApps.length ? html`<section class="card warn game-panel"><h2>나에게 온 초대 · 내 신청</h2>${myApps.map((a) => html`<div class="app-row"><span>${a.joinType === 'invite' ? html`<b>${a.guildId}</b> 길드가 초대했습니다` : html`<b>${a.guildId}</b> 길드에 가입 신청 중`}</span><span class="app-acts">${a.joinType === 'invite'
+          ? html`<button class="btn primary sm" data-act="inviteAccept" data-g="${a.guildId}" ${unlocked() ? '' : 'disabled'}>수락</button><button class="btn ghost sm" data-act="inviteDeny" data-g="${a.guildId}" ${unlocked() ? '' : 'disabled'}>거절</button>`
+          : html`<button class="btn ghost sm" data-act="requestRevoke" data-g="${a.guildId}" ${unlocked() ? '' : 'disabled'}>신청 취소</button>`}</span></div>`)}</section>` : ''}
+      </div>`;
+    };
+
+    const members = (): Safe => {
+      const list = roster.filter((m) => !q || (m.username || '').toLowerCase().includes(q.toLowerCase()) || m.id.includes(q))
+        .sort((a, z) => sort === 'name' ? (a.username || a.id).localeCompare(z.username || z.id, 'ko') : Number(z.alpha) - Number(a.alpha));
+      return html`<section class="card game-panel"><div class="card-head"><h2>길드원</h2>
+        <span class="end mkt-filters"><input class="input" name="q" value="${q}" placeholder="이름 또는 ID" data-act="q" aria-label="길드원 검색"><select class="input" data-act="sort" data-on="change" aria-label="정렬"><option value="alpha" ${sort === 'alpha' ? 'selected' : ''}>알파 순</option><option value="name" ${sort === 'name' ? 'selected' : ''}>이름 순</option></select></span></div>
+        <div class="roster">${list.map((m, i) => html`<article class="roster-row ${m.id === pid ? 'me' : ''}">
+          <span class="rk mono">${i + 1}</span>${raw(portraitHtml(m.pfp || seededPfp(m.id), 40))}
+          <div class="roster-nm"><a href="${href(`/o/${m.id}`)}"><b>${m.username || m.id}</b></a><small class="mono">${m.id} · 알파 ${micro(m.alpha_p ?? m.alpha, 1)} g</small></div>
+          <span class="roster-acts">${m.id === pid ? html`<span class="chip cheong">나</span>` : html`
+            <button class="hud-btn" data-act="dm" data-id="${m.id}" title="메시지" aria-label="${m.username || m.id}에게 메시지"><i class="si icon-phone"></i></button>
+            <button class="hud-btn" data-act="pay" data-id="${m.id}" title="알파 보내기" aria-label="${m.username || m.id}에게 알파 보내기"><i class="si icon-send-alpha"></i></button>
+            ${mine() ? html`<select class="input rank-sel" data-act="rank" data-on="change" data-id="${m.id}" aria-label="계급" ${unlocked() ? '' : 'disabled'}><option value="">계급…</option>${[1, 2, 3, 4, 5].map((r) => html`<option value="${r}">${r === 1 ? '1 · 운영진' : r === 2 ? '2 · 장교' : r === 3 ? '3 · 정예' : r === 4 ? '4 · 대원' : '5 · 신입'}</option>`)}</select>
+            <button class="btn outline-danger sm" data-act="kick" data-id="${m.id}" ${unlocked() ? '' : 'disabled'}>추방</button>` : ''}`}</span></article>`)}</div>
+        ${list.length ? '' : html`<p class="empty">맞는 길드원이 없습니다.</p>`}
+        <p class="note">계급 변경과 추방은 길드 권한이 있는 운영진만 체인에서 승인됩니다.</p></section>`;
+    };
+
+    const appsTab = (): Safe => {
+      const reqs = apps.filter((a) => a.joinType !== 'invite'), invs = apps.filter((a) => a.joinType === 'invite');
+      return html`<div class="guild-wrap">
+        <section class="card game-panel"><div class="card-head"><h2>가입 요청</h2><span class="end mono dim">${n(reqs.length)}</span></div>
+          ${reqs.length ? reqs.map((a) => html`<div class="app-row">${raw(portraitHtml(seededPfp(a.playerId), 32))}<span><a href="${href(`/o/${a.playerId}`)}"><b>${a.playerId}</b></a> 님이 가입을 원합니다</span><span class="app-acts">
+            <button class="btn primary sm" data-act="approve" data-id="${a.playerId}" ${unlocked() || MOCK ? '' : 'disabled'}>승인</button><button class="btn ghost sm" data-act="deny" data-id="${a.playerId}" ${unlocked() || MOCK ? '' : 'disabled'}>거절</button></span></div>`) : html`<p class="empty">대기 중인 요청이 없습니다.</p>`}
+        </section>
+        <section class="card game-panel"><div class="card-head"><h2>보낸 초대</h2><span class="end mono dim">${n(invs.length)}</span></div>
+          ${invs.map((a) => html`<div class="app-row">${raw(portraitHtml(seededPfp(a.playerId), 32))}<span><a href="${href(`/o/${a.playerId}`)}"><b>${a.playerId}</b></a> 초대함${a.substationId ? ` · 변전소 ${a.substationId}` : ''}</span><span class="app-acts"><button class="btn ghost sm" data-act="revoke" data-id="${a.playerId}" ${unlocked() || MOCK ? '' : 'disabled'}>초대 취소</button></span></div>`)}
+          <form class="invite-form" data-act="invite" data-on="submit"><input class="input mono" name="who" placeholder="플레이어 ID (1-…)" required><button class="btn gold" ${unlocked() || MOCK ? '' : 'disabled'}>초대 보내기</button></form>
+          <p class="note">초대받은 사령관이 수락하면 바로 길드원이 됩니다. 가입 변전소 ${guild?.entry_substation_id || '—'}에 연결됩니다.</p>
+        </section></div>`;
+    };
+
+    const find = (): Safe => html`<section class="card flush game-panel"><div class="card-head" style="padding:16px"><h2>길드 찾기</h2><span class="end dim" style="font-size:13px">알파 보유 순</span></div>
+      <div class="scroll-x"><table class="t" style="min-width:560px"><thead><tr><th>#</th><th>길드</th><th class="r">길드원</th><th class="r">알파</th><th class="r"></th></tr></thead><tbody>
+      ${[...dir].sort((a, z) => Number(z.alpha) - Number(a.alpha)).map((d, i) => html`<tr class="${d.guild_id === me?.guild_id ? 'me' : ''}"><td class="mono">${i + 1}</td><td><a class="c-white" href="${href(`/guild?id=${d.guild_id}`)}"><b>${d.name || d.guild_id}</b></a> <span class="mono faint">${d.guild_id}</span>${d.guild_id === me?.guild_id ? html` <span class="chip cheong">내 길드</span>` : ''}</td>
+        <td class="r mono">${n(d.members)}</td><td class="r mono c-hwang">${micro(d.alpha, 0)} g</td>
+        <td class="r"><div style="display:inline-flex;gap:4px"><a class="btn ghost sm" href="${href(`/o/${d.guild_id}`)}">카드</a>${d.guild_id !== me?.guild_id ? html`<button class="btn gold sm" data-act="requestTo" data-g="${d.guild_id}" ${unlocked() ? '' : 'disabled'}>가입 신청</button>` : ''}</div></td></tr>`)}
+      ${dir.length ? '' : html`<tr><td colspan="5" class="empty">길드 목록을 불러오지 못했습니다.</td></tr>`}
+      </tbody></table></div></section>`;
+
+    const admin = (): Safe => html`<section class="card game-panel" style="max-width:860px"><h2>길드 관리</h2>
+      ${owner() ? '' : html`<div class="notice">이 설정은 길드장(또는 권한을 받은 운영진)만 바꿀 수 있습니다. 보내면 체인이 권한을 확인합니다.</div>`}
+      <div class="admin-grid">
+        <form data-act="setName" data-on="submit"><label class="field"><span>길드 이름</span><input class="input" name="v" value="${guild?.name ?? ''}" required></label><button class="btn ghost sm">이름 변경</button></form>
+        <form data-act="setEndpoint" data-on="submit"><label class="field"><span>길드 API 주소 (endpoint)</span><input class="input" name="v" value="${guild?.endpoint ?? ''}" placeholder="https://…"></label><button class="btn ghost sm">주소 변경</button></form>
+        <form data-act="setSub" data-on="submit"><label class="field"><span>가입 변전소</span><input class="input mono" name="v" value="${guild?.entry_substation_id ?? ''}" placeholder="4-…"></label><button class="btn ghost sm">변전소 변경</button></form>
+        <form data-act="setMin" data-on="submit"><label class="field"><span>가입 최소 주입 (g)</span><input class="input mono" name="v" type="number" step="any" min="0" value="${guild ? Number(guild.join_infusion_minimum) / 1e6 : 0}"></label><button class="btn ghost sm">최소값 변경</button></form>
+        <form data-act="setEntry" data-on="submit"><label class="field"><span>신입 기본 계급 (1–5)</span><input class="input mono" name="v" type="number" min="1" max="99" value="5"></label><button class="btn ghost sm">기본 계급 변경</button></form>
+      </div>
+      <p class="note">모든 변경은 체인 거래로 서명됩니다. 수수료는 0입니다.</p></section>`;
+
+    const view = (): Safe => html`${head()}${tab === 'home' ? home() : tab === 'members' ? members() : tab === 'apps' ? appsTab() : tab === 'find' ? find() : admin()}`;
+    const paint = () => {
+      if (!root.isConnected) return;
+      mount(root, view(), handlers);
+      const b = bank.find((x) => x.guild_id === guild?.id);
+      setTiles([{ label: '길드', value: guild?.tag ? `[${guild.tag}]` : guild?.id ?? '—', tone: 'var(--hwang)' }, { label: '길드원', value: n(count || roster.length) }, { label: '담보율', value: b ? n(b.ratio, 3) : '—', tone: 'var(--cheong-hi)' }]);
+    };
+    const sign = (p: Promise<string>, done = '보냈습니다', after?: () => void) => {
+      busy = true; paint();
+      p.then((h) => { sfx.play('confirm'); toast(`${done} · ${h.slice(0, 10)}…`); after?.(); setTimeout(() => void load().then(paint).catch(() => null), 6000); })
+        .catch((e) => toast('실패: ' + (e as Error).message, 5000)).finally(() => { busy = false; paint(); });
+    };
+    /** Under the mock nothing is signed; the fixture just moves so the screen can be exercised. */
+    const mockOr = (playerId: string, p: () => Promise<string>, done: string) => { if (MOCK) { mockResolve(playerId); apps = apps.filter((a) => a.playerId !== playerId); toast(`${done} (모의)`); paint(); return; } sign(p(), done); };
+    const gid = () => guild?.id ?? '';
+    const handlers = {
+      tab: (el: HTMLElement) => { tab = el.dataset.t as Tab; const u = new URLSearchParams(location.search); u.set('tab', tab); history.replaceState(null, '', href('/guild?' + u.toString())); paint(); },
+      q: (el: HTMLElement) => { q = (el as HTMLInputElement).value; paint(); },
+      sort: (el: HTMLElement) => { sort = (el as HTMLSelectElement).value as typeof sort; paint(); },
+      dm: (el: HTMLElement) => go(`/chat?dm=${el.dataset.id}`),
+      pay: (el: HTMLElement) => void openTransfer({ to: el.dataset.id }),
+      shareGuild: () => { if (guild) share({ kind: 'situation', s: guildSituation({ id: guild.id, name: guild.name, tag: guild.tag, members: count || roster.length, ratio: bank.find((b) => b.guild_id === guild!.id)?.ratio as number | undefined ?? null, note: guild.description, by: me?.username }) }); },
+      request: () => sign(actions.guildRequest(gid(), pid, guild?.entry_substation_id ?? ''), '가입 신청을 보냈습니다'),
+      requestTo: async (el: HTMLElement) => { if (await ask('가입 신청', `${el.dataset.g} 길드에 가입을 신청합니다. 승인되면 지금 길드를 떠나게 됩니다.`, '신청', 'hwang')) sign(actions.guildRequest(el.dataset.g!, pid), '가입 신청을 보냈습니다'); },
+      requestRevoke: (el: HTMLElement) => sign(actions.guildRequestRevoke(el.dataset.g!, pid), '신청을 취소했습니다'),
+      inviteAccept: (el: HTMLElement) => sign(actions.guildInviteApprove(el.dataset.g!, pid), '초대를 수락했습니다', () => banner({ kicker: '길드 가입', title: el.dataset.g!, sub: '새 길드에 합류했습니다', tone: 'gold' })),
+      inviteDeny: (el: HTMLElement) => sign(actions.guildInviteDeny(el.dataset.g!, pid), '초대를 거절했습니다'),
+      approve: (el: HTMLElement) => mockOr(el.dataset.id!, () => actions.guildRequestApprove(gid(), el.dataset.id!, guild?.entry_substation_id ?? ''), '승인했습니다'),
+      deny: (el: HTMLElement) => mockOr(el.dataset.id!, () => actions.guildRequestDeny(gid(), el.dataset.id!), '거절했습니다'),
+      revoke: (el: HTMLElement) => mockOr(el.dataset.id!, () => actions.guildInviteRevoke(gid(), el.dataset.id!), '초대를 취소했습니다'),
+      invite: (el: HTMLElement) => {
+        const raw0 = String(new FormData(el as HTMLFormElement).get('who') || '').trim();
+        const who = /^\d+$/.test(raw0) ? '1-' + raw0 : raw0;
+        if (!/^1-\d+$/.test(who)) { toast('플레이어 ID를 입력하세요 (예: 1-42)'); return; }
+        if (MOCK) { apps = [...apps, { guildId: gid(), playerId: who, joinType: 'invite', status: 'proposed', proposer: pid, substationId: guild?.entry_substation_id ?? '' }]; toast('초대했습니다 (모의)'); paint(); return; }
+        sign(actions.guildInvite(gid(), who, guild?.entry_substation_id ?? ''), '초대를 보냈습니다');
+      },
+      kick: async (el: HTMLElement) => { if (await ask('길드원 추방', `${el.dataset.id}을(를) 길드에서 추방합니다. 되돌릴 수 없습니다.`, '추방', 'jeok')) sign(actions.guildKick(gid(), el.dataset.id!), '추방했습니다'); },
+      rank: (el: HTMLElement) => { const r = Number((el as HTMLSelectElement).value); if (r) sign(actions.guildRank(gid(), el.dataset.id!, r), `계급 ${r}로 변경했습니다`); },
+      setName: (el: HTMLElement) => sign(actions.guildName(gid(), String(new FormData(el as HTMLFormElement).get('v'))), '이름을 바꿨습니다'),
+      setEndpoint: (el: HTMLElement) => sign(actions.guildEndpoint(gid(), String(new FormData(el as HTMLFormElement).get('v'))), '주소를 바꿨습니다'),
+      setSub: (el: HTMLElement) => sign(actions.guildEntrySubstation(gid(), String(new FormData(el as HTMLFormElement).get('v'))), '가입 변전소를 바꿨습니다'),
+      setMin: (el: HTMLElement) => sign(actions.guildJoinMinimum(gid(), Math.round(Number(new FormData(el as HTMLFormElement).get('v')) * 1e6)), '최소 주입을 바꿨습니다'),
+      setEntry: (el: HTMLElement) => sign(actions.guildEntryRank(gid(), Number(new FormData(el as HTMLFormElement).get('v'))), '기본 계급을 바꿨습니다'),
+    };
+    try { await load(); } catch (e) { mount(root, errorCard(e)); return () => undefined; }
+    if (params.get('join') === '1' && !mine()) tab = 'home';
+    paint();
+    return () => setTiles([]);
   },
 };
 export default screen;
-
-/* 길드 전: this season's standings, blocks left, and how you add to your guild's score. */
-function raceCard(mine: string): Safe {
-  const r = demo.race;
-  if (!r) return html``;
-  const top = Math.max(1, r.order[0][1]);
-  return html`<section class="card game-panel race"><div class="card-head"><h2>길드 전</h2><span class="end mono ${r.left < 60 ? 'c-jeok' : 'dim'}">시즌 종료까지 ${r.left}블록</span></div>
-    <ol class="race-rows">${r.order.map(([id, pts], i) => { const gd = GUILDS.find((x) => x.id === id)!; return html`<li class="${id === mine ? 'me' : ''}"><span class="rk mono">${i + 1}</span><b>${gd.name}</b><div class="race-bar"><i class="${id}" style="width:${(pts / top) * 100}%"></i></div><span class="mono">${n(Math.round(pts))}</span></li>`; })}</ol>
-    <p class="note">시즌 시작 전부터 있던 우승 길드원은 알파 20 g과 XP를 받습니다. 기부 1 g = 4점 · 습격 격퇴 15점 · 현상금 25점. 우승 ${r.wins}회.</p></section>`;
-}
-
-function demoGuild(root: HTMLElement): () => void {
-  const view = (): Safe => {
-    const g = demo.guild;
-    if (!g) return html`
-      <div class="card-head"><h1 style="font-size:28px">길드</h1><span class="label c-hwang">GUILD</span></div>
-      <p class="note">혼자서는 버틸 수 없습니다. 길드를 고르세요 — 길드마다 다른 이점이 있고, 레벨이 오를수록 모두의 채굴이 빨라집니다.</p>
-      <div class="guild-pick">${GUILDS.map((x) => html`<article class="guild-card ${x.id}">
-        <div class="guild-crest">${x.tag}</div><h2>${x.name}</h2><p class="motto">“${x.motto}”</p><p class="perk">${x.perk}</p>
-        <div class="guild-faces">${x.members.map((m) => raw(portraitHtml(seededPfp(x.id + m), 36, m)))}</div>
-        <button class="btn primary" data-act="join" data-id="${x.id}">가입</button></article>`)}</div>`;
-    const lo = GUILD_LEVELS[g.level - 1], hi = GUILD_LEVELS[g.level] ?? lo;
-    const pct = hi > lo ? Math.min(100, ((g.xp - lo) / (hi - lo)) * 100) : 100;
-    return html`
-      <div class="card-head"><h1 style="font-size:28px">${g.name}</h1><span class="chip hwang mono">${g.tag}</span><span class="end mono c-hwang">레벨 ${g.level} · 채굴 +${3 * g.level}%</span></div>
-      <div class="guild-wrap">
-        <section class="card game-panel guild-${g.id}"><div class="guild-banner"><div class="guild-crest big">${g.tag}</div><div><h2>“${g.motto}”</h2><p class="perk">${g.perk}</p></div></div>
-          <div class="plate-xp big"><i style="width:${pct}%"></i></div>
-          <span class="mono dim">${g.level < GUILD_LEVELS.length ? `${Math.floor(g.xp)} / ${hi} XP → 레벨 ${g.level + 1}` : '최고 레벨'} · 내 기부 ${n(g.donated, 1)} g</span>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">${[1, 5, 10].map((v) => html`<button class="btn gold" data-act="donate" data-g="${v}" ${demo.state.alpha >= v ? '' : 'disabled'}>알파 ${v} g 기부</button>`)}</div>
-          <p class="note">기부한 알파는 길드 레벨로 돌아옵니다. 길드원들도 매 블록 조금씩 보탭니다.</p>
-        </section>
-        ${raceCard(g.id)}
-        <section class="card game-panel"><h2>길드원</h2>
-          <ol class="standings">${[{ name: '나 · 한빛 IV', face: myPfp(), me: true, d: g.donated }, ...g.members.map((m, i) => ({ name: m, face: seededPfp(g.id + m), me: false, d: Math.max(0, g.xp / (i + 2.5) - i) }))]
-            .sort((a, b) => b.d - a.d).map((m, i) => html`<li class="${m.me ? 'me' : ''}"><span class="rk mono">${i + 1}</span>${raw(portraitHtml(m.face, 32))}<div><b>${m.name}</b><small class="mono">기여 ${n(m.d, 1)} g</small></div>${m.me ? html`<span class="chip cheong">나</span>` : ''}</li>`)}</ol>
-          <p class="note">다른 길드로 옮기려면 <b>알파 5 g</b>가 들고, 쌓은 레벨은 사라집니다.</p>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">${GUILDS.filter((x) => x.id !== g.id).map((x) => html`<button class="btn ghost" data-act="join" data-id="${x.id}">${x.name}(으)로 이적</button>`)}</div>
-        </section>
-      </div>`;
-  };
-  const paint = () => {
-    if (!root.isConnected) return;
-    mount(root, view(), handlers);
-    const g = demo.guild;
-    setTiles([{ label: '알파 매터', value: '', num: demo.state.alpha, fmt: (v) => n(v, 2) + ' g', tone: 'var(--hwang)' }, { label: '길드', value: g ? `${g.tag} · Lv ${g.level}` : '무소속', tone: 'var(--cheong-hi)' }]);
-  };
-  const handlers = {
-    join: (el: HTMLElement) => {
-      const id = el.dataset.id as GuildId;
-      if (demo.guild && !confirm('길드를 옮기면 알파 5 g가 들고 길드 레벨이 초기화됩니다. 옮길까요?')) return;
-      const m = demo.joinGuild(id);
-      if (m) { sfx.play('error'); toast(m); return; }
-      const g = demo.guild!;
-      sfx.play('levelup'); banner({ kicker: '길드 가입', title: g.name, sub: g.perk, tone: 'gold' });
-      paint();
-    },
-    donate: (el: HTMLElement) => {
-      const v = Number(el.dataset.g);
-      const m = demo.donate(v);
-      if (m) { sfx.play('error'); toast(m); return; }
-      sfx.play('coin'); float(el, `+${v} XP`, 'var(--hwang)', true);
-      paint();
-    },
-  };
-  paint();
-  const off = demo.onBlock(paint);
-  return () => { off(); setTiles([]); };
-}
-
-async function realGuild(root: HTMLElement, pid: string): Promise<() => void> {
-  mount(root, loading('길드 불러오는 중…'));
-  let guild: GuildRow | null = null, roster: RosterRow[] = [], bank: BankRow[] = [], count = 0;
-  try {
-    const me = await guildApi.player(pid);
-    const soft = <T,>(p: Promise<T>, d: T) => p.catch(() => d);
-    [guild, roster, bank, count] = await Promise.all([
-      soft(guildApi.guild(me.guild_id), null), soft(guildApi.roster(me.guild_id), [] as RosterRow[]), soft(guildApi.bank(), [] as BankRow[]),
-      soft(guildApi.memberCount(me.guild_id).then((c) => c.count), 0),
-    ]);
-  } catch (e) { mount(root, errorCard(e)); return () => undefined; }
-  const sorted = [...roster].sort((a, b) => Number(b.alpha) - Number(a.alpha));
-  const myBank = bank.find((b) => b.guild_id === guild?.id);
-  mount(root, html`
-    <div class="card-head"><h1 style="font-size:28px">${guild?.name ?? '길드'}</h1>${guild?.tag ? html`<span class="chip hwang mono">${guild.tag}</span>` : ''}<span class="end mono dim">길드원 ${n(count || roster.length)}명</span></div>
-    <div class="guild-wrap">
-      <section class="card game-panel"><h2>길드 정보</h2>
-        ${guild?.description ? html`<p class="note">${guild.description}</p>` : ''}
-        <div class="g2" style="gap:8px">
-          <div class="stat"><small>주 리액터</small><strong class="mono">${guild?.primary_reactor_id ?? '—'}</strong></div>
-          <div class="stat"><small>가입 변전소</small><strong class="mono">${guild?.entry_substation_id ?? '—'}</strong></div>
-          <div class="stat"><small>기본 수수료</small><strong>${guild?.default_commission ? n(Number(guild.default_commission) * 100, 1) + '%' : '—'}</strong></div>
-          <div class="stat"><small>길드 은행 담보율</small><strong class="c-cheong">${myBank ? n(myBank.ratio, 3) : '—'}</strong></div>
-        </div>
-        <a class="btn ghost" href="${href('/chat')}">길드 통신 열기</a>
-      </section>
-      <section class="card game-panel"><h2>길드원 · 알파 순</h2>
-        <ol class="standings">${sorted.slice(0, 20).map((m, i) => html`<li class="${m.id === pid ? 'me' : ''}"><span class="rk mono">${i + 1}</span>${raw(portraitHtml(m.pfp, 32))}<div><b>${m.username || m.id}</b><small class="mono">알파 ${micro(m.alpha_p ?? m.alpha, 1)} g</small></div>${m.id === pid ? html`<span class="chip cheong">나</span>` : ''}</li>`)}</ol>
-        ${sorted.length ? '' : html`<p class="empty">길드원 정보가 없습니다.</p>`}
-      </section>
-    </div>`);
-  setTiles([{ label: '길드원', value: n(count || roster.length) }, { label: '담보율', value: myBank ? n(myBank.ratio, 3) : '—', tone: 'var(--cheong-hi)' }]);
-  return () => setTiles([]);
-}

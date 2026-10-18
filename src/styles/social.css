@@ -101,3 +101,52 @@ input[type=range] { width: 100%; accent-color: var(--cheong); }
 .obj-watch { display: grid; gap: 8px; }
 .obj-stats .stat strong { font-size: 18px; }
 @media (max-width: 900px) { .obj-wrap { grid-template-columns: 1fr; } .obj-side { order: -1; } }
+
+/* ── Exchange ── */
+.mkt-filters { display: flex; gap: 6px; }
+.mkt-filters .input { min-height: 34px; width: auto; font-size: 13px; }
+.prov-list { display: flex; flex-direction: column; gap: 8px; }
+.prov { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: var(--sunken); border: 1px solid var(--line); border-left: 3px solid var(--hwang); }
+.prov-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prov-acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.prov-acts .input { width: auto; min-height: 32px; font-size: 13px; }
+.coins { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.coins li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--sunken); border: 1px solid var(--line); }
+.coins li > div { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.coins b { color: var(--white); font: 700 14px var(--f-pix); }
+.coins small { color: var(--text-faint); font-size: 11px; }
+.coins strong { font-size: 16px; }
+.coin-ico { width: 26px; height: 26px; flex: none; border: 2px solid var(--hwang); background: radial-gradient(circle at 35% 35%, #F7D58C, var(--hwang) 45%, var(--hwang-bg)); }
+.coin-ico.token { border-color: var(--cheong); background: radial-gradient(circle at 35% 35%, #B9F3E6, var(--cheong) 45%, var(--cheong-bg)); }
+.coin-ico.rep { border-color: var(--line-strong); background: var(--surface); }
+
+/* ── Guild ── */
+.guild-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 18px; background: linear-gradient(120deg, var(--hwang-bg), var(--surface) 60%); border: 2px solid var(--hwang-line); box-shadow: 4px 4px 0 #0E0D1C; }
+.guild-hero-txt { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.guild-hero-txt h1 { font-size: 32px; }
+.guild-hero-txt p { margin: 0; color: var(--text); line-height: 1.6; }
+.guild-hero-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.guild-crest { display: grid; place-items: center; width: 44px; height: 44px; background: var(--hwang); color: #2A1F05; font: 700 15px var(--f-hud); border: 3px solid #2A1F05; box-shadow: inset 0 0 0 2px var(--warn); }
+.guild-crest.big { width: 76px; height: 76px; font-size: 22px; }
+.guild-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; }
+.roster { display: flex; flex-direction: column; gap: 4px; }
+.roster-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--bg-raised); border: 1px solid var(--line); }
+.roster-row.me { border-color: var(--cheong); background: var(--cheong-bg); }
+.roster-nm { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.roster-nm a { color: inherit; text-decoration: none; }
+.roster-nm b { color: var(--white); font: 700 14px var(--f-pix); }
+.roster-nm small { color: var(--text-faint); font-size: 11px; }
+.roster-acts { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.roster-acts .hud-btn { width: 32px; height: 32px; }
+.rank-sel { width: auto; min-height: 32px; font-size: 12px; }
+.app-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.app-row > span:not(.app-acts):not(.pfp) { flex: 1 1 auto; }
+.app-row > .pfp { flex: none; }
+.app-acts { display: flex; gap: 4px; }
+.invite-form { display: flex; gap: 6px; margin-top: 6px; }
+.admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.admin-grid form { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; padding: 12px; background: var(--sunken); border: 1px solid var(--line); }
+.admin-grid .field { width: 100%; }
+tr.me td { background: var(--cheong-bg); }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.stat-grid .stat strong { font-size: 17px; }

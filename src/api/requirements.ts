@@ -23,6 +23,8 @@ export const REQUIREMENTS: Requirement[] = [
   { id: 'REQ-TX-2', title: '트랜잭션 전파', endpoint: 'POST /api/tx/broadcast', fallback: 'LCD /cosmos/tx/v1beta1/txs' },
   { id: 'REQ-TX-3', title: '트랜잭션 결과', endpoint: 'GET /api/tx/{hash}', fallback: 'LCD /cosmos/tx/v1beta1/txs/{hash}' },
   { id: 'REQ-TUT-1', title: '튜토리얼 진행 저장 (tutorial 브랜치 병합)', endpoint: 'PUT /api/player/mini-game/progress', fallback: 'localStorage' },
+  { id: 'REQ-WAL-1', title: '지갑 잔액 (알파·길드 토큰)', endpoint: 'GET /api/account/{address}/balances', fallback: 'LCD /cosmos/bank/v1beta1/balances' },
+  { id: 'REQ-GLD-1', title: '길드 가입 신청·초대 목록', endpoint: 'GET /api/guild/membership/applications', fallback: 'LCD /structs/guild_membership_application' },
   { id: 'REQ-I18N-1', title: '구조체 유형 한국어', endpoint: 'GET /api/struct/type?locale=ko', fallback: '클라이언트 번역표' },
 ];
 

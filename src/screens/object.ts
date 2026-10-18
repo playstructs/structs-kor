@@ -106,7 +106,7 @@ const screen: Screen = {
     const loadPlayer = async () => {
       const [stats, structs] = await Promise.all([guildApi.oreStats(id).catch(() => null), guildApi.structsOf(id).catch(() => [] as StructRow[])]);
       const alive = structs.filter((s) => !s.is_destroyed);
-      extra = html`<section class="card game-panel"><h2>전적</h2><div class="g3 obj-stats">
+      extra = html`<section class="card game-panel"><h2>전적</h2><div class="stat-grid obj-stats">
         <div class="stat"><small>채굴한 광석</small><strong class="mono">${stats ? n(stats.mined) : '—'}</strong></div>
         <div class="stat"><small>약탈한 광석</small><strong class="mono c-jeok">${stats ? n(stats.seized) : '—'}</strong></div>
         <div class="stat"><small>빼앗긴 광석</small><strong class="mono">${stats ? n(stats.forfeited) : '—'}</strong></div>

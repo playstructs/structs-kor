@@ -59,6 +59,20 @@ function objects(ids: string): { id: string; type: string; object: Record<string
   return out;
 }
 
+const prov = (id: string, owner: string, denom: string, rate: string, policy: string, cmin: number, cmax: number, sub = '4-7', guild = '0-5') => ({ id, substation_id: sub, guild_id: guild, rate_denom: denom, rate_amount: rate, access_policy: policy, capacity_minimum: cmin, capacity_maximum: cmax, duration_minimum: 14400, duration_maximum: 201600, consumer_cancellation_penalty: '0.1', provider_cancellation_penalty: '0.1', owner, committed_capacity: cmax / 4 });
+const PROVIDERS = [
+  prov('10-3', '1-7', 'ualpha', '2', 'openMarket', 1e6, 20e6), prov('10-8', '1-13', 'uguild.0-5', '3', 'openMarket', 2e6, 50e6),
+  prov('10-11', '1-21', 'ualpha', '4', 'guildMarket', 5e6, 100e6, '4-9'), prov('10-15', '1-9', 'uguild.0-1', '1', 'openMarket', 1e6, 8e6, '4-2', '0-1'),
+  prov('10-20', ME, 'ualpha', '3', 'openMarket', 1e6, 10e6),
+];
+
+const guild = (id: string, name: string, tag: string, owner: string, description: string) => ({ id, endpoint: '', name, description, tag, logo: '', socials: '', website: '', primary_reactor_id: '3-' + id.split('-')[1], entry_substation_id: '4-7', owner, status: 'active', default_commission: '0.03', join_infusion_minimum: 0 });
+const GUILDS: Record<string, ReturnType<typeof guild>> = {
+  '0-5': guild('0-5', 'SN Corp', 'SNC', ME, 'Structs 한국 서버의 첫 길드. 신입 환영, 매주 합동 습격.'),
+  '0-1': guild('0-1', 'Slow Ninja', 'SN', '1-500', 'The oldest guild in the galaxy.'),
+  '0-9': guild('0-9', '흑룡단', 'BLK', '1-21', '밤에 움직이는 습격 전문 길드.'),
+};
+
 const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] = [
   [/^block$/, () => ({ height: 2_955_801, tip_height: 2_955_801, lag_blocks: 0, status: 'ok', updated_at: now })],
   [/^player\/(1-\d+)$/, (m) => PLAYERS[m[1]] ?? (byId(m[1]) ? { ...player(m[1], byId(m[1])!.name, '2-' + m[1].split('-')[1], 5, 0), alpha: 5e6 } : null)],
@@ -82,12 +96,15 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
   [/^objects$/, (_m, q) => objects(q.get('ids') ?? '')],
   [/^grid\/object\//, () => [{ attribute_type: 'connectionCount', object_id: '4-7', val: 12 }]],
   [/^player\/list\/substation\//, () => []],
-  [/^provider\/market$/, () => [{ id: '10-3', substation_id: '4-7', guild_id: '0-5', rate_denom: 'ualpha', rate_amount: '2', access_policy: 'openMarket', capacity_minimum: 1e6, capacity_maximum: 20e6, duration_minimum: 14400, duration_maximum: 201600, consumer_cancellation_penalty: '0.1', provider_cancellation_penalty: '0.1', owner: '1-7' }]],
-  [/^agreement\/owner\//, () => []],
-  [/^guild\/(0-\d+)$/, (m) => ({ id: m[1], endpoint: '', name: 'SN Corp', description: 'Structs 한국 서버의 첫 길드.', tag: 'SNC', logo: '', socials: '', website: '', primary_reactor_id: '3-15', entry_substation_id: '4-7', owner: '1-7', status: 'active', default_commission: '0.03', join_infusion_minimum: 0 })],
+  [/^provider\/market$/, () => PROVIDERS],
+  [/^provider\/owner\/(1-\d+)/, (m) => PROVIDERS.filter((p) => p.owner === m[1])],
+  [/^agreement\/owner\//, () => [{ id: '11-4', provider_id: '10-3', allocation_id: '6-77', capacity: 5e6, start_block: 2_940_000, end_block: 2_990_000, owner: ME, blocks_remaining: 34_199, escrow_remaining: 3.4e8 }]],
+  [/^guild\/(0-\d+)$/, (m) => GUILDS[m[1]] ?? null],
   [/^guild\/(0-\d+)\/roster$/, () => Object.values(PLAYERS).map((p) => ({ id: p.id, guild_id: '0-5', username: p.username, pfp: JSON.stringify({ head: (Number(p.id.split('-')[1]) % 87) + 1, neck: 2, body: 7, arms: 3, background: 2 }), guild_name: 'SN Corp', tag: 'SNC', alpha: p.alpha }))],
-  [/^guild\/(0-\d+)\/members\/count$/, () => ({ count: 5 })],
-  [/^guild\/this$/, () => ({ id: '0-5', endpoint: '', name: 'SN Corp', description: 'Structs 한국 서버의 첫 길드.', tag: 'SNC', logo: '', socials: '', website: '', primary_reactor_id: '3-15', entry_substation_id: '4-7', owner: '1-7', status: 'active', default_commission: '0.03', join_infusion_minimum: 0 })],
+  [/^guild\/(0-\d+)\/members\/count$/, (m) => ({ count: m[1] === '0-5' ? 5 : m[1] === '0-1' ? 41 : 9 })],
+  [/^guild\/this$/, () => GUILDS['0-5']],
+  [/^guild\/directory$/, () => Object.values(GUILDS).map((g) => ({ guild_id: g.id, name: g.name, logo: '', alpha: g.id === '0-5' ? 980e6 : g.id === '0-1' ? 2400e6 : 310e6, members: g.id === '0-5' ? 5 : g.id === '0-1' ? 41 : 9 }))],
+  [/^guild\/(0-\d+)\/power\/stats$/, () => ({ capacity: 420e6, load: 260e6, connection_capacity: 12e6 })],
   // Replicants: HD indexes 1–2 are enlisted, the rest are free.
   // An address that signed up here has its player; before any signup, nobody is enlisted (so /start
   // really registers). After it, replicant HD indexes 1–2 count as enlisted, the rest are free.
@@ -98,7 +115,7 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
     const n = (m.input ?? '').length % 5; return n < 2 ? { player_id: `1-${300 + n}` } : null;
   }],
   [/^resolve$/, () => []],
-  [/^guild-bank$/, () => [{ guild_id: '0-5', denom: 'uguild.0-5', collateral: 40e9, supply: 38e9, ratio: 1.05 }]],
+  [/^guild-bank$/, () => [{ guild_id: '0-5', denom: 'uguild.0-5', collateral: 40e9, supply: 38e9, ratio: 1.05 }, { guild_id: '0-1', denom: 'uguild.0-1', collateral: 9e9, supply: 10e9, ratio: 0.9 }]],
 ];
 
 export function mock<T>(path: string, init: RequestInit = {}): Envelope<T> | null {
