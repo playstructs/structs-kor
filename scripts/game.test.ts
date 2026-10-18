@@ -799,6 +799,20 @@ test('grudge: a house you rob comes for you more often, and the grudge fades', (
   assert.ok(rv.grudge! < 5, 'fading');
 });
 
+test('next raider: a rebel is certain; an ally is never named; nothing while a raid is on', () => {
+  demo.reset();
+  const s = demo.state;
+  const nx = demo.nextRaider()!;
+  assert.ok(nx && nx.p > 0 && nx.p <= 1);
+  s.rebel = '1-313';
+  assert.deepEqual([demo.nextRaider()!.id, demo.nextRaider()!.p], ['1-313', 1]);
+  s.rebel = null;
+  s.ally = { id: nx.id, until: s.height + 100 } as typeof s.ally;
+  assert.notEqual(demo.nextRaider()!.id, nx.id, 'the ally is out of the running');
+  s.nextRaid = 1; demo.step();
+  assert.equal(demo.nextRaider(), null);
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);
