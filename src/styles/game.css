@@ -667,3 +667,9 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .raid-alarm .stance { display: inline-flex; gap: 6px; }
 .raid-alarm .forecast { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; }
 .raid-alarm .stance .btn { min-height: 36px; padding: 0 12px; }
+
+/* 개장 (refits) in the inspector */
+.refit { display: grid; gap: 6px; margin-top: 10px; }
+.refit-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.refit-row .btn { display: grid; gap: 2px; text-align: left; min-height: 52px; padding: 6px 8px; white-space: normal; }
+.refit-row .btn small { font-size: 11px; opacity: .85; }

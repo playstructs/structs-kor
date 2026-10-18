@@ -91,7 +91,7 @@ export function demoExchange(root: HTMLElement): () => void {
         <span class="label c-hwang">${BLACK_DEALS[o.id].name}</span>
         <b>${BLACK_DEALS[o.id].what}</b>
         <small class="dim">${why ?? '한 번만 팝니다'}</small>
-        <button class="btn gold" data-act="black" data-id="${o.id}" ${why ? 'disabled' : ''}>${o.price ? `${o.price} α` : '무료'} · 거래</button>
+        <button class="btn gold" data-act="black" data-id="${o.id}" ${why ? 'disabled' : ''}>${o.id === 'scrap' ? `매각 · +${Math.round(Math.min(BLACK.scrapMax, Math.floor(demo.state.ore)) * BLACK.scrapRate * 10) / 10} α` : `${o.price} α · 거래`}</button>
       </article>`; })}</div>
     </section>`;
   };

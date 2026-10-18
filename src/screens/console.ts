@@ -16,7 +16,7 @@ import { onGrass, throttled } from '../grass/grass';
 import { AMBIT, STRUCT_TYPE, activityLabel } from '../i18n/ko';
 import { TYPES_BY_ID, STRUCT_TYPES, AMBIT_FLAG, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
 import { Board, type BoardStruct } from '../game/map/board';
-import { demo, DEMO_ID, ENGINE, OC, vetRank, ABILITIES, type AbilityId } from '../game/demo';
+import { demo, DEMO_ID, ENGINE, OC, vetRank, ABILITIES, REFITS, type AbilityId, type RefitId } from '../game/demo';
 import { hegemonyMeter } from '../game/meter';
 import { advise, adviseReal } from '../game/advisor';
 import { career, activeMissions, tutorialDone, RANKS, type MissionState } from '../game/progress';
@@ -258,13 +258,14 @@ const screen: Screen = {
         const canSign = isDemo || wallet.state === 'unlocked';
         return html`<section class="card game-panel inspector"><div class="card-head">${pixel(s.type)}<div><h2>${STRUCT_TYPE[s.type] ?? t?.type}</h2><span class="mono faint">${s.id} · ${AMBIT[s.operating_ambit] ?? ''} ${s.slot + 1}</span></div><button class="end hud-btn" data-act="close" aria-label="닫기">✕</button></div>
           <div class="g2" style="gap:8px">
-            <div class="stat"><small>내구도</small><strong class="${dead ? 'c-jeok' : ''}">${dead ? '파괴됨' : `${s.health} / ${t?.maxHealth}`}</strong></div>
+            <div class="stat"><small>내구도</small><strong class="${dead ? 'c-jeok' : ''}">${dead ? '파괴됨' : `${s.health} / ${(isDemo && demo.state.structs.find((x) => x.id === s.id)?.max) || t?.maxHealth}`}</strong></div>
             <div class="stat"><small>전력 소비</small><strong>${watts(t?.passiveDraw)}</strong></div>
             <div class="stat"><small>상태</small><strong class="${building != null ? 'c-warn' : online ? 'c-cheong' : 'c-hwang'}">${building != null ? `건설 ${Math.round(building * 100)}%` : online ? '가동' : '꺼짐'}</strong></div>
             <div class="stat"><small>무기</small><strong style="font-size:13px">${t?.primaryWeaponDamage ? `${t.primaryWeaponDamage}×${t.primaryWeaponShots} 피해` : '없음'}</strong></div>
             ${isDemo && (demo.state.structs.find((x) => x.id === s.id)?.kills ?? 0) > 0 ? (() => { const ds = demo.state.structs.find((x) => x.id === s.id)!, k = ds.kills!, v = vetRank(k); return html`<div class="stat"><small>전과${ds.name ? ` · 「${ds.name}」` : ''}</small><strong style="font-size:13px" class="c-hwang">${v ? `베테랑 ${'★'.repeat(v)} · ` : ''}격파 ${k}${v >= 2 ? ' · 방어 사격 +1' : ''}</strong></div>
               ${v ? html`<form class="ship-name" data-act="nameShip" data-on="submit" data-id="${s.id}"><input class="input" name="n" maxlength="12" placeholder="함선 이름" value="${ds.name ?? ''}" aria-label="함선 이름"><button class="btn ghost" type="submit">이름 붙이기</button></form>` : ''}`; })() : ''}
           </div>
+          ${isDemo && !dead && building == null && demo.state.structs.find((x) => x.id === s.id)?.cat === 'fleet' ? (() => { const ds = demo.state.structs.find((x) => x.id === s.id)!; return html`<div class="refit"><span class="label c-hwang">개장${ds.mod ? ` · ${REFITS[ds.mod].name}` : ''}</span><div class="refit-row">${(Object.keys(REFITS) as RefitId[]).map((m) => { const why = demo.refitBlocked(s.id, m); return html`<button class="btn ${ds.mod === m ? 'gold' : 'ghost'}" data-act="refit" data-id="${s.id}" data-m="${m}" aria-pressed="${ds.mod === m}" ${why ? 'disabled' : ''} title="${why ?? REFITS[m].what}"><b>${REFITS[m].name}</b><small>${REFITS[m].what} · ${REFITS[m].cost} α</small></button>`; })}</div></div>`; })() : ''}
           ${t ? html`<p class="note">${[t.passiveWeaponry, t.unitDefenses, t.planetaryDefenses, t.planetaryMining, t.planetaryRefinery, t.powerGeneration].filter((v) => v && !/^no[A-Z]/.test(String(v))).join(' · ') || '특수 능력 없음'}</p>` : ''}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             ${!dead && building == null ? html`<button class="btn ${online ? 'ghost' : 'primary'}" data-act="power" data-id="${s.id}" ${canSign ? '' : 'disabled'}>${online ? '전원 끄기' : '전원 켜기'} <kbd>F</kbd></button>` : ''}
@@ -444,6 +445,11 @@ const screen: Screen = {
         if (err(demo.useAbility(id, career.rank.i))) return;
         sfx.play(id === 'rally' ? 'alarm' : id === 'overshield' ? 'shield' : 'coin'); if (id === 'rally') shake('sm');
         float(el, a.name, 'var(--hwang)', true); refresh();
+      },
+      refit: (el: HTMLElement) => {
+        const m = el.dataset.m as RefitId;
+        if (err(demo.refit(el.dataset.id!, m))) return;
+        sfx.play('build'); float(el, REFITS[m].name, 'var(--hwang)', true); refresh();
       },
       nameShip: (el: HTMLElement) => {
         const n = String(new FormData(el as HTMLFormElement).get('n') ?? '');

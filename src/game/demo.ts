@@ -17,7 +17,7 @@ const ONLINE = 4, DESTROYED = 32, BUILT = 1;
 export const DEMO_ID = '1-0';
 const PLANET = '2-118';
 
-export interface DemoStruct { id: string; type: number; ambit: Ambit; slot: number; cat: 'planet' | 'fleet'; online: boolean; hp: number; max: number; building: number | null; buildBlocks: number; protects: string | null; /** Overclocked: more output, more power, wear. */ oc?: boolean; /** Kills scored in raids (veterancy). */ kills?: number; /** The name its commander gave it (veterans only). */ name?: string }
+export interface DemoStruct { id: string; type: number; ambit: Ambit; slot: number; cat: 'planet' | 'fleet'; online: boolean; hp: number; max: number; building: number | null; buildBlocks: number; protects: string | null; /** Overclocked: more output, more power, wear. */ oc?: boolean; /** Kills scored in raids (veterancy). */ kills?: number; /** The name its commander gave it (veterans only). */ name?: string; /** Refit module (개장), lost with the hull. */ mod?: RefitId }
 function creditInner(byId: Record<string, number>): { id: string; type: number; rank: number; name?: string }[] {
   const up: { id: string; type: number; rank: number; name?: string }[] = [];
   for (const x of s.structs) {
@@ -693,6 +693,15 @@ function jobsStep() {
     return { id: `J${s.height}-${i}`, kind: 'defend', who, need: 2, reward: 20 + Math.floor(r() * 3) * 5 };
   });
 }
+/* ── 개장 (refits): one module per fleet hull, bought with alpha, for the defence of the base. A new
+ * module replaces the old one (paid again); a destroyed hull loses its module with it. ── */
+export type RefitId = 'armor' | 'guns' | 'evade';
+export const REFITS: Record<RefitId, { name: string; what: string; cost: number }> = {
+  armor: { name: '증가 장갑', what: '최대 내구도 +2', cost: 8 },
+  guns: { name: '포 개량', what: '기지 방어 사격 피해 +1', cost: 10 },
+  evade: { name: '회피 추진기', what: '피격 회피 확률 +20%p', cost: 8 },
+};
+
 /* ── 암시장 (black market): a smuggler docks now and then for a few blocks with three one-off deals.
  * Prices are rolled per visit; each deal sells once. Nothing here undercuts the contract board. ── */
 export type BlackId = 'shield' | 'bribe' | 'scrap' | 'cool' | 'patch';
@@ -956,7 +965,7 @@ function raidStep() {
     const shieldUp = s.shield > 0 && rnd() < (s.shield / 140) * (1 + 0.3 * lv('shield')) * (r.stance === 'entrench' ? 1.6 : 1);
     const t = mineAlive.filter((x) => x.cat === 'planet').concat(mineAlive)[Math.floor(rnd() * mineAlive.length)];
     if (shieldUp) { s.shield = Math.max(0, s.shield - 12); attack(a, t, 0, false, true); }
-    else attack(a, t, 1 + (rnd() < (r.stance === 'intercept' ? 0.4 : r.stance === 'entrench' ? 0.15 : 0.3) ? 1 : 0), rnd() < 0.12);
+    else attack(a, t, 1 + (rnd() < (r.stance === 'intercept' ? 0.4 : r.stance === 'entrench' ? 0.15 : 0.3) ? 1 : 0), rnd() < 0.12 + (t.mod === 'evade' ? 0.2 : 0));
   }
   // The best guns fire first: veterans, then defence cannons.
   const shooters = s.structs.filter((x) => x.hp > 0 && x.online && x.building == null && (x.cat === 'fleet' || x.type === 19))
@@ -967,7 +976,7 @@ function raidStep() {
     if (!left.length) break;
     const tgt = left.find((x) => x.type !== 1) ?? left[0];
     // Veterans (★★ and up) hit harder.
-    attack(d, tgt, (d.type === 19 ? 2 : 1) + (vetRank(d.kills) >= 2 ? 1 : 0) + (rnd() < 0.25 * lv('guns') + (inGuild('iron') ? 0.1 : 0) + (r.stance === 'intercept' ? 0.3 : 0) - (r.stance === 'entrench' ? 0.1 : 0) ? 1 : 0), rnd() < 0.15);
+    attack(d, tgt, (d.type === 19 ? 2 : 1) + (vetRank(d.kills) >= 2 ? 1 : 0) + (d.mod === 'guns' ? 1 : 0) + (rnd() < 0.25 * lv('guns') + (inGuild('iron') ? 0.1 : 0) + (r.stance === 'intercept' ? 0.3 : 0) - (r.stance === 'entrench' ? 0.1 : 0) ? 1 : 0), rnd() < 0.15);
   }
   const cmdDown = r.structs.find((x) => x.type === 1)!.hp <= 0;
   if (cmdDown || r.structs.every((x) => x.hp <= 0)) {
@@ -1286,6 +1295,28 @@ export const demo = {
     persist(); for (const f of changeFns) f();
     return null;
   },
+  /** Why this hull can't take that refit now (null = it can). */
+  refitBlocked(id: string, mod: RefitId): string | null {
+    const x = s.structs.find((y) => y.id === id);
+    if (!x || x.cat !== 'fleet') return '함대 함선만 개장할 수 있습니다';
+    if (x.hp <= 0) return '파괴된 함선은 개장할 수 없습니다';
+    if (x.building != null) return '건조가 끝나야 개장할 수 있습니다';
+    if (x.mod === mod) return '이미 장착했습니다';
+    if (s.alpha < REFITS[mod].cost) return `알파 ${REFITS[mod].cost} 필요`;
+    return null;
+  },
+  refit(id: string, mod: RefitId): string | null {
+    adoptStored();
+    const why = demo.refitBlocked(id, mod); if (why) return why;
+    const x = s.structs.find((y) => y.id === id)!;
+    s.alpha -= REFITS[mod].cost;
+    if (x.mod === 'armor') { x.max -= 2; x.hp = Math.min(x.hp, x.max); }
+    x.mod = mod;
+    if (mod === 'armor') { x.max += 2; x.hp += 2; }
+    log('event', `개장 · ${TYPES_BY_ID[x.type].type} · ${REFITS[mod].name}`);
+    persist(); for (const f of changeFns) f();
+    return null;
+  },
   /** Name a veteran ship (1–12 characters; empty clears it). */
   nameShip(id: string, name: string): string | null {
     adoptStored();
@@ -1577,7 +1608,12 @@ export const demo = {
     busy++;
     try {
     const promoted = creditInner(kills);
-    for (const x of s.structs) if (x.id in hp) { x.hp = hp[x.id]; if (x.hp <= 0) x.online = false; }
+    for (const x of s.structs) if (x.id in hp) {
+      // The battle engine caps a hull at its type's maximum; armour above that rides along and
+      // comes home with a ship that survives.
+      const extra = Math.max(0, x.hp - TYPES_BY_ID[x.type].maxHealth);
+      x.hp = hp[x.id] > 0 ? Math.min(x.max, hp[x.id] + extra) : 0; if (x.hp <= 0) x.online = false;
+    }
     if (rivalId === 'void') {
       if (!won || !s.boss) { if (s.boss) s.boss.engaged = undefined; persist(); for (const f of changeFns) f(); return { ore: 0, alpha: 0, promoted }; }
       const g = VOID.reward + 10 * s.boss.n;

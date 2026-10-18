@@ -698,6 +698,24 @@ test('raid forecast: plays the raid out on a copy and leaves the real base untou
   assert.equal(demo.raidForecast(), f, 'memoized within the block');
 });
 
+test('refits: one module per hull, armour adds hull and survives a launched raid', () => {
+  demo.reset();
+  const s = demo.state;
+  s.alpha = 50;
+  const ship = s.structs.find((x) => x.cat === 'fleet' && x.hp > 0 && x.building == null)!;
+  const base = ship.max;
+  assert.match(demo.refitBlocked(s.structs.find((x) => x.cat === 'planet')!.id, 'armor') ?? '', /함대/);
+  assert.equal(demo.refit(ship.id, 'armor'), null);
+  assert.equal(ship.max, base + 2); assert.equal(ship.hp, base + 2);
+  assert.match(demo.refit(ship.id, 'armor') ?? '', /이미/);
+  // A launched raid: the battle engine saw the capped hull and brought it back 1 down.
+  demo.settleRaid(demo.rivals()[0].id, true, { [ship.id]: base - 1 });
+  assert.equal(ship.hp, base + 1, 'the armour above the cap comes home');
+  assert.equal(demo.refit(ship.id, 'guns'), null);
+  assert.equal(ship.max, base, 'swapping out armour takes it off');
+  assert.ok(ship.hp <= ship.max);
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);
