@@ -31,8 +31,8 @@ function creditInner(byId: Record<string, number>): { id: string; type: number; 
 export const vetRank = (kills = 0) => (kills >= 15 ? 3 : kills >= 8 ? 2 : kills >= 3 ? 1 : 0);
 export type Stance = 'intercept' | 'entrench';
 /** 전투 보고: the last defence of the base, as the bridge shows it afterwards. */
-export interface RaidReport { h: number; won: boolean; name: string; stance?: Stance; kills: { id: string; type: number; n: number; name?: string }[]; blocked: number; hits: number; seized: number; promoted: { id: string; type: number; rank: number; name?: string }[] }
-export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number; /** Chosen while it approaches. */ stance?: Stance; /** A coalition's second house (연합 전선). */ partner?: string; /** Tally for the after-action report. */ tally?: { kills: Record<string, number>; blocked: number; hits: number } }
+export interface RaidReport { h: number; won: boolean; name: string; stance?: Stance; odds?: number; kills: { id: string; type: number; n: number; name?: string }[]; blocked: number; hits: number; seized: number; promoted: { id: string; type: number; rank: number; name?: string }[] }
+export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number; /** Chosen while it approaches. */ stance?: Stance; /** A coalition's second house (연합 전선). */ partner?: string; /** Forecast win chance as it landed. */ odds?: number; /** Tally for the after-action report. */ tally?: { kills: Record<string, number>; blocked: number; hits: number } }
 interface Contract { id: string; kw: number; rate: number; left: number; buyer: string; dir?: 'buy' | 'sell' }
 
 /* ── Galactic events: the weather of the economy. One at a time, a few dozen blocks each. ── */
@@ -949,7 +949,7 @@ const raidGap = () => (rookie() ? RATE.raidEvery + 15 : RATE.raidEvery);
 function fileReport(r: DemoRaid, won: boolean) {
   const tl = r.tally ?? { kills: {}, blocked: 0, hits: 0 };
   const promoted = creditInner(tl.kills);
-  s.report = { h: s.height, won, name: r.name, stance: r.stance, blocked: tl.blocked, hits: tl.hits, seized: r.seized, promoted,
+  s.report = { h: s.height, won, name: r.name, stance: r.stance, odds: r.odds, blocked: tl.blocked, hits: tl.hits, seized: r.seized, promoted,
     kills: Object.entries(tl.kills).map(([id, n]) => { const x = s.structs.find((y) => y.id === id); return { id, type: x?.type ?? 0, n, name: x?.name }; }).sort((a, z) => z.n - a.n) };
   if (promoted.length) emit('promote', promoted.map((x) => `${x.name ? `「${x.name}」` : STRUCT_TYPE[x.type] ?? TYPES_BY_ID[x.type].type} ${'★'.repeat(x.rank)}`).join(' · '));
 }
@@ -992,6 +992,8 @@ function raidStep() {
       log('fleet_arrive', r.fleetId); log('raid_status', 'ongoing'); emit('alarm', `${r.name} 습격 개시!`);
       // Your guild answers the alarm: shield support, more from a bigger guild.
       if (s.guild) { const lv = guildLevel(), before = s.shield; s.shield = Math.min(100, s.shield + 8 * lv); const got = Math.round(s.shield - before); if (got > 0) emit('guildhelp', `${GUILDS.find((g) => g.id === s.guild!.id)!.name} 방어막 지원 +${got}%`); }
+      // What the odds were as it landed, for the report (not from inside a forecast's own playouts).
+      if (!forecasting) { const f = raidForecast(); if (f) s.raid!.odds = f[r.stance ?? 'none']; }
     }
     return;
   }
