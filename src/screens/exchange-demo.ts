@@ -76,7 +76,24 @@ export function demoExchange(root: HTMLElement): () => void {
         <button class="btn danger lg" data-act="buy" ${canBuy ? '' : 'disabled'}>구매 계약 체결 <kbd>Enter</kbd></button>`}
       </aside>
     </div>
+    ${jobsCard()}
     ${loanCard()}`;
+  };
+
+  /* 의뢰 게시판: deliveries (ore now, alpha at a premium) and defence contracts. */
+  const jobsCard = (): Safe => {
+    const j = demo.jobs;
+    if (!j) return html``;
+    const who = (id: string) => demo.rivals().find((r) => r.id === id)?.name ?? id;
+    return html`<section class="card game-panel jobs"><div class="card-head"><h2>의뢰 게시판</h2><span class="end mono dim">새 의뢰까지 ${j.next}블록 · 완수 ${j.done}회</span></div>
+      ${j.active ? html`<div class="notice">진행 중 · ${who(j.active.who)} 방어 의뢰 · 습격 격퇴 ${j.active.count} / ${j.active.need} · ${j.active.left}블록 남음 · 보수 ${j.active.reward} α</div>` : ''}
+      ${j.offers.length ? html`<div class="job-row">${j.offers.map((o) => html`<article class="job">
+        <span class="label ${o.kind === 'deliver' ? 'c-hwang' : 'c-jeok'}">${o.kind === 'deliver' ? '납품' : '방어'} · ${who(o.who)}</span>
+        <b>${o.kind === 'deliver' ? `광석 ${o.need} 단위 → ${o.reward} α` : `${150}블록 안에 습격 ${o.need}회 격퇴 → ${o.reward} α`}</b>
+        <small class="dim">${o.kind === 'deliver' ? `정제가보다 ${Math.round((o.reward / o.need - 1) * 100)}% 높게 · 즉시 지급 · 약탈당할 광석이 줄어듭니다` : '격퇴할 때마다 집계 · 기한을 넘기면 무효'}</small>
+        <button class="btn ${o.kind === 'deliver' ? 'gold' : 'danger'}" data-act="job" data-id="${o.id}" ${o.kind === 'deliver' && demo.state.ore < o.need ? 'disabled' : o.kind === 'defend' && j.active ? 'disabled' : ''}>${o.kind === 'deliver' ? '납품' : '수락'}</button>
+      </article>`)}</div>` : html`<p class="note">게시판이 비었습니다. 곧 새 의뢰가 올라옵니다.</p>`}
+    </section>`;
   };
 
   /* 청룡 상단 credit: borrow now, pay 20% more in 200 blocks, or lose ore and face their fleet. */
@@ -104,6 +121,11 @@ export function demoExchange(root: HTMLElement): () => void {
     ]);
   };
   const handlers = {
+    job: (el: HTMLElement) => {
+      const e = demo.takeJob(el.dataset.id!);
+      if (e) { sfx.play('error'); toast(e); return; }
+      sfx.play('coin'); float(el, '의뢰 수락', 'var(--hwang)', true); paint();
+    },
     borrow: (el: HTMLElement) => {
       const e = demo.borrow(Number(el.dataset.g));
       if (e) { sfx.play('error'); toast(e); return; }

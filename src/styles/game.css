@@ -656,3 +656,10 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .ab.ready { border-color: var(--hwang); box-shadow: 0 0 14px rgba(235,170,73,.3); }
 .ab:disabled { cursor: default; opacity: .7; }
 .ab-cd { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--jeok-strong); }
+
+/* 의뢰 게시판 */
+.job-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.job { display: grid; gap: 6px; align-content: start; padding: 12px; border: 2px solid var(--line); background: var(--surface); }
+.job b { color: var(--white); }
+.job small { font-size: 12px; }
+.job .btn { justify-self: start; min-height: 36px; }

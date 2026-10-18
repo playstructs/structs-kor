@@ -3,7 +3,7 @@
 import type { Screen } from '../router';
 import { href } from '../router';
 import { html, mount, raw, type Safe } from '../ui/dom';
-import { ABILITIES, EVENTS, ALLY, OUTPOSTS, OUTPOST, DOMINION, HEGEMONY, OC, DOCTRINES, DOCTRINE_SWITCH, BOUNTY, VOID, RACE, LOAN, OPS, REPS, ENGINE, RATE, DECISION, WAR, TEMPER, type OpId } from '../game/demo';
+import { JOBS, ABILITIES, EVENTS, ALLY, OUTPOSTS, OUTPOST, DOMINION, HEGEMONY, OC, DOCTRINES, DOCTRINE_SWITCH, BOUNTY, VOID, RACE, LOAN, OPS, REPS, ENGINE, RATE, DECISION, WAR, TEMPER, type OpId } from '../game/demo';
 import { spriteHtml } from '../game/map/art';
 import { setTiles } from '../ui/shell';
 
@@ -16,6 +16,7 @@ const SECTIONS: [string, string, Entry[]][] = [
     { icon: 20, title: '전력', body: html`리액터 ${RATE.baseKw} kW와 발전기마다 ${RATE.genKw} kW. 구조체와 판매 계약이 용량을 넘으면 정전: 판매 계약부터 끊기고, 그다음 구조체가 꺼집니다.`, go: ['/energy', '전력망'] },
     { icon: 17, title: '전력 거래', body: html`남는 전력을 블록당 알파에 팝니다. 한 계약 최대 ${RATE.maxDealKw} kW, 시장 전체 ${RATE.marketDepthKw} kW. 큰 판매는 가격을 떨어뜨립니다. 사들인 전력은 되팔 수 없습니다.`, go: ['/market', '거래소'] },
     { icon: 15, title: '과부하 운전', body: html`추출기·정제소 생산 ×${OC.out}, 전력 ×${OC.power}. 발전기는 발전 ×${OC.gen}. 블록마다 ${pct(OC.wear)} 확률로 손상. 구조체를 고르고 <kbd>V</kbd>.`, go: ['/console', '함교'] },
+    { icon: 18, title: '의뢰 게시판', body: html`${JOBS.every}블록마다 세력들이 의뢰를 올립니다. 납품: 광석을 정제가보다 10–25% 비싸게 즉시 사 줍니다 (습격 전에 광석을 비우기 좋습니다). 방어: ${JOBS.defendFor}블록 안에 습격을 2번 막으면 보수.`, go: ['/market', '거래소'] },
     { icon: 17, title: '대출', body: html`청룡 상단에서 최대 ${LOAN.max} g. ${LOAN.term}블록 뒤 ${pct(LOAN.rate)}를 더해 갚습니다. 불이행하면 광석을 두 배로 압류하고 함대를 보내며, 한동안 다시 빌릴 수 없습니다.`, go: ['/market', '거래소'] },
   ]],
   ['세력', '은하의 다른 세력을 꺾고, 부리고, 늦춘다.', [

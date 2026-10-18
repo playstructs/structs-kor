@@ -122,6 +122,8 @@ interface State {
   era?: number;
   /** Bounties collected, all time (survives new eras). */
   bountiesClaimed?: number;
+  /** 의뢰 게시판: offers on the board, when it refreshes, and the job in hand. */
+  jobs?: { offers: Job[]; next: number; active?: Job & { until: number; count: number } | null; done?: number };
   /** Commander abilities: the block each is ready again; and total mobilisation's end. */
   cd?: Partial<Record<AbilityId, number>>; rallyUntil?: number;
   /** An alliance: the rival, and the block it lapses. */
@@ -429,6 +431,7 @@ function blockInner() {
   // A tab left open across midnight counts the new day too.
   if (s.streak && s.streak.day !== dayKey()) checkStreak();
   contestStep();
+  jobsStep();
   raceStep();
   bossStep();
   bountyStep();
@@ -666,6 +669,29 @@ export const ABILITIES: { id: AbilityId; name: string; what: string; cooldown: n
   { id: 'overshield', name: '방어막 과충전', what: '방어막 +40%', cooldown: 90, rank: 4, key: '8' },
   { id: 'rally', name: '총동원', what: '20블록 동안 모든 함포가 방어 사격', cooldown: 150, rank: 7, key: '9' },
 ];
+
+/* ── 의뢰 게시판 (contract board): rival houses post jobs. Deliveries pay a premium for ore now (a
+ * safe way to clear a pile before a raid); defence contracts pay for raids repelled in time. ── */
+export interface Job { id: string; kind: 'deliver' | 'defend'; who: string; need: number; reward: number }
+export const JOBS = { every: 120, defendFor: 150 };
+function jobsStep() {
+  s.jobs ??= { offers: [], next: s.height };
+  const j = s.jobs;
+  if (j.active && s.height > j.active.until) { emit('jeok', `의뢰 실패 · 기한이 지났습니다`); j.active = null; }
+  if (s.height < j.next) return;
+  j.next = s.height + JOBS.every;
+  const r = rngFor(`jobs:${s.height}`), rs = rivals();
+  j.offers = [0, 1, 2].map((i): Job => {
+    const who = rs[Math.floor(r() * rs.length)].id;
+    if (i < 2) { const need = 20 + Math.floor(r() * 6) * 10; return { id: `J${s.height}-${i}`, kind: 'deliver', who, need, reward: Math.round(need * (1.1 + r() * 0.15) * 10) / 10 }; }
+    return { id: `J${s.height}-${i}`, kind: 'defend', who, need: 2, reward: 20 + Math.floor(r() * 3) * 5 };
+  });
+}
+function jobRepelled() {
+  const a = s.jobs?.active;
+  if (!a || a.kind !== 'defend') return;
+  if (++a.count >= a.need) { s.alpha += a.reward; s.jobs!.done = (s.jobs!.done ?? 0) + 1; chronicle('cheong', `방어 의뢰 완수 · +${a.reward} α`); emit('bounty', `${rivals().find((x) => x.id === a.who)?.name ?? '의뢰인'} 방어 의뢰 보수 ${a.reward} α`); s.jobs!.active = null; }
+}
 
 /* ── 대출 (credit): 청룡 상단 lends against your future. 20% on top, due in 200 blocks, repaid
  * from the treasury when it falls due. Can't pay, and the house takes ore and sends its fleet. ── */
@@ -906,7 +932,7 @@ function raidStep() {
   }
   const cmdDown = r.structs.find((x) => x.type === 1)!.hp <= 0;
   if (cmdDown || r.structs.every((x) => x.hp <= 0)) {
-    s.raid = null; s.nextRaid = RATE.raidEvery; s.raidsRepelled++; raceAdd(15);
+    s.raid = null; s.nextRaid = RATE.raidEvery; s.raidsRepelled++; raceAdd(15); jobRepelled();
     // A broken raid costs its owner a ship.
     const owner = rivals().find((x) => x.id === r.owner);
     if (owner) owner.fleet = Math.max(2, owner.fleet - 1);
@@ -1106,6 +1132,24 @@ export const demo = {
     return null;
   },
   covert,
+  get jobs() { const j = s.jobs; return j ? { offers: j.offers, active: j.active ? { ...j.active, left: Math.max(0, j.active.until - s.height) } : null, next: Math.max(0, j.next - s.height), done: j.done ?? 0 } : null; },
+  /** Take a job: a delivery is settled at once; a defence contract starts its clock. */
+  takeJob(id: string): string | null {
+    adoptStored();
+    const j = s.jobs, o = j?.offers.find((x) => x.id === id);
+    if (!j || !o) return '없는 의뢰입니다';
+    if (o.kind === 'deliver') {
+      if (s.ore < o.need) return `광석 ${o.need} 단위 필요 (보유 ${Math.floor(s.ore)})`;
+      s.ore -= o.need; s.alpha += o.reward; j.done = (j.done ?? 0) + 1;
+      chronicle('cheong', `납품 의뢰 · 광석 ${o.need} → +${o.reward} α`);
+    } else {
+      if (j.active) return '이미 진행 중인 방어 의뢰가 있습니다';
+      j.active = { ...o, until: s.height + JOBS.defendFor, count: 0 };
+    }
+    j.offers = j.offers.filter((x) => x.id !== id);
+    persist(); for (const f of changeFns) f();
+    return null;
+  },
   /** Blocks until an ability is ready (0 = now). */
   abilityLeft: (id: AbilityId) => Math.max(0, (s.cd?.[id] ?? 0) - s.height),
   get rallying() { return Math.max(0, (s.rallyUntil ?? 0) - s.height); },
@@ -1315,7 +1359,7 @@ export const demo = {
     if (s.raid) return '습격을 막아 낸 뒤에 새 시대를 열 수 있습니다';
     if (s.loan) return '청룡 상단 대출을 먼저 갚아야 새 시대를 열 수 있습니다';
     // Running totals survive too (daily orders and medals count from them).
-    const keep = { era: (s.era ?? 0) + 1, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
+    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done } : undefined, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
     s = fresh();
     Object.assign(s, keep);
     log('event', `제${keep.era + 1}시대 개막`);

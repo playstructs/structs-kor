@@ -648,3 +648,19 @@ test('commander abilities: rank-gated, effective, then on cooldown', () => {
   assert.equal(demo.useAbility('rally', 17), null);
   assert.equal(demo.rallying, 20);
 });
+
+test('contract board: deliveries pay a premium at once; a defence contract pays for raids repelled in time', () => {
+  demo.reset();
+  demo.step();
+  const j = demo.jobs!;
+  assert.equal(j.offers.length, 3);
+  const del = j.offers.find((o) => o.kind === 'deliver')!;
+  demo.state.ore = del.need + 5;
+  const a = demo.state.alpha;
+  assert.equal(demo.takeJob(del.id), null);
+  assert.ok(demo.state.alpha - a > del.need, 'better than refining 1:1');
+  assert.equal(Math.round(demo.state.ore), 5);
+  const def = demo.jobs!.offers.find((o) => o.kind === 'defend')!;
+  assert.equal(demo.takeJob(def.id), null);
+  assert.ok(demo.jobs!.active, 'contract running');
+});
