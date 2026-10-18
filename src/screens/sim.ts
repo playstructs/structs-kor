@@ -29,6 +29,8 @@ import { estimateOdds } from '../game/odds';
 import { DAILY_CHARGE, TWIST_KO, dailyNo, encodeDaily, kstDay, nameKo, playDaily, playable, type DailyResult } from '../sim/daily';
 import { dailySim } from '../game/dailysim';
 import { webRoot } from '../core/desktop';
+import { session } from '../api/session';
+import { guildApi, type StructRow } from '../api/guild';
 
 type Phase = 'setup' | 'deploy' | 'battle' | 'debrief';
 interface Side { lost: number; attacks: number; damage: number; evaded: number; blocked: number; counter: number }
@@ -64,6 +66,8 @@ const screen: Screen = {
     let raidIds: Record<string, string> = {}, loot: { ore: number; alpha?: number; promoted?: { id: string; type: number; rank: number; name?: string }[] } | null = null;
     // The war room's estimate for this strike: wins out of plays, filled in a battle at a time.
     let odds: { won: number; played: number } | null = null, stopOdds: (() => void) | null = null;
+    /** ?vs=<player>: a forecast against a real commander's fleet, with yours. */
+    let vsInfo: { id: string; name: string } | null = null;
     let phase: Phase = 'setup', mode = 'single', preset: Preset = 'difficult', diff: Difficulty = 'difficult';
     let blockMs = 2000, charge = 10, seed = 'KR-' + Math.random().toString(36).slice(2, 7).toUpperCase();
     let units: Unit[] = [];
@@ -397,7 +401,7 @@ const screen: Screen = {
           </div>
           <p class="note">함대는 본거지 밖에서 만나므로 행성 구조체는 없습니다. CMD 함선이 파괴되면 전투가 끝납니다.</p>
         </section></div>`,
-      deploy: () => html`<section class="card game-panel" style="gap:12px"><div class="card-head"><h1 style="font-size:26px">${mission ? `작전 ${mission.no} · ${mission.title}` : raidOn ? `습격 · ${raidOn.name}` : run ? `연전 ${run.round}/5 · ${ROUND_KO[run.round - 1]}` : mode === 'daily' ? `일일 교전 #${dailyNo(theDay())} · 「${nameKo(dailyScenario(theDay()))}」` : '함대 편성'}</h1><span class="mono dim">${units.length} 유닛 · 시드 ${seed}</span>
+      deploy: () => html`<section class="card game-panel" style="gap:12px"><div class="card-head"><h1 style="font-size:26px">${vsInfo ? `실전 예측 · ${vsInfo.name}` : mission ? `작전 ${mission.no} · ${mission.title}` : raidOn ? `습격 · ${raidOn.name}` : run ? `연전 ${run.round}/5 · ${ROUND_KO[run.round - 1]}` : mode === 'daily' ? `일일 교전 #${dailyNo(theDay())} · 「${nameKo(dailyScenario(theDay()))}」` : '함대 편성'}</h1><span class="mono dim">${units.length} 유닛 · 시드 ${seed}</span>
           ${raidOn ? (() => {
             const hpOf = (side: string) => units.filter((u) => u.side === side).reduce((t, u) => t + (u.health ?? TYPES_BY_ID[u.type].maxHealth), 0);
             const mine = hpOf('player'), theirs = hpOf('computer');
@@ -406,8 +410,9 @@ const screen: Screen = {
             return html`<span class="chip hwang mono">${raidOn.id === 'void' ? `격파 전리품 ${demo.boss?.reward ?? 0} α · ${demo.boss?.left ?? 0}블록 남음` : `노획 예상 광석 ${n(Math.floor(raidOn.ore * 0.6))}${b ? ` + 현상금 ${b} α` : ''}`}</span><span class="chip ${mine < theirs * 0.7 ? 'jeok' : 'cheong'} mono">전력 ${mine} vs ${theirs}${mine < theirs * 0.7 ? ' · 열세!' : ''}</span>
               <span class="chip ${pct == null ? '' : pct >= 60 ? 'cheong' : pct >= 35 ? 'hwang' : 'jeok'} mono odds" title="자동 지휘(어려움) 기준 모의 교전">${pct == null ? '승률 계산 중…' : `예상 승률 ${pct}%`}${odds && odds.played < 16 ? ` · ${odds.played}/16` : ''}</span>`;
           })() : ''}
-          ${mode === 'single' && !raidOn && !mission ? html`<span class="chip ${spent() > budget() ? 'jeok' : 'cheong'} mono">편성 점수 ${n(spent())} / ${n(budget())}</span>` : ''}
-          <span class="end" style="display:flex;gap:8px;flex-wrap:wrap">${run || raidOn || mission ? '' : html`<button class="btn ghost" data-act="reroll">다시 뽑기 <kbd>R</kbd></button>`}<button class="btn ghost" data-act="toSetup">설정으로</button><button class="btn danger lg" data-act="start">전투 시작 <kbd>Enter</kbd></button></span></div>
+          ${vsInfo ? (() => { const pct = odds && odds.played ? Math.round((odds.won / odds.played) * 100) : null; return html`<span class="chip hwang mono">실제 함대 · ${vsInfo!.id}</span><span class="chip ${pct == null ? '' : pct >= 60 ? 'cheong' : pct >= 35 ? 'hwang' : 'jeok'} mono odds" title="자동 지휘(어려움) 기준 모의 교전">${pct == null ? '승률 계산 중…' : `예상 승률 ${pct}%`}${odds && odds.played < 16 ? ` · ${odds.played}/16` : ''}</span>`; })() : ''}
+          ${mode === 'single' && !raidOn && !mission && !vsInfo ? html`<span class="chip ${spent() > budget() ? 'jeok' : 'cheong'} mono">편성 점수 ${n(spent())} / ${n(budget())}</span>` : ''}
+          <span class="end" style="display:flex;gap:8px;flex-wrap:wrap">${run || raidOn || mission || vsInfo ? '' : html`<button class="btn ghost" data-act="reroll">다시 뽑기 <kbd>R</kbd></button>`}<button class="btn ghost" data-act="toSetup">설정으로</button><button class="btn danger lg" data-act="start">전투 시작 <kbd>Enter</kbd></button></span></div>
         <div class="bt-legend"><span class="c-cheong">◀ 내 함대</span><span class="c-jeok">컴퓨터 함대 · ${DIFF_KO[diff]} ▶</span></div>
         ${mission ? html`<div class="briefing"><span class="label c-jeok">작전 브리핑 · ${mission.place}</span><p>${mission.brief}</p><p class="mc-lesson">전술 · ${mission.lesson}</p></div>` : ''}
         ${raidOn ? html`<p class="note">데모 함대가 그대로 출격합니다. 입은 피해는 기지로 돌아가서도 남습니다 — 함교에서 수리하세요. 약탈한 광석은 정제하기 전까지 다시 빼앗길 수 있습니다.</p>` : ''}
@@ -484,7 +489,7 @@ const screen: Screen = {
       if (host && board) board.attach(host);
     };
     const toDeploy = () => {
-      editing = null;
+      editing = null; vsInfo = null;
       if (mission) {
         run = null; units = missionUnits(mission); diff = mission.difficulty; charge = mission.charge; seed = 'MISSION-' + mission.id;
         phase = 'deploy'; newBoard().setStructs(units.map(fromUnit)); paint();
@@ -590,7 +595,7 @@ const screen: Screen = {
     const offKeys = keys.scope({
       z: () => board?.toggleZoom(),
       Enter: () => (phase === 'setup' ? toDeploy() : phase === 'deploy' ? start() : phase === 'debrief' && !(run && !run.over) ? handlers.again() : undefined),
-      r: () => phase === 'deploy' && !run && !raidOn && !mission && handlers.reroll(),
+      r: () => phase === 'deploy' && !run && !raidOn && !mission && !vsInfo && handlers.reroll(),
       ' ': () => phase === 'battle' && handlers.pause(),
       a: () => phase === 'battle' && handlers.autopilot(),
       f: () => phase === 'battle' && handlers.speed(),
@@ -620,6 +625,37 @@ const screen: Screen = {
       if (!demo.fleetUnits().units.some((u) => u.type === COMMAND_SHIP_ID)) { mount(root, html`<section class="card game-panel" style="max-width:560px;margin:40px auto"><h1 style="font-size:28px">출격 불가</h1><p class="note">지휘함이 없습니다. 함교에서 지휘함을 수리한 뒤 출격하세요.</p><a class="btn primary" href="${href('/console')}">함교로</a></section>`); return () => offKeys(); }
       toDeploy();
     } else paint();
+    const loadVs = async (vs: string) => {
+      const me = session.playerId;
+      if (!me) { toast('실전 예측은 로그인 후에 할 수 있습니다', 4000); paint(); return; }
+      mount(root, html`<div class="card"><div class="skeleton" style="height:120px"></div><span class="sr">함대 정찰 중…</span></div>`);
+      const [mine, theirs, them] = await Promise.all([guildApi.structsOf(me).catch(() => [] as StructRow[]), guildApi.structsOf(vs).catch(() => [] as StructRow[]), guildApi.player(vs).catch(() => null)]);
+      const toUnits = (rows: StructRow[], side: 'player' | 'computer'): Unit[] => {
+        const seen = new Set<string>(), out: Unit[] = [];
+        for (const x of rows) {
+          if (x.is_destroyed || x.type > 13 || x.location_type !== 'fleet') continue;
+          const ambit = (x.type === COMMAND_SHIP_ID ? 'space' : x.operating_ambit) as Ambit;
+          if (x.type !== COMMAND_SHIP_ID && !fits(x.type, ambit)) continue;
+          const id = unitId(side, x.type, ambit, x.slot ?? 0);
+          if (seen.has(id)) continue;
+          seen.add(id);
+          out.push({ id, side, type: x.type, ambit, slot: x.slot ?? 0, protects: null, health: Math.max(1, Number(x.health) || TYPES_BY_ID[x.type].maxHealth) });
+        }
+        // Every fleet flies a command ship; a roster without one gets a fresh one to fight around.
+        if (!out.some((u) => u.type === COMMAND_SHIP_ID)) out.unshift({ id: unitId(side, COMMAND_SHIP_ID, 'space', 0), side, type: COMMAND_SHIP_ID, ambit: 'space', slot: 0, protects: null });
+        return out;
+      };
+      vsInfo = { id: vs, name: them?.username || vs };
+      units = [...toUnits(mine, 'player'), ...toUnits(theirs, 'computer')];
+      seed = 'VS-' + vs; diff = 'hard'; run = null; chain = null; phase = 'deploy';
+      newBoard().setStructs(units.map(fromUnit));
+      stopOdds?.(); odds = null;
+      stopOdds = estimateOdds(units, diff, 16, (won, played) => { odds = { won, played }; if (root.isConnected && phase === 'deploy') paint(); });
+      notify('실전 예측', `${vsInfo.name}의 실제 함대와 내 함대로 모의 교전`, 'cheong', null);
+      paint();
+    };
+    const vsParam = params.get('vs');
+    if (vsParam && /^1-\d+$/.test(vsParam) && !shared && !dailyParam && !mission && !raidOn) void loadVs(vsParam);
     void daily().then((d) => { ladder = d; if (phase === 'setup') paint(); }).catch(() => null);
     return () => { running = false; stopOdds?.(); music.setMode('calm'); offKeys(); board?.dispose(); };
   },
