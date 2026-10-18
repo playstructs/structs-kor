@@ -41,6 +41,8 @@ export class Matrix {
   invites = new Map<string, Invite>();
   state: 'idle' | 'connecting' | 'live' | 'stalled' | 'expired' = 'idle';
   private since: string | null = null;
+  /** Has the first sync come back? (Until then an empty room list means "still loading".) */
+  get synced() { return this.since != null; }
   private running = false;
   private ctl: AbortController | null = null;
   private fns = new Set<() => void>();

@@ -28,6 +28,7 @@ import { keys } from '../game/keys';
 import { spriteHtml, tileUrl, AMBIT_BG } from '../game/map/art';
 import { portraitHtml, seededPfp, myPfp } from '../game/portrait';
 import { pow, blocksUntil } from '../pow/engine';
+import { estimateBlocks, BLOCK_SECONDS } from '../pow/work';
 import { runTour, tourSeen, BRIDGE_TOUR } from '../game/tour';
 import { dailyOrders, claimDaily, claimDailyBonus, DAILY_XP, DAILY_BONUS } from '../game/daily';
 
@@ -128,12 +129,13 @@ const screen: Screen = {
           // Empty tiles on the raider's side are theirs: nothing to build or repair there.
           if (side !== 'defender') return;
           const [kind, , slot] = key.split('|');
+          if (kind === 'plan' && !isDemo && !d?.player.planet_id) { sfx.play('error'); toast('아직 행성이 없습니다 · 기지 명령의 탐사로 첫 행성을 받으세요', 4000); return; }
           if (kind === 'plan') { panel = { kind: 'build', key, ambit, cat: 'planet', slot: Number(slot) }; }
           else if (kind === 'fleet') { panel = { kind: 'build', key, ambit, cat: 'fleet', slot: Number(key.split('|')[3]) }; }
           else if (kind === 'cmd') {
             // A sunk command ship leaves an empty tile; open it so it can be repaired.
             const wreck = d?.structs.find((x) => x.type === COMMAND_SHIP_ID && x.operating_ambit === ambit);
-            if (!wreck) return;
+            if (!wreck) { if (!isDemo && !d?.structs.some((x) => x.type === COMMAND_SHIP_ID)) toast('지휘함이 아직 없습니다 · 함대 슬롯에 첫 함선을 건설하면 지휘함이 함께 배치됩니다', 4500); return; }
             panel = { kind: 'struct', id: wreck.id };
           } else return;
           mode = null; markRaiders();
@@ -283,6 +285,13 @@ const screen: Screen = {
       return html`<div class="ab-batt" title="여유 전력 ${freeKw().toFixed(2)} kW">${Array.from({ length: 5 }, (_, i) => html`<i class="${i < on ? 'on' : ''}"></i>`)}</div>`;
     };
     const buildOptions = (ambit: Ambit, cat: 'planet' | 'fleet') => STRUCT_TYPES.filter((t) => t.category === cat && (t.possibleAmbit & AMBIT_FLAG[ambit]) !== 0 && t.id !== COMMAND_SHIP_ID && t.id <= 20);
+    /** How long a build takes: the demo's own pace, or on the chain the proof's wait at this browser's
+     * hash rate (2 MH/s until it has measured one). */
+    const buildTime = (difficulty: number) => {
+      if (isDemo) return `${Math.max(3, Math.round(difficulty / 140))}블록`;
+      const b = estimateBlocks(difficulty, pow.rate || 2e6), min = Math.round((b * BLOCK_SECONDS) / 60);
+      return `약 ${n(b)}블록 (${min >= 60 ? `${(min / 60).toFixed(1)}시간` : `${min}분`}) · 작업 증명`;
+    };
     const actionChunk = (): Safe => {
       if (!d) return html``;
       if (panel?.kind === 'build') {
@@ -293,7 +302,8 @@ const screen: Screen = {
             // A cartridge: the unit on a tile of the slot's ambit, its name, and its draw as pips of the free power.
             const name = STRUCT_TYPE[t.id] ?? t.type, short = need > free;
             const on = free > 0 ? Math.min(5, Math.ceil((need / free) * 5)) : 5;
-            return html`<button class="ck cart" type="button" data-act="build" data-type="${String(t.id)}" data-need="${String(need)}" ${ok ? '' : 'disabled'} title="${name} · ${need.toFixed(2)} kW · ${Math.max(3, Math.round(t.buildDifficulty / 140))}블록${short ? ' · 전력 부족' : ''}"${i < 9 ? ` aria-keyshortcuts="${i + 1}"` : ''}><span class="ck-face">
+            const takes = buildTime(t.buildDifficulty);
+            return html`<button class="ck cart" type="button" data-act="build" data-type="${String(t.id)}" data-need="${String(need)}" ${ok ? '' : 'disabled'} title="${name} · ${need.toFixed(2)} kW · ${takes}${short ? ' · 전력 부족' : ''}"${i < 9 ? ` aria-keyshortcuts="${i + 1}"` : ''}><span class="ck-face">
               <span class="view" style="background-color:${AMBIT_BG[ambit]};background-image:url('${tileUrl(ambit, 2, 'middle')}')">${pixel(t.id, 64)}${short ? html`<span class="band"><span>전력 부족</span></span>` : ''}</span>
               ${i < 9 ? html`<kbd>${String(i + 1)}</kbd>` : ''}<span class="lbl">${name}</span>
               <small class="val"><span class="pips" aria-hidden="true">${Array.from({ length: 5 }, (_, k) => html`<i class="${short ? 'over' : k < on ? 'on' : ''}"></i>`)}</span><span>${need.toFixed(1)}kW</span></small></span></button>`;
@@ -357,6 +367,7 @@ const screen: Screen = {
             <span title="남은 광맥"><i class="si icon-undiscovered-ore"></i><b>${n(d.planet?.undiscovered_ore)}</b></span>
           </div>
           <div class="ab-btns">
+            ${!isDemo && !d.player.planet_id ? sbtn({ act: 'explore', label: '탐사', icon: 'undiscovered-ore', tone: 'gold', sub: '첫 행성', title: '행성 탐사: 정착할 행성을 받습니다 (체인 거래)' }) : ''}
             ${sbtn({ act: 'buildNext', label: '건설', key: 'E', icon: 'deploy', sub: '빈 슬롯' })}
             ${sbtn({ act: 'refineAll', label: '정제', key: 'Q', icon: 'refine', tone: 'gold', sub: isDemo ? `+${demo.rates().alpha.toFixed(2)}α` : '알파' })}
             ${sbtn({ act: 'infuse', label: '주입', key: 'I', icon: 'send-alpha', sub: isDemo ? '1g→1kW' : '리액터' })}
@@ -571,6 +582,15 @@ const screen: Screen = {
       menu: () => dispatchEvent(new Event('structs:menu')),
       dismissReport: () => { demo.dismissReport(); },
       nav: (el: HTMLElement) => go(el.dataset.to!),
+      explore: (el: HTMLElement) => {
+        if (isDemo || !d || d.player.planet_id) return;
+        if (wallet.state !== 'unlocked') { sfx.play('error'); toast('탐사하려면 지갑 잠금을 해제하세요', 3000); return; }
+        if (!confirm('체인에 서명합니다: 행성 탐사 · 정착할 첫 행성을 받습니다. 보낼까요?')) return;
+        (el as HTMLButtonElement).disabled = true;
+        void actions.planetExplore(pid)
+          .then((h) => { sfx.play('confirm'); notify('탐사 전송', `새 행성을 찾는 중 · ${h.slice(0, 10)}…`, 'cheong', null); void load(); })
+          .catch((e) => { sfx.play('error'); toast('탐사 실패: ' + (e as Error).message, 5000); (el as HTMLButtonElement).disabled = false; });
+      },
       power: (el: HTMLElement) => {
         const id = el.dataset.id!;
         if (isDemo) { if (!err(demo.toggle(id))) { sfx.play('confirm'); refresh(); } return; }
@@ -629,6 +649,7 @@ const screen: Screen = {
         if (!isDemo) {
           if (wallet.state !== 'unlocked') { sfx.play('error'); toast('착공하려면 지갑 잠금을 해제하세요', 3000); return; }
           const type = Number(el.dataset.type);
+          if (!confirm(`체인에 서명합니다: ${STRUCT_TYPE[type] ?? type} 건설 · ${AMBIT[p.ambit]} ${p.slot + 1} · ${buildTime(TYPES_BY_ID[type]?.buildDifficulty ?? 0)}. 보낼까요?`)) return;
           (el as HTMLButtonElement).disabled = true;
           void actions.structBuild(pid, type, p.ambit, p.slot)
             .then((h) => { sfx.play('build'); notify('착공 전송', `${STRUCT_TYPE[type]} · ${AMBIT[p.ambit]} ${p.slot + 1} · ${h.slice(0, 10)}…`, 'cheong', null); panel = null; if (!pow.running) pow.start(); void load(); })
@@ -641,7 +662,7 @@ const screen: Screen = {
           panel = null; refresh();
         }
       },
-      buildNext: () => { const p = firstEmpty(); panel = p; if (p?.kind === 'build' && board) { board.ping(p.key); board.reveal(p.key); } else if (!panel) toast('빈 행성 슬롯이 없습니다'); paint(); },
+      buildNext: () => { if (!isDemo && d && !d.player.planet_id) { sfx.play('error'); toast('아직 행성이 없습니다 · 탐사로 첫 행성을 받으세요', 4000); return; } const p = firstEmpty(); panel = p; if (p?.kind === 'build' && board) { board.ping(p.key); board.reveal(p.key); } else if (!panel) toast('빈 행성 슬롯이 없습니다'); paint(); },
       refineAll: () => {
         if (!isDemo) { go('/energy'); return; }
         const off = demo.state.structs.filter((x) => x.type === 15 && !x.online && x.building == null && x.hp > 0);

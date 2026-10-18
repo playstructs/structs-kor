@@ -74,8 +74,11 @@ export async function shareNow(pid: string): Promise<{ share: number; free: numb
   const me = await guildApi.player(pid);
   const en = await energyOf(me).catch(() => null);
   const free = en?.power ? Number(en.power.capacity) - Number(en.power.load) : 0;
-  const conns = en?.substation?.connection_count ?? 0;
-  const share = en?.substation?.connection_capacity != null ? Number(en.substation.connection_capacity) : free / Math.max(1, conns + 1);
+  // The guild sends grid attributes as strings: "584" + 1 must not become "5841".
+  const conns = Number(en?.substation?.connection_count ?? 0) || 0;
+  // What this commander actually gets from the substation (the energy screen's figure), else the grid's.
+  const mine = Number(me.connection_capacity), grid = Number(en?.substation?.connection_capacity);
+  const share = Number.isFinite(mine) && mine > 0 ? mine : Number.isFinite(grid) && en?.substation?.connection_capacity != null ? grid : free / Math.max(1, conns + 1);
   return { share, free, conns, ok: share >= MIN_SHARE_MW };
 }
 

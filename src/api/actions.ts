@@ -145,6 +145,8 @@ export const actions = {
   playerName: (playerId: string, name: string, index = 0) => act('MsgPlayerUpdateName', { playerId, name }, index),
   playerPfp: (playerId: string, pfp: string, index = 0) => act('MsgPlayerUpdatePfp', { playerId, pfp }, index),
   planetName: (planetId: string, name: string) => act('MsgPlanetUpdateName', { planetId, name }),
+  /** Claim a new planet to settle (a new commander's first, or the next once the ore runs out). */
+  planetExplore: (playerId: string) => act('MsgPlanetExplore', { playerId }),
 
   /* Guild membership: a request waits for an officer; a join goes straight in when the guild allows it. */
   guildRequest: (guildId: string, playerId: string, substationId = '', index = 0) => act('MsgGuildMembershipRequest', { guildId, playerId, substationId }, index),

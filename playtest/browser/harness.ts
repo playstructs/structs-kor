@@ -3,8 +3,10 @@
  * device, network and motion settings, with the game clock under our control so hours of play take
  * seconds. Every step is screenshotted and probed for errors, performance and layout problems.
  *
- * Safety: guest/demo mode only. The harness never signs in or enlists, refuses any non-GET request
- * that leaves the site's origin, and keeps the monkey away from login, enlistment and wallet screens. */
+ * Safety: guest runs never sign in or enlist and refuse any non-GET request that leaves the site's
+ * origin. --signup lets writes through to the guild stack's hosts (sign-up, guild and chat sign-in);
+ * broadcasting a transaction also needs --chain-actions. The monkey stays away from login,
+ * enlistment and wallet screens. */
 import { chromium, devices, type BrowserContext, type Page, type CDPSession } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -40,6 +42,17 @@ export interface Allow {
   chain?: boolean;
 }
 export const GUEST: Allow = { mock: false };
+/** Hosts a --signup run may write to: the guild stack the site talks to (PLAYTEST_LIVE_HOSTS overrides). */
+const LIVE_HOSTS = (process.env.PLAYTEST_LIVE_HOSTS ?? 'playstructs.com').split(',').map((x) => x.trim()).filter(Boolean);
+/** Broadcasting a signed transaction also needs --chain-actions; simulation does not. */
+const BROADCAST = /\/tx\/broadcast\b|\/cosmos\/tx\/v1beta1\/txs\b/;
+/** May a cross-origin write go out? Never on guest runs; on --signup runs only to the guild stack. */
+export function liveWrite(a: Allow, url: string): boolean {
+  if (!a.signup) return false;
+  const host = new URL(url).hostname;
+  if (!LIVE_HOSTS.some((h) => host === h || host.endsWith('.' + h))) return false;
+  return !BROADCAST.test(url) || !!a.chain;
+}
 /** May this profile hold an account in this run? */
 export const canEnlist = (a: Allow, p: { account?: boolean }) => !!p.account && (a.mock || !!a.signup);
 /** A commander a profile enlisted against the mock (or reused). Public facts only, never the phrase. */
@@ -126,7 +139,7 @@ export class Harness {
     await ctx.addInitScript(`try { localStorage.setItem('structs-kor.mock', '${allow.mock && p.account ? 1 : 0}'); } catch {}`);
     await ctx.route('**/*', (route) => {
       const r = route.request();
-      if (r.method() !== 'GET' && r.method() !== 'HEAD' && r.method() !== 'OPTIONS' && new URL(r.url()).origin !== t.origin) { h.requests.blocked.push(`${r.method()} ${r.url()}`); return route.abort('blockedbyclient'); }
+      if (r.method() !== 'GET' && r.method() !== 'HEAD' && r.method() !== 'OPTIONS' && new URL(r.url()).origin !== t.origin && !liveWrite(allow, r.url())) { h.requests.blocked.push(`${r.method()} ${r.url()}`); return route.abort('blockedbyclient'); }
       return route.continue();
     });
     // The game clock: fake timers and Date, advanced on purpose.

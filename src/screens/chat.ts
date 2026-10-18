@@ -122,7 +122,7 @@ const screen: Screen = {
         <input class="input comms-filter" placeholder="대화방 찾기 (Ctrl+K)" value="${filter}" data-act="filter" aria-label="대화방 필터">
         ${matrix.invites.size ? html`<div class="comms-sec">초대</div>${[...matrix.invites.values()].map((i) => html`<div class="comms-invite"><b>${i.direct ? '@' : '#'}${i.name}</b><small>${localpart(i.inviter)} 님의 초대</small><span><button class="btn primary sm" data-act="accept" data-id="${i.id}">수락</button><button class="btn ghost sm" data-act="decline" data-id="${i.id}">거절</button></span></div>`)}` : ''}
         ${sec('고정', pinned)}${sec('다이렉트 메시지', rest.filter((r) => r.direct))}${sec('로컬 넷 · 내 길드', rest.filter((r) => !r.direct && r.local))}${sec('갤럭시 넷 · 타 서버', rest.filter((r) => !r.direct && !r.local))}
-        ${!all.length ? html`<p class="faint comms-empty">${matrix.rooms.size ? '맞는 대화방이 없습니다.' : err || '대화방을 불러오는 중…'}</p>` : ''}
+        ${!all.length ? html`<p class="faint comms-empty">${matrix.rooms.size ? '맞는 대화방이 없습니다.' : err || (matrix.synced ? '아직 참여한 대화방이 없습니다. 아래 채널 찾기에서 길드 채널에 들어가세요.' : '대화방을 불러오는 중…')}</p>` : ''}
         <form class="comms-join" data-act="join" data-on="submit"><input class="input" name="alias" placeholder="#대화방 참여" aria-label="대화방 참여"><button class="btn ghost sm">참여</button></form>
         <button class="btn ghost sm comms-findbtn" data-act="find">채널 찾기</button>`, railHandlers);
     };
@@ -205,7 +205,7 @@ const screen: Screen = {
       const r = room();
       const atBottom = tl.scrollHeight - tl.scrollTop - tl.clientHeight < 40;
       const prevH = tl.scrollHeight, prevTop = tl.scrollTop;
-      if (!r) { mount(tl, html`<div class="empty comms-blank">${err || (matrix.rooms.size ? html`<h2>통신</h2><p>왼쪽에서 대화방을 고르세요. <kbd>Ctrl</kbd>+<kbd>K</kbd>로 빠르게 찾을 수 있습니다.</p>` : '대화방을 불러오는 중…')}</div>`); typingEl.textContent = ''; return; }
+      if (!r) { mount(tl, html`<div class="empty comms-blank">${err || (matrix.rooms.size ? html`<h2>통신</h2><p>왼쪽에서 대화방을 고르세요. <kbd>Ctrl</kbd>+<kbd>K</kbd>로 빠르게 찾을 수 있습니다.</p>` : matrix.synced ? html`<h2>통신</h2><p>아직 참여한 대화방이 없습니다. 왼쪽 아래 <b>채널 찾기</b>에서 길드 채널을 찾아 참여하세요.</p>` : '대화방을 불러오는 중…')}</div>`); typingEl.textContent = ''; return; }
       // Only a window of the newest messages is drawn; scrolling up widens it before asking the server.
       const evs = r.events.slice(-shown);
       const hiddenOlder = r.events.length > evs.length;
