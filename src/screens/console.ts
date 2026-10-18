@@ -152,8 +152,8 @@ const screen: Screen = {
       if (!isDemo) return html``;
       const rank = career.rank.i, rally = demo.rallying;
       return html`<section class="card game-panel abilities"><div class="card-head"><h2>지휘관 능력</h2>${rally ? html`<span class="end chip jeok mono">총동원 ${rally}블록</span>` : ''}</div>
-        <div class="ab-row">${ABILITIES.map((a) => { const left = demo.abilityLeft(a.id), locked = rank < a.rank, idle = (a.id === 'overshield' && !demo.raid) || (a.id === 'rally' && demo.raid?.eta !== 0); return html`<button class="ab ${left || locked || idle ? '' : 'ready'}" data-act="ability" data-id="${a.id}" ${left || locked || idle ? 'disabled' : ''} title="${a.what}">
-          <b>${a.name} <kbd>${a.key}</kbd></b><small>${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : idle ? (a.id === 'rally' ? '습격 함대 도착 후' : '습격 때 사용') : a.what}</small>
+        <div class="ab-row">${ABILITIES.map((a) => { const left = demo.abilityLeft(a.id), locked = rank < a.rank, idle = (a.id === 'overshield' && !demo.raid) || ((a.id === 'rally' || a.id === 'strike') && demo.raid?.eta !== 0); return html`<button class="ab ${left || locked || idle ? '' : 'ready'}" data-act="ability" data-id="${a.id}" ${left || locked || idle ? 'disabled' : ''} title="${a.what}">
+          <b>${a.name} <kbd>${a.key}</kbd></b><small>${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : idle ? (a.id === 'overshield' ? '습격 때 사용' : '습격 함대 도착 후') : a.what}</small>
           ${left && !locked ? html`<i class="ab-cd" style="width:${Math.round((left / a.cooldown) * 100)}%"></i>` : ''}</button>`; })}</div></section>`;
     };
     const daily = (): Safe => {

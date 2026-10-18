@@ -1,6 +1,6 @@
 /* 참모 (the advisor): reads the demo base and the galaxy and names the three moves that matter
  * most right now, most urgent first, each with a button that goes and does something about it. */
-import { demo, DOMINION, ENGINE, OUTPOST, OPS, opOdds, ABILITIES, BLACK_DEALS, REVENGE, COALITION } from './demo';
+import { demo, DOMINION, ENGINE, OUTPOST, OPS, opOdds, ABILITIES, BLACK_DEALS, REVENGE, COALITION, type AbilityId } from './demo';
 import type { Dashboard } from '../api/planned';
 import { STRUCT_TYPE } from '../i18n/ko';
 
@@ -10,7 +10,7 @@ export interface Tip { pri: number; tone: 'jeok' | 'hwang' | 'cheong'; text: str
 export function advise(rank = 99): Tip[] {
   const st = demo.state, tips: Tip[] = [];
   const raid = demo.raid, r = demo.rates();
-  const ready = (id: 'surge' | 'overshield' | 'rally') => rank >= ABILITIES.find((a) => a.id === id)!.rank && !demo.abilityLeft(id);
+  const ready = (id: AbilityId) => rank >= ABILITIES.find((a) => a.id === id)!.rank && !demo.abilityLeft(id);
   const refining = st.structs.some((x) => x.type === 15 && x.online && x.building == null && x.hp > 0);
   // A stance for the raid on its way, if none is set: hold behind a strong shield, or meet it with guns.
   if (raid && raid.eta > 0 && !raid.stance) {
@@ -30,6 +30,7 @@ export function advise(rank = 99): Tip[] {
   const cap = demo.surgeCap();
   if (raid && raid.eta > 0 && st.ore >= 20 && refining && cap >= st.ore * 0.5 && ready('surge')) tips.push({ pri: 101, tone: 'hwang', text: `습격 전에 긴급 정제[7]: 광석 ${Math.floor(Math.min(cap, st.ore))} 단위를 지금 알파로 바꿔 약탈을 피하세요.`, go: '/console', cta: '함교' });
   else if (raid && raid.eta <= 2 && st.shield < 60 && ready('overshield')) tips.push({ pri: 96, tone: 'hwang', text: `방어막 ${Math.round(st.shield)}% · 방어막 과충전[8]으로 방어막을 40% 올리고 맞서세요.`, go: '/console', cta: '함교' });
+  else if (raid && raid.eta === 0 && ready('strike') && raid.structs.some((x) => x.hp > 0 && x.type !== 1)) tips.push({ pri: 96, tone: 'hwang', text: `교전 중 · 궤도 포격[0]으로 가장 단단한 호위함을 지우세요.`, go: '/console', cta: '함교' });
   else if (raid && raid.eta === 0 && ready('rally')) tips.push({ pri: 95, tone: 'hwang', text: `교전 중 · 총동원[9]으로 모든 함포를 사격시키세요.`, go: '/console', cta: '함교' });
   if (raid?.partner && raid.eta > 0) tips.push({ pri: 99, tone: 'jeok', text: `연합 전선 · ${raid.name} 함대 ${raid.structs.length}기. 평소보다 ${COALITION.extra}척 많습니다 · 방어막 과충전과 총동원을 아끼지 마세요.`, go: '/console', cta: '함교' });
   const sore = demo.rivals().filter((x) => (x.grudge ?? 0) >= 3 && x.vassal == null && demo.ally?.id !== x.id).sort((a, z) => (z.grudge ?? 0) - (a.grudge ?? 0))[0];

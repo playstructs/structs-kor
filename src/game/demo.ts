@@ -683,13 +683,14 @@ function allyStep() {
 }
 
 /* ── 지휘관 능력: active powers with cooldowns, unlocked by rank. ── */
-export type AbilityId = 'surge' | 'overshield' | 'rally';
+export type AbilityId = 'surge' | 'overshield' | 'rally' | 'strike';
 /** What emergency refining can turn into alpha right now: 25 blocks of every running refinery. */
 const surgeCap = () => s.structs.filter((x) => x.type === 15 && x.online && x.building == null && x.hp > 0).reduce((a, x) => a + refineRate() * ocf(x, OC.out), 0) * 25;
 export const ABILITIES: { id: AbilityId; name: string; what: string; cooldown: number; rank: number; key: string }[] = [
   { id: 'surge', name: '긴급 정제', what: '정제소 25블록치를 즉시 정제', cooldown: 60, rank: 3, key: '7' },
   { id: 'overshield', name: '방어막 과충전', what: '방어막 +40%', cooldown: 90, rank: 4, key: '8' },
   { id: 'rally', name: '총동원', what: '20블록 동안 모든 함포가 방어 사격', cooldown: 150, rank: 7, key: '9' },
+  { id: 'strike', name: '궤도 포격', what: '도착한 습격 함대의 호위함 하나를 즉시 격파', cooldown: 200, rank: 10, key: '0' },
 ];
 
 /* ── 의뢰 게시판 (contract board): rival houses post jobs. Deliveries pay a premium for ore now (a
@@ -1350,7 +1351,15 @@ export const demo = {
       if (!s.raid) return '다가오는 습격이 없습니다';
       if (s.shield >= 100) return '방어막이 이미 가득합니다';
       s.shield = Math.min(100, s.shield + 40);
-    } else { if (!s.raid || s.raid.eta > 0) return '습격 함대가 도착한 뒤에 쓰세요'; s.rallyUntil = s.height + 20; }
+    } else if (id === 'rally') { if (!s.raid || s.raid.eta > 0) return '습격 함대가 도착한 뒤에 쓰세요'; s.rallyUntil = s.height + 20; }
+    else {
+      if (!s.raid || s.raid.eta > 0) return '습격 함대가 도착한 뒤에 쓰세요';
+      // The toughest escort first (the command ship is left for the guns).
+      const tgt = s.raid.structs.filter((x) => x.hp > 0 && x.type !== 1).sort((a, z) => z.hp - a.hp)[0];
+      if (!tgt) return '격파할 호위함이 없습니다';
+      const src = s.structs.find((x) => x.type === 1 && x.hp > 0) ?? s.structs[0];
+      attack(src, tgt, tgt.hp, false);
+    }
     s.cd = { ...s.cd, [id]: s.height + a.cooldown };
     log('event', `능력 · ${a.name}`);
     persist(); for (const f of changeFns) f();

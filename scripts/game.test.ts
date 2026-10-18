@@ -649,6 +649,13 @@ test('commander abilities: rank-gated, effective, then on cooldown', () => {
   demo.state.raid!.eta = 0;
   assert.equal(demo.useAbility('rally', 17), null);
   assert.equal(demo.rallying, 20);
+  // 궤도 포격: rank-gated, then the toughest escort is gone at once.
+  assert.match(demo.useAbility('strike', 9) ?? '', /계급/);
+  const escorts = () => demo.state.raid!.structs.filter((x) => x.hp > 0 && x.type !== 1).length;
+  const before = escorts();
+  assert.equal(demo.useAbility('strike', 17), null);
+  assert.equal(escorts(), before - 1);
+  assert.match(demo.useAbility('strike', 17) ?? '', /재사용/);
 });
 
 test('contract board: deliveries pay a premium at once; a defence contract pays for raids repelled in time', () => {
