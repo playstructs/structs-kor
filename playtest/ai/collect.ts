@@ -15,7 +15,8 @@ const results: AiResult[] = readdirSync(dir).filter((f) => f.endsWith('.json')).
 const rank = { touched: 0, guarded: 1, blocked: 2, passed: 3, failed: 4 } as const;
 const coverage: Record<string, { status: string; by: string[]; notes: string[] }> = {};
 for (const f of FEATURES) coverage[f.id] = { status: 'untouched', by: [], notes: [] };
-for (const r of results) for (const [id, c] of Object.entries(r.coverage)) {
+for (const r of results) for (const [id, raw] of Object.entries(r.coverage)) {
+  const c = { ...raw, status: raw.status in rank ? raw.status : 'touched' }; // older drivers took any word
   const cur = coverage[id]; if (!cur) continue;
   if (cur.status === 'untouched' || rank[c.status as keyof typeof rank] > rank[cur.status as keyof typeof rank]) cur.status = c.status;
   cur.by.push(`${r.persona}:${c.status}`); if (c.note && c.note !== 'screen visited') cur.notes.push(`${r.persona}: ${c.note}`);

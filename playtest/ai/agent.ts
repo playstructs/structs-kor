@@ -74,7 +74,7 @@ Rules:
 - Each turn you get a screenshot and a numbered list of the controls on screen. Act with click, press, type, go or wait.
 - Log with note whenever something confuses, frustrates, breaks or delights this person. Be concrete (what you did, what you expected, what happened), so a developer can reproduce it.
 - Never try to reveal, copy, type or export a recovery phrase or password. The harness blocks those controls; if one is blocked, report the feature as blocked and move on.
-- ${allow.chain ? 'Chain transactions are allowed in this run: confirmation dialogs for them are accepted, so try them for real. Wiping the wallet is always declined.' : 'Confirmation dialogs that would sign a chain transaction, change a contract or wipe the wallet are declined by the harness in this run. Report such features from what you could see up to the confirmation.'}
+- ${allow.chain && allow.mock ? 'Chain confirmations are accepted in this run, but the mock Guild API never sends a transaction: a "모의 모드: 체인 거래는 보내지 않습니다" toast is expected and is not a bug. Judge the flow up to the send (what the confirmation says, what the UI does after the refusal).' : allow.chain ? 'Chain transactions are allowed in this run: confirmation dialogs for them are accepted, so try them for real. Wiping the wallet is always declined.' : 'Confirmation dialogs that would sign a chain transaction, change a contract or wipe the wallet are declined by the harness in this run. Report such features from what you could see up to the confirmation.'}
 - You have about ${steps} actions. Call finish with your review before they run out.
 - Write notes and the review in English, quoting Korean UI text where it matters.`;
 }

@@ -9,7 +9,7 @@
  *
  *   /observe                         screenshot path + numbered controls + visible text
  *   /click?ref=N   /press?key=K      act; each replies with the new observation
- *   /type?ref=N&text=…   /go?path=/energy   /wait?blocks=N
+ *   /type?ref=N&text=…   /go?path=/energy   /scroll?dir=down|up   /wait?blocks=N
  *   /feature?id=…&status=passed|failed|blocked&evidence=…
  *   /note?severity=blocker|major|minor|praise&title=…&detail=…
  *   /finish?fun=…&clarity=…&difficulty=…&would_return=true|false&summary=…&top_issues=a|b&best_moment=…
@@ -41,10 +41,24 @@ const h = await Harness.open(p, a.target, `${out}/ai`, { allow });
 try { await start(h, p); } catch (e) { res.error = `start: ${(e as Error).message}`; }
 res.account = h.account;
 
-let turn = 0;
+let turn = 0, seenDialogs = 0;
+/** What each number meant at the last observation (the page re-renders every block, which drops the numbers). */
+let lastControls = new Map<number, string>();
+/** The control behind a number: by its tag if still attached, else the element that now matches the same description. */
+async function control(ref: number) {
+  const el = h.page.locator(`[data-pt-ref="${ref}"]`);
+  if (await el.count()) return el;
+  const want = lastControls.get(ref);
+  if (!want) return el;
+  const fresh = await snapshot(h).catch(() => null);
+  const line = fresh?.controls.split('\n').find((l) => l.replace(/^\[\d+\]\s*/, '') === want);
+  const n = line ? Number(/^\[(\d+)\]/.exec(line)?.[1]) : NaN;
+  return h.page.locator(`[data-pt-ref="${Number.isNaN(n) ? -1 : n}"]`);
+}
 async function observe() {
   await h.tours();
   const snap = await snapshot(h).catch(() => ({ url: h.page.url(), controls: '(page not readable)', text: '' }));
+  lastControls = new Map(snap.controls.split('\n').map((l) => [Number(/^\[(\d+)\]/.exec(l)?.[1]), l.replace(/^\[\d+\]\s*/, '')] as [number, string]));
   const file = resolve(dir, `turn-${String(++turn).padStart(3, '0')}.jpg`);
   await h.page.screenshot({ path: file, type: 'jpeg', quality: 60 }).catch(() => {});
   const vp = h.page.viewportSize() ?? { width: 0, height: 0 };
@@ -52,6 +66,9 @@ async function observe() {
   const at = new URL(h.page.url()).pathname.replace(/\/$/, '') || '/';
   for (const f of (await import('../features')).FEATURES) if ((f.path.replace(/\/$/, '') || '/') === at) h.mark(f.id, 'touched', 'screen visited');
   const errs = h.findings.filter((x) => x.kind === 'pageerror' || x.kind === 'js.error').slice(-3).map((x) => `PAGE ERROR: ${x.message}`);
+  // Native dialogs are answered by the harness before a screenshot can show them: say so.
+  for (const d of h.dialogs.slice(seenDialogs)) errs.push(`DIALOG (${d.type}, ${d.answer} by the harness: ${d.why}): ${d.message}`);
+  seenDialogs = h.dialogs.length;
   return `step ${res.steps}/${steps} · page ${snap.url} · ${h.account ? `signed in as ${h.account.callsign} ${h.account.playerId}` : 'guest/demo'}\nscreenshot: ${file}\n${errs.join('\n')}${errs.length ? '\n' : ''}controls:\n${snap.controls}\n\nvisible text (trimmed):\n${snap.text}`;
 }
 
@@ -72,9 +89,11 @@ You drive the browser with curl against http://127.0.0.1:${port}. Every action r
 
     curl -sG http://127.0.0.1:${port}/observe
     curl -sG http://127.0.0.1:${port}/click --data-urlencode ref=12
+    curl -sG http://127.0.0.1:${port}/hold --data-urlencode ref=12 --data-urlencode ms=800     (long-press)
     curl -sG http://127.0.0.1:${port}/press --data-urlencode key=e
     curl -sG http://127.0.0.1:${port}/type --data-urlencode ref=3 --data-urlencode text=hello
     curl -sG http://127.0.0.1:${port}/go --data-urlencode path=/energy
+    curl -sG http://127.0.0.1:${port}/scroll --data-urlencode dir=down     (or dir=up, to=top, to=bottom: the control list only shows what is on screen)
     curl -sG http://127.0.0.1:${port}/wait --data-urlencode blocks=20
     curl -sG http://127.0.0.1:${port}/feature --data-urlencode id=pow-panel --data-urlencode status=passed --data-urlencode evidence="..."
     curl -sG http://127.0.0.1:${port}/note --data-urlencode severity=major --data-urlencode title="..." --data-urlencode detail="..."
@@ -88,21 +107,35 @@ const server = createServer(async (req, rsp) => {
   const q = (k: string) => u.searchParams.get(k) ?? '';
   let body = '';
   try {
-    const acting = ['/click', '/press', '/type', '/go', '/wait'].includes(u.pathname);
+    const acting = ['/click', '/hold', '/press', '/type', '/go', '/wait', '/scroll'].includes(u.pathname);
     if (acting && res.steps >= steps) { body = 'out of actions: report remaining features, then /finish'; }
     else switch (u.pathname) {
       case '/observe': body = await observe(); break;
       case '/click': {
-        const el = h.page.locator(`[data-pt-ref="${Number(q('ref'))}"]`);
+        const el = await control(Number(q('ref')));
         const href = await el.getAttribute('href').catch(() => null);
         if (!(await el.count())) body = `no control [${q('ref')}] on screen\n`;
         else if (href && (FORBIDDEN.test(href) && !(h.account && href.includes('/profile')) || (/^https?:/.test(href) && !href.startsWith(h.target.origin)))) body = 'that leads off the site or to a guarded screen; blocked\n';
-        else { if (p.input === 'touch') await el.tap({ timeout: 3000 }).catch(() => el.click({ timeout: 3000, force: true })); else await el.click({ timeout: 3000 }).catch(() => el.click({ timeout: 3000, force: true })); await h.settle(300); }
+        else {
+          // Numbers are reassigned on every observation; say what was pressed so a stale number is obvious.
+          const what = ((await el.getAttribute('aria-label').catch(() => null)) || (await el.innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+          if (p.input === 'touch') await el.tap({ timeout: 3000 }).catch(() => el.click({ timeout: 3000, force: true })); else await el.click({ timeout: 3000 }).catch(() => el.click({ timeout: 3000, force: true }));
+          await h.settle(300);
+          body = `pressed [${q('ref')}] "${what}" (numbers change after every action: use the list below)\n`;
+        }
         res.actions.push(`click ${q('ref')}`); res.steps++; body += await observe(); break;
+      }
+      case '/hold': {
+        // Long-press (touch) or press-and-hold (mouse) on a control.
+        const el = await control(Number(q('ref')));
+        const box = await el.boundingBox().catch(() => null);
+        if (!box) { body = `no control [${q('ref')}] on screen\n`; }
+        else { await h.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await h.page.mouse.down(); await h.page.waitForTimeout(Math.min(3000, Number(q('ms')) || 800)); await h.page.mouse.up(); await h.settle(300); }
+        res.actions.push(`hold ${q('ref')}`); res.steps++; body += await observe(); break;
       }
       case '/press': await h.key(q('key')); res.actions.push(`press ${q('key')}`); res.steps++; body = await observe(); break;
       case '/type': {
-        const el = h.page.locator(`[data-pt-ref="${Number(q('ref'))}"]`);
+        const el = await control(Number(q('ref')));
         if (await el.evaluate((x) => (x as HTMLInputElement).type === 'password' || !!x.closest('[data-act="doImport"], [data-act="reveal"], [data-act="doUnlock"]')).catch(() => false)) body = 'refused: never type into password or recovery-phrase fields\n';
         else { await el.fill(q('text')); await el.press('Enter'); await h.settle(300); }
         res.actions.push(`type ${q('ref')}`); res.steps++; body += await observe(); break;
@@ -113,14 +146,20 @@ const server = createServer(async (req, rsp) => {
         else await h.go(path);
         res.actions.push(`go ${path}`); res.steps++; body += await observe(); break;
       }
+      case '/scroll': {
+        // The control list only shows what is on screen; scroll to reach the rest of a long page.
+        const dy = q('to') === 'top' ? -1e6 : q('to') === 'bottom' ? 1e6 : (q('dir') === 'up' ? -1 : 1) * Math.round((h.page.viewportSize()?.height ?? 800) * 0.8);
+        await h.page.evaluate((y) => { const el = document.scrollingElement; const panes = [...document.querySelectorAll('main, .window, .scr, [class*="scroll"]')].filter((x) => x.scrollHeight > x.clientHeight + 4) as HTMLElement[]; (panes[0] ?? el)?.scrollBy({ top: y }); el?.scrollBy({ top: y }); }, dy);
+        await h.settle(150); res.actions.push(`scroll ${q('dir') || q('to') || 'down'}`); body = await observe(); break;
+      }
       case '/wait': { const n = Math.max(1, Math.min(60, Number(q('blocks')) || 1)); await h.play(n); res.actions.push(`wait ${n}`); res.steps++; body = await observe(); break; }
-      case '/feature': { const f = feature(q('id')); if (!f) { body = 'unknown feature id'; break; } h.mark(f.id, q('status') as Coverage['status'], q('evidence').slice(0, 400)); body = `recorded ${f.id}: ${q('status')}`; break; }
+      case '/feature': { const f = feature(q('id')); if (!f) { body = 'unknown feature id'; break; } if (!['passed', 'failed', 'blocked'].includes(q('status'))) { body = 'status must be passed, failed or blocked (put nuance in evidence)'; break; } h.mark(f.id, q('status') as Coverage['status'], q('evidence').slice(0, 400)); body = `recorded ${f.id}: ${q('status')}`; break; }
       case '/note': { const shot = await h.screenshot(`note-${res.notes.length + 1}`); res.notes.push({ severity: q('severity') as Note['severity'], title: q('title'), detail: q('detail'), step: res.steps, url: h.page.url(), screenshot: `ai/${p.id}/${shot}` }); body = 'noted'; break; }
       case '/finish': {
         finish({ fun: Number(q('fun')), clarity: Number(q('clarity')), difficulty: Number(q('difficulty')), would_return: q('would_return') === 'true', summary: q('summary'), top_issues: q('top_issues').split('|').filter(Boolean), best_moment: q('best_moment') });
         body = `thanks; results written to ${resolve(out, 'ai', `${p.id}.json`)}`; break;
       }
-      default: body = 'commands: /observe /click /press /type /go /wait /feature /note /finish';
+      default: body = 'commands: /observe /click /hold /press /type /go /scroll /wait /feature /note /finish';
     }
     const here = new URL(h.page.url());
     if (here.origin !== h.target.origin || (FORBIDDEN.test(here.pathname) && !(h.account && here.pathname.startsWith('/profile')))) { await h.go('/console'); body += '\n(left the allowed screens; brought back to the bridge)'; }
