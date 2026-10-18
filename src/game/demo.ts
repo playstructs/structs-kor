@@ -135,7 +135,7 @@ interface State {
   /** 연합 전선: coalition raids drawn so far. */
   coalitions?: number;
   /** Running totals: counter-raids won, refits fitted. */
-  revengeWins?: number; refits?: number;
+  revengeWins?: number; refits?: number; coalitionWins?: number;
   /** 암시장: the smuggler's next visit, its stay and deals, and deals made all time. */
   black?: { next: number; until: number; offers: BlackOffer[]; deals?: number };
   /** 의뢰 게시판: offers on the board, when it refreshes, and the job in hand. */
@@ -1026,6 +1026,7 @@ function raidStep() {
     if (owner) owner.fleet = Math.max(2, owner.fleet - 1);
     const ally2 = r.partner ? rivals().find((x) => x.id === r.partner) : null;
     if (ally2) ally2.fleet = Math.max(2, ally2.fleet - 1);
+    if (r.partner) { s.coalitionWins = (s.coalitionWins ?? 0) + 1; if (s.coalitionWins === 1) chronicle('hwang', `연합 함대를 꺾었다 · ${r.name}`); }
     log('raid_status', 'attackerDefeated');
     emit('victory', `${r.name} 함대 격퇴!`);
     if (owner) { s.revenge = { rival: owner.id, until: s.height + REVENGE.window }; emit('revenge', `${owner.name} 함대가 무너졌습니다 · ${REVENGE.window}블록 안에 반격하면 노획 +${Math.round((REVENGE.bonus - 1) * 100)}%`); }
@@ -1548,7 +1549,7 @@ export const demo = {
     if (s.raid) return '습격을 막아 낸 뒤에 새 시대를 열 수 있습니다';
     if (s.loan) return '청룡 상단 대출을 먼저 갚아야 새 시대를 열 수 있습니다';
     // Running totals survive too (daily orders and medals count from them).
-    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done, active: s.jobs.active } : undefined, black: s.black ? { next: s.black.next, until: 0, offers: [], deals: s.black.deals } : undefined, revengeWins: s.revengeWins, refits: s.refits, coalitions: s.coalitions, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
+    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done, active: s.jobs.active } : undefined, black: s.black ? { next: s.black.next, until: 0, offers: [], deals: s.black.deals } : undefined, revengeWins: s.revengeWins, refits: s.refits, coalitions: s.coalitions, coalitionWins: s.coalitionWins, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
     s = fresh();
     Object.assign(s, keep);
     log('event', `제${keep.era + 1}시대 개막`);

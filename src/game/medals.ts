@@ -26,6 +26,8 @@ export const MEDALS: Medal[] = [
   { id: 'warlord', icon: 10, name: '거점 군주', how: '거점 3곳 모두 장악', earned: () => demo.on && demo.outposts.every((o) => o.mine) },
   { id: 'era2', icon: 20, name: '새 시대', how: '제2시대 개막', earned: () => demo.on && demo.era >= 1 },
   { id: 'creed', icon: 15, name: '신념', how: '교리 채택', earned: () => demo.on && !!demo.doctrine },
+  { id: 'publicenemy', icon: 1, name: '공공의 적', how: '연합 함대 격퇴', earned: () => demo.on && (demo.state.coalitionWins ?? 0) >= 1 },
+  { id: 'avenger', icon: 3, name: '되갚음', how: '보복 출격 3회 성공', earned: () => demo.on && (demo.state.revengeWins ?? 0) >= 3 },
   { id: 'smuggler', icon: 16, name: '뒷거래', how: '암시장 거래 3회', earned: () => demo.on && demo.black.deals >= 3 },
   { id: 'shipwright', icon: 3, name: '조선공', how: '함선 3척 개장', earned: () => demo.on && demo.state.structs.filter((x) => x.mod && x.hp > 0).length >= 3 },
   { id: 'cadet', icon: 16, name: '훈련 수료', how: '전투 훈련 이수', earned: () => tutorialDone() },
