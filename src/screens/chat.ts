@@ -97,7 +97,7 @@ const screen: Screen = {
 
     const open = (id: string | null) => {
       if (active) drafts.set(active, input.value);
-      active = id; replyTo = null; editing = null; picker = null; confirmDelete = null; stick = true; shown = 150;
+      active = id; replyTo = null; editing = null; picker = null; confirmDelete = null; stick = true; shown = 150; lastHeard = "";
       if (id) { tabs = [id, ...tabs.filter((t) => t !== id)].slice(0, MAX_TABS); saveTabs(tabs); }
       const r = room();
       if (r) { r.unread = 0; r.highlight = 0; const last = r.events.filter((m) => !m.pending).at(-1); if (last) void matrix.read(r.id, last.id); }
