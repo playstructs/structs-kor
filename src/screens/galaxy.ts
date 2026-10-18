@@ -24,6 +24,7 @@ import { notify, banner } from '../game/fx';
 import { career } from '../game/progress';
 import { transmit } from '../game/comms';
 import { estimateOdds } from '../game/odds';
+import { runTour, tourSeen, GALAXY_TOUR } from '../game/tour';
 import { keys } from '../game/keys';
 
 const R = 130, REF = 1400, ARMS = 4;
@@ -295,6 +296,8 @@ const screen: Screen = {
     const unbind = bindNodes(root, (id) => { sel = id === DEMO_ID ? null : id; sfx.play(id === 'void' ? 'alarm' : 'tick'); paint(); });
     paint();
     const offs = [demo.onBlock(paint), keys.scope({ s: () => sel && handlers.scout(), Escape: () => { sel = null; paint(); }, '=': () => zoom(1.25), '+': () => zoom(1.25), '-': () => zoom(1 / 1.25), '0': () => { cam.x = 0; cam.y = 0; cam.z = 1; applyCam(); } })];
+    // First visit: a short tour of the map and its panel.
+    if (!tourSeen('galaxy')) { const t = setTimeout(() => { if (root.isConnected) runTour('galaxy', GALAXY_TOUR); }, 700); offs.push(() => clearTimeout(t)); }
     offs.push(() => { root.removeEventListener('wheel', onWheel); root.removeEventListener('pointerdown', onDown); removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); });
     return () => { oddsStop?.(); offs.forEach((f) => f()); unbind(); setTiles([]); };
   },

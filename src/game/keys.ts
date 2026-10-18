@@ -38,10 +38,10 @@ function help() {
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-label', '단축키');
   const local = scopes.length ? Object.keys(scopes[scopes.length - 1]).filter((k) => k.length <= 6) : [];
-  el.innerHTML = `<div class="keys-in"><h2>단축키</h2><div class="keys-grid">${NAV_KEYS.map((k) => `<kbd>${k.key.toUpperCase()}</kbd><span>${k.label}</span>`).join('')}<kbd>M</kbd><span>소리 켜기/끄기</span><kbd>J</kbd><span>음악 켜기/끄기</span><kbd>?</kbd><span>이 도움말</span></div>${local.length ? `<p>이 화면: ${local.map((k) => `<kbd>${k === ' ' ? 'Space' : k.length === 1 ? k.toUpperCase() : k}</kbd>`).join(' ')}</p>` : ''}<div style="display:flex;gap:8px;justify-content:flex-end">${location.pathname.endsWith('/console') ? '<button class="btn gold" type="button" data-tour>안내 다시 보기</button>' : ''}<button class="btn ghost" type="button">닫기</button></div></div>`;
+  el.innerHTML = `<div class="keys-in"><h2>단축키</h2><div class="keys-grid">${NAV_KEYS.map((k) => `<kbd>${k.key.toUpperCase()}</kbd><span>${k.label}</span>`).join('')}<kbd>M</kbd><span>소리 켜기/끄기</span><kbd>J</kbd><span>음악 켜기/끄기</span><kbd>?</kbd><span>이 도움말</span></div>${local.length ? `<p>이 화면: ${local.map((k) => `<kbd>${k === ' ' ? 'Space' : k.length === 1 ? k.toUpperCase() : k}</kbd>`).join(' ')}</p>` : ''}<div style="display:flex;gap:8px;justify-content:flex-end">${location.pathname.endsWith('/console') || location.pathname.endsWith('/galaxy') ? '<button class="btn gold" type="button" data-tour>안내 다시 보기</button>' : ''}<button class="btn ghost" type="button">닫기</button></div></div>`;
   el.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
-    if (t.closest('[data-tour]')) { el.remove(); void import('./tour').then((m) => m.runTour('bridge', m.BRIDGE_TOUR)); return; }
+    if (t.closest('[data-tour]')) { el.remove(); void import('./tour').then((m) => (location.pathname.endsWith('/galaxy') ? m.runTour('galaxy', m.GALAXY_TOUR) : m.runTour('bridge', m.BRIDGE_TOUR))); return; }
     if (e.target === el || t.closest('button')) el.remove();
   });
   document.body.appendChild(el);

@@ -14,6 +14,12 @@ export const BRIDGE_TOUR: Step[] = [
   { sel: '.rail', title: '전역', text: '은하 지도에서 경쟁 세력을 정찰하고, 작전에서 캠페인을, 연구소에서 기술을. ? 로 모든 단축키를 볼 수 있습니다.' },
 ];
 
+export const GALAXY_TOUR: Step[] = [
+  { sel: 'svg.gx', title: '은하', text: '청록은 내 행성, 붉은 점은 경쟁 세력, ▲는 거점, 보라는 공허 함대. 휠과 드래그로 확대·이동, 0으로 전체 보기.' },
+  { sel: '.gx-wrap aside .card', title: '정보', text: '행성이나 거점을 누르면 여기에 정찰·습격·공작·동맹·복속 명령이 나옵니다. 정찰하면 예상 승률이 보입니다.' },
+  { sel: '.hegemony', title: '패권 지수', text: '은하 전체 세력 중 내 몫. 25·40·55·70%에서 칭호를 받고, 70%면 은하 황제입니다.' },
+];
+
 let active: { close: () => void } | null = null;
 
 export const tourSeen = (id: string) => { try { return !!localStorage.getItem(`${KEY}.${id}`); } catch { return true; } };
