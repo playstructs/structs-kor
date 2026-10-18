@@ -78,7 +78,7 @@ function view(p: PlayerRow, e: Energy, structs: StructRow[], dropKw: number, cut
 
     <section class="card game-panel warn wargame"><h2>정전 워게임</h2>
       <label class="field"><span style="font-size:15px;color:var(--text)">적이 내 용량 <b class="mono c-hwang" style="font-size:18px">${dropKw} kW</b>를 끊으면?</span>
-        <input type="range" min="0" max="${Math.max(10, Math.ceil(supply / 1e6))}" value="${dropKw}" data-act="drop" style="accent-color:var(--hwang);min-height:32px"></label>
+        <input type="range" min="0" max="${Math.max(10, Math.ceil(supply / 1e6))}" value="${dropKw}" aria-label="끊길 용량 (kW)" data-act="drop" style="accent-color:var(--hwang);min-height:32px"></label>
       <div class="verdict ${verdict[2]}"><strong>${verdict[0]}</strong><span>${verdict[1]}</span></div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <span class="label dim">권장 대응</span>

@@ -81,7 +81,7 @@ function drawGalaxy(nodes: GxNode[], routes: GxRoute | GxRoute[] | null, sel: st
       <circle cx="${cx}" cy="${cy}" r="${rr + 4}" class="halo"/><circle cx="${cx}" cy="${cy}" r="${rr}" class="core"/>
       <text x="${cx}" y="${cy - rr - 3}" text-anchor="middle">${x.vassal ? '♛ ' : ''}${label}</text></g>`;
   };
-  return raw(`<svg class="gx" viewBox="${viewBox(cam)}" role="img" aria-label="은하 지도: 내 행성과 경쟁 세력">
+  return raw(`<svg class="gx" viewBox="${viewBox(cam)}" role="group" aria-label="은하 지도: 내 행성과 경쟁 세력">
     <defs><radialGradient id="gxcore"><stop offset="0" stop-color="#F3C878" stop-opacity=".55"/><stop offset=".25" stop-color="#43CDB6" stop-opacity=".12"/><stop offset="1" stop-color="#16142A" stop-opacity="0"/></radialGradient></defs>
     <circle r="150" fill="url(#gxcore)"/>${dots}${path}
     ${nodes.filter((x) => !x.home).map(node).join('')}${nodes.filter((x) => x.home).map(node).join('')}</svg>`);

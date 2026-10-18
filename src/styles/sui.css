@@ -149,7 +149,7 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
 .ab-head { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 2px 8px; background: var(--p-hi); color: var(--p-text-hi); border: 2px solid var(--p-body); font: 700 13px/1.2 var(--f-pix); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ab-head.inv { background: var(--p-inv); color: var(--p-body); animation: inv-blink 1s steps(2) infinite; }
 @keyframes inv-blink { 50% { background: var(--p-text-hi); } }
-.ab-head .sub { margin-left: auto; font: 400 11px var(--f-hud); opacity: .8; }
+.ab-head .sub { margin-left: auto; font: 400 11px var(--f-hud); }
 .ab-bar.enemy .ab-head { background: var(--e-hi); color: var(--e-text-hi); border-color: #440D3A; }
 .ab-row { display: flex; align-items: flex-start; gap: 0; }
 .ab-switch { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0 10px 0 2px; margin-right: 6px; background: url('/img/sui/panel/panel-switch-group-sliver-default.png') right / 6px 100% no-repeat; }

@@ -5,6 +5,7 @@ import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from '
 import { resolve, join } from 'node:path';
 import { args } from '../lib/util';
 import { PROFILES } from '../profiles';
+import { FEATURES } from '../features';
 import type { PersonaSummary, Gate } from '../sim/run';
 import type { BrowserResult } from '../browser/run';
 import type { AiResult, Triage } from '../ai/agent';
@@ -14,7 +15,7 @@ const dir = resolve(a.out ?? latest());
 const read = <T>(f: string): T | null => (existsSync(join(dir, f)) ? (JSON.parse(readFileSync(join(dir, f), 'utf8')) as T) : null);
 const sim = read<{ at: string; seeds: number; blocks: number; personas: PersonaSummary[]; global: Gate[] }>('sim.json');
 const browser = read<{ at: string; target: string; results: BrowserResult[] }>('browser.json');
-const ai = read<{ at: string; model?: string; skipped?: string; results: AiResult[]; triage: Triage | null }>('ai.json');
+const ai = read<{ at: string; model?: string; agent?: string; skipped?: string; results: AiResult[]; triage: Triage | null; coverage?: Record<string, { status: string; by: string[]; notes: string[] }>; accounts?: { persona: string; callsign: string | null; playerId: string | null; created: boolean }[]; cost?: { measured: { usd: number; turns: number } | null; estimate: { totalUsd: number; perAgentUsd: number } } }>('ai.json');
 
 function latest() {
   const root = resolve('playtest/reports');
@@ -85,6 +86,15 @@ const aiHtml = !ai ? '<p class="muted">The AI playtesters did not run (pnpm play
     ${r.review ? `<p>${esc(r.review.summary)}</p>` : ''}
     <ul class="small">${r.notes.map((n) => `<li class="sev-${n.severity}"><span class="pill">${n.severity}</span> <b>${esc(n.title)}</b> — ${esc(n.detail)}${n.screenshot ? ` <a href="${esc(n.screenshot)}">screenshot</a>` : ''}</li>`).join('')}</ul></article>`).join('')}</div>`;
 
+const covHtml = !ai?.coverage ? '' : (() => {
+  const by = (st: string) => FEATURES.filter((f) => ai.coverage![f.id]?.status === st).length;
+  const areas = [...new Set(FEATURES.map((f) => f.area))];
+  return `<p class="muted">${FEATURES.length} features from the README's screen and game-layer tables (playtest/features.ts). ${['passed', 'failed', 'blocked', 'guarded', 'touched', 'untouched'].map((st) => `<b>${by(st)}</b> ${st}`).join(' · ')}.${ai.cost ? ` ${ai.cost.measured ? `Measured cost $${ai.cost.measured.usd.toFixed(2)} over ${ai.cost.measured.turns} turns.` : `Estimated cost for 20 agents × 120 steps: ~$${ai.cost.estimate.totalUsd.toFixed(0)}.`}` : ''}</p>
+  ${ai.accounts?.length ? `<p class="small">Accounts: ${ai.accounts.map((x) => `${esc(x.persona)} → <code>${esc(x.callsign)}</code> ${esc(x.playerId)}${x.created ? '' : ' (reused)'}`).join(' · ')}</p>` : ''}
+  <table><thead><tr><th>Area</th><th>Feature</th><th>Status</th><th>By</th></tr></thead><tbody>
+  ${areas.map((ar) => FEATURES.filter((f) => f.area === ar).map((f) => { const c = ai.coverage![f.id] ?? { status: 'untouched', by: [], notes: [] }; return `<tr class="cov-${c.status}"><td>${esc(ar)}</td><td>${esc(f.name)}${f.chain ? ' <span class="pill">chain</span>' : ''}${f.guarded ? ' <span class="pill">guarded</span>' : ''}<div class="small muted">${esc([...new Set(c.notes)].slice(0, 2).join(' · '))}</div></td><td><span class="pill">${c.status}</span></td><td class="small">${esc(c.by.join(', '))}</td></tr>`; }).join('')).join('')}
+  </tbody></table>`;
+})();
 const counts = SEV.slice(0, 3).map((s) => `${findings.filter((f) => f.severity === s).length} ${s}`).join(' · ');
 const hardFails = sim ? [...sim.personas.flatMap((s) => s.gates), ...sim.global].filter((g) => !g.ok && g.tier === 'hard').length : 0;
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -110,11 +120,13 @@ th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px soli
 .kind{color:var(--muted)}pre{white-space:pre-wrap;font-size:12px;max-height:240px;overflow:auto}
 .journey{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0}.journey summary{cursor:pointer}
 .steps{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}.steps li{border:1px solid var(--line);border-radius:6px;overflow:hidden}.steps img{width:100%;display:block;aspect-ratio:16/10;object-fit:cover;object-position:top}.steps div{padding:6px 8px;font-size:13px}.steps p{margin:2px 0 0;color:var(--muted)}
-.st-fail{border-color:var(--bad)!important}.st-skip{opacity:.75}
+.st-fail{border-color:var(--bad)!important}
+.cov-passed .pill{color:var(--good)}.cov-failed .pill{color:var(--bad)}.cov-blocked .pill{color:var(--warn)}.cov-guarded .pill,.cov-touched .pill{color:var(--info)}.cov-untouched .pill{color:var(--muted)}.st-skip{opacity:.75}
 </style></head><body><main>
 <h1>Playtest Report</h1>
 <p class="muted">${esc(dir.split('/').slice(-1)[0])} · ${PROFILES.length} profiles · ${[sim && 'simulation', browser && 'browser', ai && !ai.skipped && `AI (${ai.model})`].filter(Boolean).join(' + ')}</p>
 <div class="summary"><div><b>${hardFails}</b>hard gate failures</div><div><b>${findings.filter((f) => f.severity === 'blocker' || f.severity === 'major').length}</b>blocker + major findings</div><div><b>${counts}</b>browser findings</div>${ai?.triage ? `<div><b>${ai.triage.issues.length}</b>AI-triaged issues</div>` : ''}</div>
+${covHtml ? `<h2>Feature coverage</h2>${covHtml}` : ''}
 <h2>AI playtesters</h2>${aiHtml}
 <h2>Browser playtests</h2>${browserHtml}
 <h2>Simulation: balance and stability</h2>${simHtml}

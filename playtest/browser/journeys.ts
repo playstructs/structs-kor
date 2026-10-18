@@ -2,7 +2,11 @@
  * Each returns a short note; throwing or returning `skip:` marks the step. Steps play the game the
  * way a person would — buttons and hotkeys, never the demo API — and check what they see. */
 import { createRequire } from 'node:module';
-import { BLOCK_MS, DEMO_KEY, FORBIDDEN, type Harness } from './harness';
+import { BLOCK_MS, DEMO_KEY, FORBIDDEN, canEnlist, type Harness } from './harness';
+import { feature, type Feature } from '../features';
+
+/** Accounts this run may still enlist (the runner sets it to the profile count: one each). */
+export const accountBudget = { left: 0 };
 
 const require = createRequire(import.meta.url);
 type Step = (h: Harness) => Promise<string>;
@@ -15,7 +19,58 @@ async function skipTour(h: Harness) { let n = 0; while (n < 12 && (await h.has('
 async function until(h: Harness, max: number, cond: () => Promise<boolean>) { for (let b = 0; b < max; b += 2) { if (await cond()) return b; await h.play(2); } return (await cond()) ? max : -1; }
 const num = (x: unknown) => (typeof x === 'number' ? x : NaN);
 
+/** Visit a feature's screen, check it is there, press its control once if that is safe. */
+export async function exercise(h: Harness, f: Feature): Promise<string> {
+  if (f.mode === 'account' && !h.account) { h.mark(f.id, 'blocked', 'needs a signed-in account (run with --mock against the dev server)'); return `${f.id}: blocked (no account)`; }
+  if (f.mode === 'demo' && h.account) { h.mark(f.id, 'blocked', 'demo-only system; this profile plays a signed-in account'); return `${f.id}: blocked (demo only)`; }
+  await h.go(f.path); // fresh each time: a feature before may have moved the screen on
+  await skipTour(h);
+  if (f.open && !(await h.has(f.open.replace(/\]$/, '][aria-pressed="true"]')))) await h.click(f.open, { force: true });
+  const re = /^\/(.*)\/$/.exec(f.expect);
+  // Screens load lazily (and slowly on 4G): give it up to 10 s.
+  const present = await h.waitFor(async () => (re ? (await h.page.getByText(new RegExp(re[1])).count()) > 0 : await h.has(f.expect)), 10_000);
+  if (!present) { h.mark(f.id, 'failed', `not found on ${f.path}: ${f.expect}`); h.find('feature.missing', 'major', `${f.name}: expected ${f.expect} on ${f.path}`); return `${f.id}: missing`; }
+  if (f.guarded) { h.mark(f.id, 'guarded', 'present; completing it is blocked by the harness'); return `${f.id}: present (guarded)`; }
+  if (f.chain && !h.allow.chain) { h.mark(f.id, 'guarded', 'present; chain transactions need --chain-actions'); return `${f.id}: present (chain, not sent)`; }
+  if (f.act) {
+    const errs = h.findings.length;
+    const pressed = await h.click(f.act, { force: true });
+    await h.play(2);
+    const broke = h.findings.slice(errs).some((x) => x.kind === 'pageerror' || x.kind === 'js.error');
+    h.mark(f.id, broke ? 'failed' : 'passed', broke ? 'pressing it threw an error' : pressed ? `pressed ${f.act}` : 'present (control disabled right now)');
+    return `${f.id}: ${broke ? 'error' : pressed ? 'exercised' : 'present'}`;
+  }
+  h.mark(f.id, 'passed', 'present');
+  return `${f.id}: present`;
+}
+
 export const STEPS: Record<string, Step> = {
+  async enlist(h) {
+    if (!canEnlist(h.allow, h.p)) return 'skip: no account for this profile in this run (needs --mock or --signup); playing guest';
+    const a = await h.enlist(accountBudget);
+    h.mark('enlist', a.playerId ? 'passed' : 'failed', a.created ? `enlisted ${a.playerId}` : `reused ${a.playerId}`);
+    return `${a.created ? 'enlisted' : 'signed back in as'} ${a.callsign ?? '?'} (${a.playerId})`;
+  },
+  async 'account-tour'(h) {
+    if (!h.account) return 'skip: no account';
+    const seen: string[] = [];
+    for (const p of ['/console', '/profile', '/guild']) {
+      await h.go(p); await skipTour(h);
+      if (p === '/profile' && h.account.playerId && !(await h.page.getByText(h.account.playerId).count())) h.find('account.profile', 'minor', `내 정보 does not show the player id ${h.account.playerId}`);
+      seen.push(`${p} ${(await h.signedIn()) ? 'signed in' : 'SIGNED OUT'}`);
+    }
+    if (seen.some((x) => x.includes('SIGNED OUT'))) h.find('account.session', 'major', 'the session dropped while touring the account screens');
+    return seen.join('; ');
+  },
+  async 'feature-slice'(h) {
+    const out: string[] = [];
+    for (const id of h.p.slice) { const f = feature(id); if (!f) { out.push(`${id}: unknown feature`); continue; } h.step = `feature:${id}`; out.push(await exercise(h, f)); await h.probe(); }
+    h.step = 'feature-slice';
+    const blocked = await h.blocked();
+    if (blocked.length) h.find('guard', 'info', `guard rails stopped: ${[...new Set(blocked)].join(', ')}`);
+    return out.join(' · ');
+  },
+
   async title(h) {
     const t0 = Date.now();
     await h.go('/');

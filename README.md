@@ -9,14 +9,14 @@ pnpm build      # dist/ — upload anywhere static
 pnpm test       # game-layer tests (economy, campaign, animation plan, proof hashing, chain messages, replays)
 pnpm balance 40 # campaign win rates with the hard AI flying your side
 pnpm soak 6000  # demo economy over 6000 blocks with a scripted player
-pnpm playtest   # ten player profiles: headless sim, real-browser journeys, Claude playtesters → report.html
+pnpm playtest   # twenty player profiles: headless sim, real-browser journeys, Claude Sonnet deep dive → report.html
 ```
 
 Dev only: open any page with `?mock=1` to sign in as a fixture commander against a pretend Guild API (`src/api/mock.ts`; planned routes 404 so the fallbacks run). `?mock=0` turns it off. Production builds never include it.
 
 ## Playtesting
 
-`playtest/` is the playtest harness: ten player profiles (first-timer, optimizer, raider, trader, turtle, diplomat, completionist, speedrunner, low-vision keyboard player, fuzzer). Each one plays the demo headless for balance and stability, drives the real client in its own browser profile on its own device and network, and can be handed to a Claude playtester that writes a review. CI runs the simulation gates and the browser personas on every pull request. See [playtest/README.md](playtest/README.md).
+`playtest/` is the playtest harness. It has twenty player profiles: ten player types (first-timer, optimizer, raider, trader, turtle, diplomat, completionist, speedrunner, low-vision keyboard player, fuzzer) and ten feature specialists that together cover the 70 features in `playtest/features.ts`. The player types play the demo headless for balance and stability. Every profile drives the real client in its own browser profile, and can be handed to a Claude Sonnet playtester for a deep dive with a coverage report. CI runs the simulation gates and the browser personas on every pull request. See [playtest/README.md](playtest/README.md).
 
 ## Environments
 
@@ -34,29 +34,6 @@ Dev only: open any page with `?mock=1` to sign in as a fixture commander against
 The build writes `404.html` and `_redirects`, so every screen path (`/console`, `/energy`…) serves the app shell on GitHub Pages, Netlify and Cloudflare Pages.
 
 `.github/workflows/pages.yml` builds and publishes to GitHub Pages on every push to `main` (Settings › Pages › Source: GitHub Actions). Repository variables override the `VITE_*` values; `VITE_BASE` and `VITE_SITE_URL` otherwise follow the Pages site (`/` on a custom domain, `/structs-kor/` on github.io).
-
-## Desktop app
-
-`src-tauri/` wraps the same client in a native window (Tauri 2). Its frontend is the website's build at the root path (`scripts/build-desktop.mjs`). The Rust side adds only what a tab can't do: it answers `structs-kor://` links, updates itself from signed releases, and opens web links in the real browser (`src-tauri/src/main.rs`, `src/core/desktop.ts`).
-
-```bash
-cargo install tauri-cli --version '^2'   # once
-cargo tauri dev                          # the app over pnpm dev
-cargo tauri build                        # a local bundle (set TAURI_SIGNING_PRIVATE_KEY, or turn off createUpdaterArtifacts)
-```
-
-- **Releases.** `.github/workflows/release.yml` runs on a `v*` tag. It creates one draft release and builds macOS (Apple Silicon and Intel), Windows and Linux into it. It signs each, merges `latest.json` for the updater, and publishes only when all four pass. Running it by hand makes a test build with no release. The version comes from the tag (`scripts/sync-version.mjs`).
-- **Signing.** The workflow lists the secrets. macOS uses the same Developer ID and notarization secrets as Structs Desktop. Windows uses Azure Trusted Signing, so SmartScreen doesn't block the installer. Updates are signed with this app's own minisign key; the public half is in `tauri.conf.json`.
-- **Install.** The Windows installer is per-user (no admin prompt), so it works on PC방 machines. It is in Korean.
-- **Guild.** The app's origins are `tauri://localhost` and `http://tauri.localhost`, and the guild must allow them like the website (REQ-AUTH-2). Share links made in the app point at the website (`VITE_WEB_ROOT`).
-- Once the first release is out, set the `VITE_DESKTOP_RELEASES` repository variable to its releases page. The website then offers the app for shared links.
-
-## Daily challenge and links
-
-- **The daily** (`src/sim/daily.ts`). Every commander gets the same fleets, enemy and chain dice each day; the day turns at midnight KST. Charge is fixed and autopilot is off. A result is just your orders: a daily code (`D…`, about 200 characters for a whole battle) carries the day, a call sign and those orders. Whoever opens `/daily/<day>/<code>` replays them against the same computer, so a score can't be claimed that the orders didn't earn. No server is needed; the guild ladder (REQ-SIM-1) can take the same codes. Your record and friends' results stay in this browser (`src/game/dailysim.ts`).
-- **Links** (`src/core/links.ts`). One grammar for the web and the desktop app: `/daily`, `/daily/<day>`, `/daily/<day>/<code>`, `/sim/<replay>`, `/<screen>`. The desktop app answers the same paths on `structs-kor://` (not `structs://`, which Structs Desktop already owns).
-- **Desktop handoff** (`src/core/handoff.ts`). The web client is the whole game, so a shared link always plays in the browser. Once `VITE_DESKTOP_RELEASES` is set, a shared result also offers "데스크톱 앱에서 열기", and the choice can be remembered (always the app / always here / ask). Inside KakaoTalk's in-app browser, the page instead offers to reopen in the phone's own browser.
-- **Hotkeys and 한글.** Shortcuts read the physical key when the input method is in 한글 mode (Z arrives as `ㅋ` or `Process`), and an Enter that confirms a syllable never submits a form.
 
 ## Search and sharing
 
@@ -95,8 +72,7 @@ SUI art (`public/img/sui/`), the Structicons icon font, and DirectiveZero/Extrem
 | `/energy` | Power grid, brownout what-if, struct power | REQ-EN-1/2, `MsgStructActivate`/`Deactivate` |
 | `/market` | Energy exchange, contracts, provider, guild bank | `/provider/market`, `/agreement/owner/…/market`, `/guild-bank`, REQ-MKT-* |
 | `/replicants` | Replicants, replication, standing orders (demo: hire a watch officer, mechanic or trader with alpha to run the base for a wage) | REQ-REP-*, `/auth/signup` per HD index |
-| `/sim` | Battle simulator (local copy of structsd combat) | — (local); `/sim/<R…>` plays a replay |
-| `/daily` | 일일 교전: one battle a day for everyone (turns at midnight KST), score, streak, archive, friends' results | REQ-SIM-1 for the guild ladder; otherwise local |
+| `/sim` | Battle simulator (local copy of structsd combat) | REQ-SIM-1 for the daily ladder |
 | `/chat` | Comms (Matrix); on the demo, the guild channel (guildmates react to raids, the Void Fleet and the guild race, and answer you) and a log of every rival transmission | `/auth/matrix` → homeserver `/sync` |
 | `/tutorial` | Combat Training (tutorial-attempt-1 flow, in Korean) on the battle board | REQ-TUT-1 to save completion |
 | `/research` | 연구소 (demo base) | — |
