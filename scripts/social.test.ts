@@ -133,3 +133,19 @@ test('board codes round-trip and refuse what a stranger could slip in', async ()
   assert.equal(decodeBoard(enc({ cards: [{ k: 'nope' }] })), null);
   assert.equal(decodeBoard('not a code'), null);
 });
+
+test('a situation cannot smuggle markup through tone, nor leave the site through go', async () => {
+  const { situationHtml } = await import('../src/social/share').catch(() => ({ situationHtml: null as null | ((s: Situation, b?: string) => string) }));
+  const enc = (o: unknown) => 'S' + Buffer.from(JSON.stringify(o)).toString('base64url');
+  const s = decodeSituation(enc({ t: 'raid', title: 'x', lines: [], tone: '"><img src=x onerror=alert(1)>', go: '//evil.example/x', at: 1 }))!;
+  assert.equal(s.tone, undefined);
+  assert.equal(s.go, undefined);
+  assert.equal(decodeSituation(enc({ t: 'raid', title: 'x', lines: [], tone: 'hwang', go: '/o/2-14', at: 1 }))!.go, '/o/2-14');
+  if (situationHtml) assert.ok(!situationHtml({ ...s, tone: '"><b>' as never }, '').includes('"><b>'));
+});
+
+test('sending alpha encodes: MsgPlayerSend takes a list of coins', async () => {
+  const { validateMsg, typeUrlOf } = await import('../src/wallet/encode');
+  const value = { creator: 'structs1abc', from_address: 'structs1abc', to_address: 'structs1def', amount: [{ denom: 'ualpha', amount: '5000000' }] };
+  assert.deepEqual(validateMsg({ typeUrl: typeUrlOf('MsgPlayerSend'), value }), []);
+});

@@ -28,7 +28,9 @@ export function decodeSituation(code: string): Situation | null {
     s.at = Number(s.at) || 0;
     s.lines = s.lines.filter((l) => Array.isArray(l) && l.length === 2).map(([a, b]) => [String(a).slice(0, 40), String(b).slice(0, 80)] as [string, string]).slice(0, 8);
     s.ids = (s.ids ?? []).filter((x) => typeof x === 'string' && /^\d{1,2}-\d{1,9}$/.test(x)).slice(0, 4);
-    if (s.go && !/^\/[a-z0-9/?=&._~-]*$/i.test(s.go)) delete s.go;
+    // Same-site paths only: '//host' is another site. Tone is a class name: one of three, nothing else.
+    if (typeof s.go !== 'string' || !/^\/(?!\/)[a-z0-9/?=&._~-]*$/i.test(s.go)) delete s.go;
+    if (!['cheong', 'hwang', 'jeok'].includes(s.tone as string)) delete s.tone;
     return s;
   } catch { return null; }
 }

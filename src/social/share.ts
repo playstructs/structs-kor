@@ -35,7 +35,8 @@ export function situationsIn(text: string): Situation[] {
 const when = (at: number) => new Date(at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 export function situationHtml(s: Situation, base = href('')): string {
   const [label, icon] = KIND[s.t];
-  return `<article class="sit-card ${s.tone ?? (s.t === 'raid' || s.t === 'alert' ? 'jeok' : s.t === 'market' || s.t === 'daily' ? 'hwang' : 'cheong')}">
+  const tone = s.tone && ['cheong', 'hwang', 'jeok'].includes(s.tone) ? s.tone : s.t === 'raid' || s.t === 'alert' ? 'jeok' : s.t === 'market' || s.t === 'daily' ? 'hwang' : 'cheong';
+  return `<article class="sit-card ${tone}">
     <header><span class="sit-kind"><i class="si ${icon}"></i>${esc(label)}</span><small class="mono">${esc(when(s.at))}${s.by ? ` · ${esc(s.by)}` : ''}</small></header>
     <h3>${esc(s.title)}</h3>${s.sub ? `<p>${linkIds(esc(s.sub), base)}</p>` : ''}
     <dl>${s.lines.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd class="mono">${linkIds(esc(v), base)}</dd></div>`).join('')}</dl>

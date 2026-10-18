@@ -139,7 +139,7 @@ export const actions = {
 
   /** Send alpha (ualpha) or a guild token from one of this wallet's accounts to any address. */
   playerSend: (toAddress: string, amount: { denom: string; amount: string }, index = 0) =>
-    act('MsgPlayerSend', { from_address: wallet.key(index).address, to_address: toAddress, amount }, index),
+    act('MsgPlayerSend', { from_address: wallet.key(index).address, to_address: toAddress, amount: [amount] }, index),
   playerName: (playerId: string, name: string, index = 0) => act('MsgPlayerUpdateName', { playerId, name }, index),
   playerPfp: (playerId: string, pfp: string, index = 0) => act('MsgPlayerUpdatePfp', { playerId, pfp }, index),
   planetName: (planetId: string, name: string) => act('MsgPlanetUpdateName', { planetId, name }),

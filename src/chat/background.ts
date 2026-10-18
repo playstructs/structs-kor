@@ -14,8 +14,12 @@ let fns: (() => void)[] = [];
 export const onUnread = (f: () => void) => { fns.push(f); return () => { fns = fns.filter((x) => x !== f); }; };
 
 export function startBackgroundComms() {
+  let who: string | null = null;
   session.onChange((s) => {
-    if (s.state !== 'in') { matrix.stop(); primed = false; seen.clear(); for (const f of fns) f(); return; }
+    if (s.state !== 'in') { if (who) matrix.reset(); who = null; primed = false; seen.clear(); for (const f of fns) f(); return; }
+    // Another commander on this tab: nothing of the last one's chat carries over.
+    if (who && who !== s.playerId) { matrix.reset(); primed = false; seen.clear(); }
+    who = s.playerId;
     // A beat after sign-in, so the first screen's own reads go first.
     setTimeout(() => { if (session.status.state === 'in' && matrix.possible) matrix.signIn().then(() => matrix.start()).catch(() => null); }, 3500);
   });

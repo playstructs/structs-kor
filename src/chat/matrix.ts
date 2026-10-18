@@ -29,7 +29,7 @@ export interface Room {
 export interface Invite { id: string; name: string; inviter: string; direct: boolean }
 
 const TOKEN_KEY = 'structs-kor.matrix';
-interface Grant { access_token: string; user_id: string; device_id: string }
+interface Grant { access_token: string; user_id: string; device_id: string; address?: string }
 
 const deviceId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[b % 36]).join('');
 /** "@1-42:matrix.server" → "1-42". */
@@ -46,9 +46,11 @@ export class Matrix {
   private fns = new Set<() => void>();
   private directIds = new Set<string>();
   private relations = new Map<string, { reactions: Map<string, { key: string; sender: string; target: string }> }>();
+  private edits = new Map<string, { sender: string; body: string }>();
 
   onChange(f: () => void) { this.fns.add(f); return () => this.fns.delete(f); }
-  private emit() { for (const f of this.fns) f(); }
+  /** One listener's failure must not stop the others, or the sync loop that calls this. */
+  private emit() { for (const f of this.fns) { try { f(); } catch (e) { console.error(e); } } }
   get server() { return this.grant?.user_id.split(':').slice(1).join(':') ?? ''; }
   get me() { return this.grant?.user_id ?? ''; }
   /** Rooms muted on this device: no badge, no notices. */
@@ -60,14 +62,15 @@ export class Matrix {
   async signIn() {
     if (this.grant) return;
     if (MOCK) { this.grant = { access_token: 'mock', user_id: `@${(await import('../api/session')).session.playerId ?? '1-42'}:mock.structs`, device_id: 'MOCK' }; return; }
-    try { const t = JSON.parse(sessionStorage.getItem(TOKEN_KEY) || 'null'); if (t?.access_token) { this.grant = t; return; } } catch { /* fresh */ }
     const k = wallet.key(0);
+    // A token is this commander's only: another one signing in on this tab starts fresh.
+    try { const t = JSON.parse(sessionStorage.getItem(TOKEN_KEY) || 'null'); if (t?.access_token && t.address === k.address) { this.grant = t; return; } } catch { /* fresh */ }
     const ts = (await guildApi.timestamp()).unix_timestamp;
     const s = wallet.signMessage(0, `LOGIN_GUILD${GUILD_ID}ADDRESS${k.address}DATETIME${ts}`);
     const g = await guildApi.matrixLogin({ address: k.address, pubkey: s.pubkey, signature: s.signature, guild_id: GUILD_ID, unix_timestamp: ts, device_id: deviceId() });
     // The guild answers "nothing" as 200 + null: that is a refusal, not a session.
     if (!g?.access_token || !g.user_id) throw new Error('채팅 서버가 로그인 정보를 보내지 않았습니다.');
-    this.grant = { access_token: g.access_token, user_id: g.user_id, device_id: g.device_id };
+    this.grant = { access_token: g.access_token, user_id: g.user_id, device_id: g.device_id, address: k.address };
     try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify(this.grant)); } catch { /* fine */ }
   }
   /** Whether this browser could chat at all (a wallet to sign the login, or the mock). */
@@ -82,6 +85,16 @@ export class Matrix {
     return r.json() as Promise<T>;
   }
 
+  /** Forget everything about the signed-in user (sign-out, another commander on this tab). */
+  reset() {
+    this.stop();
+    this.grant = null; this.since = null; this.state = 'idle';
+    this.rooms.clear(); this.invites.clear(); this.directIds.clear(); this.relations.clear(); this.edits.clear(); this.receipted.clear();
+    for (const p of this.blobs.values()) void p.then((u) => { if (u) URL.revokeObjectURL(u); });
+    this.blobs.clear();
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* fine */ }
+    this.emit();
+  }
   start() {
     if (this.running) return;
     this.running = true;
@@ -146,7 +159,7 @@ export class Matrix {
       }
       case 'm.reaction': {
         const rel = c['m.relates_to'] as { event_id?: string; key?: string; rel_type?: string } | undefined;
-        if (rel?.rel_type !== 'm.annotation' || !rel.event_id || !rel.key) break;
+        if (rel?.rel_type !== 'm.annotation' || typeof rel.event_id !== 'string' || typeof rel.key !== 'string' || !rel.key || rel.key.length > 64) break;
         const target = room.events.find((m) => m.id === rel.event_id);
         if (!this.relations.has(room.id)) this.relations.set(room.id, { reactions: new Map() });
         this.relations.get(room.id)!.reactions.set(ev.event_id, { key: rel.key, sender: ev.sender, target: rel.event_id });
@@ -167,7 +180,10 @@ export class Matrix {
         if (rel?.rel_type === 'm.replace' && rel.event_id) {
           const t = room.events.find((m) => m.id === rel.event_id);
           const nc = (c['m.new_content'] ?? {}) as { body?: string };
-          if (t && t.sender === ev.sender && typeof nc.body === 'string') { t.body = nc.body; t.edited = true; }
+          if (typeof nc.body !== 'string') break;
+          if (t) { if (t.sender === ev.sender) { t.body = nc.body; t.edited = true; } }
+          // History arrives newest first: the edit can come before its original. Keep the latest.
+          else if (!older || !this.edits.has(rel.event_id)) this.edits.set(rel.event_id, { sender: ev.sender, body: nc.body });
           break;
         }
         if (typeof c.body !== 'string' || room.events.some((m) => m.id === ev.event_id)) break;
@@ -179,9 +195,12 @@ export class Matrix {
           emote: c.msgtype === 'm.emote', notice: c.msgtype === 'm.notice', replyTo: rel?.['m.in_reply_to']?.event_id, reactions: [],
         };
         if (c.msgtype === 'm.image' && typeof c.url === 'string' && c.url.startsWith('mxc://')) {
-          const info = (c.info ?? {}) as { w?: number; h?: number };
-          msg.image = { mxc: c.url, w: info.w, h: info.h };
+          const info = (c.info ?? {}) as { w?: unknown; h?: unknown };
+          const dim = (v: unknown) => { const x = Number(v); return Number.isFinite(x) && x > 0 && x < 100_000 ? Math.round(x) : undefined; };
+          msg.image = { mxc: c.url, w: dim(info.w), h: dim(info.h) };
         }
+        const pendingEdit = this.edits.get(msg.id);
+        if (pendingEdit && pendingEdit.sender === msg.sender) { msg.body = pendingEdit.body; msg.edited = true; this.edits.delete(msg.id); }
         if (echo >= 0) room.events.splice(echo, 1, msg);
         else if (older) room.events.unshift(msg); else room.events.push(msg);
         // Reactions that arrived before their target (history order).
@@ -197,8 +216,9 @@ export class Matrix {
       this.invites.delete(id);
       const room = this.room(id);
       for (const ev of r.state?.events ?? []) this.apply(room, ev);
-      if (r.timeline?.limited) room.events = room.events.filter((m) => m.pending);
-      if (r.timeline?.prev_batch && !room.prevBatch) room.prevBatch = r.timeline.prev_batch;
+      // A gap (limited): what we held is no longer contiguous with now; history resumes from the new edge.
+      if (r.timeline?.limited) { room.events = room.events.filter((m) => m.pending); room.prevBatch = r.timeline.prev_batch ?? null; room.noMoreHistory = false; }
+      else if (r.timeline?.prev_batch && !room.prevBatch) room.prevBatch = r.timeline.prev_batch;
       for (const ev of r.timeline?.events ?? []) this.apply(room, ev);
       for (const ev of r.ephemeral?.events ?? []) {
         if (ev.type === 'm.typing') room.typing = ((ev.content.user_ids as string[]) ?? []).filter((u) => u !== this.me);
@@ -270,11 +290,14 @@ export class Matrix {
   /** Toggle my reaction `key` on a message. */
   async react(roomId: string, msg: Message, key: string) {
     const mine = msg.reactions.find((r) => r.key === key)?.mine;
+    if (mine === '~pending') return; // still on its way: a second click waits for it
     if (mine) { removeReaction(msg, key, this.me); this.emit(); await this.redact(roomId, mine); return; }
     addReaction(msg, key, this.me, '~pending'); this.emit();
-    const r = await this.put(roomId, 'm.reaction', { 'm.relates_to': { rel_type: 'm.annotation', event_id: msg.id, key } });
-    const rx = msg.reactions.find((x) => x.key === key);
-    if (rx) rx.mine = r.event_id;
+    try {
+      const r = await this.put(roomId, 'm.reaction', { 'm.relates_to': { rel_type: 'm.annotation', event_id: msg.id, key } });
+      const rx = msg.reactions.find((x) => x.key === key);
+      if (rx) rx.mine = r.event_id;
+    } catch (e) { removeReaction(msg, key, this.me); this.emit(); throw e; }
   }
   async pin(roomId: string, eventId: string, on: boolean) {
     const room = this.rooms.get(roomId);
@@ -294,11 +317,24 @@ export class Matrix {
   join(aliasOrId: string) { return this.req<{ room_id: string }>(`/v3/join/${encodeURIComponent(aliasOrId)}`, { method: 'POST', body: '{}' }); }
   async leave(roomId: string) { await this.req(`/v3/rooms/${encodeURIComponent(roomId)}/leave`, { method: 'POST', body: '{}' }); this.rooms.delete(roomId); this.emit(); }
   async decline(roomId: string) { await this.req(`/v3/rooms/${encodeURIComponent(roomId)}/leave`, { method: 'POST', body: '{}' }); this.invites.delete(roomId); this.emit(); }
-  read(roomId: string, eventId: string) { if (eventId.startsWith('~')) return Promise.resolve(null); return this.req(`/v3/rooms/${encodeURIComponent(roomId)}/receipt/m.read/${encodeURIComponent(eventId)}`, { method: 'POST', body: '{}' }).catch(() => null); }
+  private receipted = new Map<string, string>();
+  /** A read receipt, sent only when the read point moves. */
+  read(roomId: string, eventId: string) {
+    if (eventId.startsWith('~') || this.receipted.get(roomId) === eventId) return Promise.resolve(null);
+    this.receipted.set(roomId, eventId);
+    return this.req(`/v3/rooms/${encodeURIComponent(roomId)}/receipt/m.read/${encodeURIComponent(eventId)}`, { method: 'POST', body: '{}' }).catch(() => null);
+  }
+  /** The direct room we already share with a player, if any. */
+  findDm(playerId: string): string | null {
+    const uid = `@${playerId}:${this.server}`;
+    for (const r of this.rooms.values()) if (r.direct && r.memberList.has(uid)) return r.id;
+    return null;
+  }
   /** A direct room with a player (an existing one if we have it). */
   async dm(playerId: string): Promise<string> {
     const uid = `@${playerId}:${this.server}`;
-    for (const r of this.rooms.values()) if (r.direct && r.memberList.has(uid)) return r.id;
+    const have = this.findDm(playerId);
+    if (have) return have;
     const r = await this.req<{ room_id: string }>('/v3/createRoom', { method: 'POST', body: JSON.stringify({ preset: 'trusted_private_chat', is_direct: true, invite: [uid] }) });
     const mine = (await this.req<Record<string, string[]>>(`/v3/user/${encodeURIComponent(this.me)}/account_data/m.direct`).catch(() => ({}))) as Record<string, string[]>;
     mine[uid] = [...new Set([...(mine[uid] ?? []), r.room_id])];

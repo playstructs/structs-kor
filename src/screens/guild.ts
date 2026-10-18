@@ -86,7 +86,7 @@ const screen: Screen = {
             <div class="stat"><small>가입 최소 주입</small><strong class="mono">${guild ? micro(guild.join_infusion_minimum, 1) + ' g' : '—'}</strong></div>
           </div>
           ${cap ? html`<div><small class="dim">길드 전력 ${watts(load)} / ${watts(cap)}</small><div class="meter"><i style="width:${Math.min(100, (load / cap) * 100)}%"></i></div></div>` : ''}
-          <p class="note">길드장 <a href="${href(`/o/${guild?.owner ?? ''}`)}">${guild?.owner ?? '—'}</a>${guild?.website ? html` · <a href="${guild.website}" target="_blank" rel="noopener">웹사이트</a>` : ''}</p>
+          <p class="note">길드장 <a href="${href(`/o/${guild?.owner ?? ''}`)}">${guild?.owner ?? '—'}</a>${guild?.website && /^https?:\/\//i.test(guild.website) ? html` · <a href="${guild.website}" target="_blank" rel="noopener noreferrer">웹사이트</a>` : ''}</p>
         </section>
         <section class="card game-panel"><div class="card-head"><h2>알파 상위 길드원</h2><button class="linkish end" data-act="tab" data-t="members">모두 보기</button></div>
           <ol class="standings">${top.map((m, i) => html`<li class="${m.id === pid ? 'me' : ''}"><span class="rk mono">${i + 1}</span>${raw(portraitHtml(m.pfp || seededPfp(m.id), 32))}<div><a href="${href(`/o/${m.id}`)}"><b>${m.username || m.id}</b></a><small class="mono">알파 ${micro(m.alpha_p ?? m.alpha, 1)} g</small></div>${m.id === pid ? html`<span class="chip cheong">나</span>` : ''}</li>`)}</ol>

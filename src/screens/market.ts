@@ -5,7 +5,7 @@
  * collateral ratio). Korean market colours: ▲ red up, ▼ blue down. Every offer can be shared. */
 import type { Screen } from '../router';
 import { href } from '../router';
-import { html, mount, n, micro, toast, raw, type Safe } from '../ui/dom';
+import { html, mount, n, micro, toast, raw, esc, type Safe } from '../ui/dom';
 import { needSession, errorCard, loading } from '../ui/gate';
 import { guildApi, type AgreementRow, type BankRow, type ProviderRow, type PlayerRow, type BucketVolume } from '../api/guild';
 import { marketStats, quote, quoteLocal, type MarketStat, type Quote } from '../api/planned';
@@ -148,7 +148,7 @@ function bankChart(rows: BucketVolume[] | null | undefined): Safe {
     <line x1="0" x2="${W}" y1="${H}" y2="${H}" class="bc-axis"/>
     ${days.map((d, i) => { const v = total(d), h = Math.max(2, (v / max) * (H - 8)), x = i * (bw + gap);
       return raw(`<g class="bc-bar"><rect x="${x}" y="0" width="${bw}" height="${H}" class="bc-hit"/><rect x="${x}" y="${H - h}" width="${bw}" height="${h}" rx="2" class="bc-fill"/><title>${label(d)} · ${n(v, 2)}
-${[...by.get(d)!].map(([a, x2]) => `${ACTION_KO[a] ?? a} ${n(x2, 2)}`).join('\n')}</title>${i % Math.ceil(days.length / 7) === 0 ? `<text x="${x + bw / 2}" y="${H + 18}" class="bc-x">${label(d)}</text>` : ''}</g>`); })}
+${[...by.get(d)!].map(([a, x2]) => `${esc(ACTION_KO[a] ?? a)} ${n(x2, 2)}`).join('\n')}</title>${i % Math.ceil(days.length / 7) === 0 ? `<text x="${x + bw / 2}" y="${H + 18}" class="bc-x">${label(d)}</text>` : ''}</g>`); })}
   </svg><figcaption class="note">최근 ${days.length}일 · 일별 토큰 거래량 (최대 ${n(max, 1)}) · 막대에 마우스를 올리면 발행·상환 내역</figcaption>
   <table class="sr"><caption>일별 토큰 거래량</caption><thead><tr><th>날짜</th><th>거래량</th></tr></thead><tbody>${days.map((d) => html`<tr><td>${label(d)}</td><td>${n(total(d), 2)}</td></tr>`)}</tbody></table></figure>`;
 }
@@ -201,12 +201,15 @@ const screen: Screen = {
     mount(root, loading());
     const startTab = (params.get('tab') as Tab) || 'buy';
     const s: State = { tab: TABS.some(([t]) => t === startTab) ? startTab : 'buy', me: null, providers: [], mineProv: [], stats: new Map(), agreements: [], bank: [], coins: [], sel: 0, capKw: 10, days: 7, q: null, busy: false, sort: 'price', policy: '', bankGuild: '', bankAmount: '', hist: new Map() };
+    let quoteTicket = 0;
     const requote = () => {
       const p = s.providers[s.sel];
       if (!p) { s.q = null; return; }
       const cap = Math.round(s.capKw * KW), dur = Math.round(s.days * BLOCKS_PER_DAY);
       s.q = quoteLocal(p, cap, dur);
-      void quote(p, cap, dur).then((q) => { s.q = q; paint(); }).catch(() => null);
+      // Only the newest ask's answer may land: an older one would price an earlier capacity.
+      const ticket = ++quoteTicket;
+      void quote(p, cap, dur).then((q) => { if (ticket === quoteTicket) { s.q = q; paint(); } }).catch(() => null);
     };
     const resort = () => {
       const cur = s.providers[s.sel]?.id;
@@ -247,7 +250,7 @@ const screen: Screen = {
       capDown: (el: HTMLElement) => sign(actions.agreementCapacity(el.dataset.id!, -KW)),
       close: async (el: HTMLElement) => { if (await ask('계약 해지', '계약을 해지하면 위약금이 적용될 수 있습니다. 해지할까요?', '해지', 'jeok')) sign(actions.agreementClose(el.dataset.id!)); },
       access: (el: HTMLElement) => sign(actions.providerAccess(el.dataset.id!, (el as HTMLSelectElement).value as 'openMarket')),
-      withdraw: (el: HTMLElement) => sign(actions.providerWithdraw(el.dataset.id!, wallet.key(0).address)),
+      withdraw: (el: HTMLElement) => { const to = wallet.commander?.address; if (!to || wallet.state !== 'unlocked') { toast('서명하려면 지갑 잠금을 해제하세요.'); return; } sign(actions.providerWithdraw(el.dataset.id!, to)); },
       delete: async (el: HTMLElement) => { if (await ask('공급자 삭제', `${el.dataset.id} 공급자를 삭제합니다. 진행 중인 계약에는 위약금이 적용될 수 있습니다.`, '삭제', 'jeok')) sign(actions.providerDelete(el.dataset.id!)); },
       create: async (el: HTMLElement) => {
         const f = new FormData(el as HTMLFormElement);

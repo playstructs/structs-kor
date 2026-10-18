@@ -441,10 +441,13 @@ const screen: Screen = {
       first = false;
       const want = params.get('room'), dm = params.get('dm'), draft = params.get('draft');
       const byAlias = want ? [...matrix.rooms.values()].find((r) => r.alias === want || r.id === want || r.alias?.startsWith(want + ':')) : null;
-      if (dm) void openDm(dm, draft ?? '');
-      else open(byAlias?.id ?? tabs.find((t) => matrix.rooms.has(t)) ?? sorted().find(isPinnedRoom)?.id ?? sorted()[0]?.id ?? null);
-      if (draft && !dm) { input.value = draft; autosize(); }
-      if (want && !byAlias) void joinAlias(want);
+      // A link may open what we already have; anything that changes chat state (joining a room,
+      // inviting someone to a new DM) asks first — links come from other people.
+      const known = dm && /^1-\d+$/.test(dm) ? matrix.findDm(dm) : null;
+      open(known ?? byAlias?.id ?? tabs.find((t) => matrix.rooms.has(t)) ?? sorted().find(isPinnedRoom)?.id ?? sorted()[0]?.id ?? null);
+      if (draft) { input.value = draft; autosize(); }
+      if (dm && /^1-\d+$/.test(dm) && !known) void ask('새 대화', `${dm}에게 다이렉트 메시지를 열까요? 상대에게 초대가 갑니다.`, '대화 열기').then((y) => { if (y) void openDm(dm, draft ?? ''); });
+      if (want && !byAlias) void ask('대화방 참여', `${want} 대화방에 참여할까요?`, '참여').then((y) => { if (y) void joinAlias(want); });
       const term = params.get('search');
       if (term) { searchTerm = term; searchAll = true; side = 'search'; paintHead(); paintSide(); void runSearch(); }
     };
