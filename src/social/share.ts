@@ -80,7 +80,7 @@ export type ShareTarget = { kind: 'object'; id: string } | { kind: 'situation'; 
 export function share(t: ShareTarget) {
   const link = t.kind === 'object' ? objectLink(t.id) : situationLink(t.s);
   const what = t.kind === 'object' ? `${entityOf(t.id)} ${t.id}` : t.s.title;
-  let comment = '', room = '', rooms: { id: string; name: string }[] = [], chat: 'idle' | 'loading' | 'ready' | 'off' = 'idle', busy = false, err = '';
+  let comment = '', room = '', rooms: { id: string; name: string }[] = [], chat: 'idle' | 'loading' | 'ready' | 'off' = 'idle', busy = false, err = '', withImage = true;
   const me = session.playerId;
   const preview = (): Safe => raw(t.kind === 'object' ? refSlot(t.id, { base: href(''), noShare: true, me }) : situationHtml(t.s));
   const canChat = matrix.possible && session.status.state === 'in';
@@ -94,6 +94,7 @@ export function share(t: ShareTarget) {
         : chat === 'off' ? html`<p class="note">${err || '통신에 연결할 수 없습니다.'}</p>`
         : html`<select class="input" name="room" data-act="room" data-on="change">${rooms.map((r) => html`<option value="${r.id}" ${r.id === room ? 'selected' : ''}>${r.name}</option>`)}</select>`}
       </div>
+      <label class="chk"><input type="checkbox" data-act="withImage" ${withImage ? 'checked' : ''}> 카드 이미지도</label>
       <button class="btn primary" data-act="send" ${!canChat || chat !== 'ready' || !room || busy ? 'disabled' : ''}>${busy ? '보내는 중…' : '통신에 보내기'}</button>
     </div>
     <div class="share-row">
@@ -103,12 +104,22 @@ export function share(t: ShareTarget) {
     </div>
     <p class="mono faint share-link">${link.length > 96 ? link.slice(0, 96) + '…' : link}</p>`;
   const text = () => (comment.trim() ? comment.trim() + '\n' : '') + (t.kind === 'object' ? `${what} ${link}` : `[${KIND[t.s.t][0]}] ${t.s.title}\n${link}`);
+  const pngFor = async () => {
+    let title = what, sub = '', lines: [string, string][] = [], kicker = '구조체 · 공유', tone = 'cheong';
+    if (t.kind === 'object') {
+      const c: RefCard | null = await resolveRef(t.id);
+      if (c) { title = c.title; sub = c.subtitle; lines = c.rows; kicker = entityOf(t.id); tone = c.badge?.tone ?? 'cheong'; }
+    } else { title = t.s.title; sub = t.s.sub ?? ''; lines = t.s.lines; kicker = KIND[t.s.t][0]; tone = t.s.tone ?? (t.s.t === 'raid' ? 'jeok' : 'cheong'); }
+    return cardPng(title, sub, lines, kicker, tone);
+  };
   const handlers = {
     comment: (el: HTMLElement) => { comment = (el as HTMLTextAreaElement).value; },
+    withImage: (el: HTMLElement) => { withImage = (el as HTMLInputElement).checked; },
     room: (el: HTMLElement) => { room = (el as HTMLSelectElement).value; try { localStorage.setItem('structs-kor.share.room', room); } catch { /* fine */ } },
     send: () => {
       busy = true; sheet.paint(view());
-      matrix.send(room, text()).then(() => {
+      const card = withImage ? pngFor().then((b) => (b ? matrix.sendImage(room, b, `structs-${t.kind === 'object' ? t.id : t.s.t}.png`, 1200, 630).catch(() => null) : null)) : Promise.resolve(null);
+      card.then(() => matrix.send(room, text())).then(() => {
         sfx.play('confirm'); toast('통신에 공유했습니다.');
         remember({ at: Date.now(), what, link, to: rooms.find((r) => r.id === room)?.name ?? room });
         sheet.close();
@@ -119,12 +130,7 @@ export function share(t: ShareTarget) {
     },
     native: () => { void (navigator as Navigator).share?.({ title: `구조체 · ${what}`, text: comment || what, url: link }).then(() => remember({ at: Date.now(), what, link, to: '기기 공유' })).catch(() => null); },
     png: async () => {
-      let title = what, sub = '', lines: [string, string][] = [], kicker = '구조체 · 공유', tone = 'cheong';
-      if (t.kind === 'object') {
-        const c: RefCard | null = await resolveRef(t.id);
-        if (c) { title = c.title; sub = c.subtitle; lines = c.rows; kicker = entityOf(t.id); tone = c.badge?.tone ?? 'cheong'; }
-      } else { title = t.s.title; sub = t.s.sub ?? ''; lines = t.s.lines; kicker = KIND[t.s.t][0]; tone = t.s.tone ?? (t.s.t === 'raid' ? 'jeok' : 'cheong'); }
-      const b = await cardPng(title, sub, lines, kicker, tone);
+      const b = await pngFor();
       if (!b) { toast('이미지를 만들지 못했습니다.'); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b); a.download = `structs-${t.kind === 'object' ? t.id : t.s.t}.png`; a.click();
@@ -135,7 +141,8 @@ export function share(t: ShareTarget) {
   if (canChat) {
     chat = 'loading'; sheet.paint(view());
     matrix.ensure().then(() => {
-      rooms = [...matrix.rooms.values()].sort((a, b) => Number(b.local) - Number(a.local) || a.name.localeCompare(b.name)).map((r) => ({ id: r.id, name: (r.direct ? '@ ' : '# ') + r.name.replace(/^#/, '') }));
+      const rank = (r: { alias: string | null; local: boolean; direct: boolean }) => (r.alias && /^#(sn-corp|guild)/.test(r.alias) ? 0 : r.local && !r.direct ? 1 : r.direct ? 2 : 3);
+      rooms = [...matrix.rooms.values()].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name)).map((r) => ({ id: r.id, name: (r.direct ? '@ ' : '# ') + r.name.replace(/^#/, '') }));
       let saved = ''; try { saved = localStorage.getItem('structs-kor.share.room') || ''; } catch { /* fine */ }
       room = rooms.find((r) => r.id === saved)?.id ?? rooms[0]?.id ?? '';
       chat = rooms.length ? 'ready' : 'off'; if (!rooms.length) err = '참여한 대화방이 없습니다.';

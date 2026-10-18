@@ -184,7 +184,8 @@ const screen: Screen = {
         <div class="cm-body">
           ${grouped ? '' : html`<div class="cm-meta"><a class="cm-who" href="${href(`/o/${localpart(m.sender)}`)}">${matrix.displayName(r.id, m.sender)}</a><span class="mono faint">${localpart(m.sender)}</span><time>${time(m.ts)}</time></div>`}
           ${reply ? html`<button class="cm-quote" data-act="jump" data-id="${reply.id}"><b>${matrix.displayName(r.id, reply.sender)}</b> ${reply.redacted ? '삭제된 메시지' : reply.body.slice(0, 90)}</button>` : ''}
-          <p class="cm-text ${m.emote ? 'emote' : ''}">${m.emote ? html`<b>* ${matrix.displayName(r.id, m.sender)}</b> ` : ''}${raw(messageHtml(m.body, base))}${m.edited ? html` <small class="faint">(수정됨)</small>` : ''}</p>
+          ${m.image ? html`<button class="cm-img" data-mxc="${m.image.mxc}" style="aspect-ratio:${m.image.w && m.image.h ? `${m.image.w} / ${m.image.h}` : '4 / 3'}" aria-label="이미지 ${m.body}"><span class="faint">이미지 불러오는 중…</span></button>` : ''}
+          ${m.image && /^[^\s]+\.(png|jpe?g|gif|webp)$/i.test(m.body) ? '' : html`<p class="cm-text ${m.emote ? 'emote' : ''}">${m.emote ? html`<b>* ${matrix.displayName(r.id, m.sender)}</b> ` : ''}${raw(messageHtml(m.body, base))}${m.edited ? html` <small class="faint">(수정됨)</small>` : ''}</p>`}
           ${sits.length || ids.length || chal ? html`<div class="cm-cards">${chal ? raw(challengeSlot(m.body, base)) : ''}${sits.map((s) => raw(situationHtml(s, base)))}${ids.map((id) => raw(refSlot(id, { compact: true, base, me: pid })))}</div>` : ''}
           ${reactionChip(m)}
           ${m.pending === 'failed' ? html`<span class="cm-fail">전송 실패 · <button class="linkish" data-act="retry" data-id="${m.id}">다시 보내기</button></span>` : m.pending === 'sending' ? html`<span class="cm-sending faint">보내는 중…</span>` : ''}
@@ -218,6 +219,10 @@ const screen: Screen = {
         }) : html`<p class="empty">아직 메시지가 없습니다. 첫 메시지를 보내보세요.</p>`}
         ${seen.length ? html`<div class="comms-seen faint">읽음 · ${seen.slice(0, 4).join(', ')}${seen.length > 4 ? ` 외 ${seen.length - 4}명` : ''}</div>` : ''}`, tlHandlers);
       void hydrateChallenges(tl);
+      for (const b of tl.querySelectorAll<HTMLElement>('.cm-img[data-mxc]:not([data-done])')) {
+        b.dataset.done = '1';
+        void matrix.thumbnail(b.dataset.mxc!).then((u) => { b.innerHTML = u ? `<img src="${u}" alt="">` : '<span class="faint">이미지를 불러오지 못했습니다</span>'; });
+      }
       if (stick || atBottom) tl.scrollTop = tl.scrollHeight;
       else if (backfilling) tl.scrollTop = prevTop + (tl.scrollHeight - prevH);
       else tl.scrollTop = prevTop;
@@ -259,6 +264,7 @@ const screen: Screen = {
     let lastH = 0;
     const follow = new MutationObserver(() => { if (stick && tl.scrollHeight !== lastH) { tl.scrollTop = tl.scrollHeight; lastH = tl.scrollHeight; } });
     follow.observe(tl, { childList: true, subtree: true });
+    tl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest<HTMLElement>('.cm-img'); if (b) { b.classList.toggle('big'); stick = false; } });
     pinsEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-pinjump]'); if (b) jumpTo(b.dataset.pinjump!); });
 
     /* ── Side panel ── */

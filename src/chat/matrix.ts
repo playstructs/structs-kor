@@ -15,6 +15,8 @@ export interface Reaction { key: string; senders: string[]; mine?: string }
 export interface Message {
   id: string; sender: string; body: string; ts: number; mine: boolean;
   emote?: boolean; replyTo?: string; edited?: boolean; redacted?: boolean; notice?: boolean;
+  /** m.image: the mxc:// address and its size, when the sender gave one. */
+  image?: { mxc: string; w?: number; h?: number };
   reactions: Reaction[];
   /** The original's id for a local echo still in flight; 'failed' when the send did not go. */
   pending?: 'sending' | 'failed'; txn?: string;
@@ -176,6 +178,10 @@ export class Matrix {
           id: ev.event_id, sender: ev.sender, body: stripFallback(c.body), ts: ev.origin_server_ts, mine: ev.sender === this.me,
           emote: c.msgtype === 'm.emote', notice: c.msgtype === 'm.notice', replyTo: rel?.['m.in_reply_to']?.event_id, reactions: [],
         };
+        if (c.msgtype === 'm.image' && typeof c.url === 'string' && c.url.startsWith('mxc://')) {
+          const info = (c.info ?? {}) as { w?: number; h?: number };
+          msg.image = { mxc: c.url, w: info.w, h: info.h };
+        }
         if (echo >= 0) room.events.splice(echo, 1, msg);
         else if (older) room.events.unshift(msg); else room.events.push(msg);
         // Reactions that arrived before their target (history order).
@@ -330,6 +336,34 @@ export class Matrix {
   }
   /** Does an alias exist? (Directory lookups: /publicRooms is empty on these servers.) */
   async probe(alias: string) { return this.req<{ room_id: string }>(`/v3/directory/room/${encodeURIComponent(alias)}`).then((r) => r.room_id).catch(() => null); }
+  private blobs = new Map<string, Promise<string | null>>();
+  /** Upload an image and post it as m.image (a share card, a screenshot). */
+  async sendImage(roomId: string, blob: Blob, name: string, w: number, h: number) {
+    let mxc: string;
+    if (MOCK) { mxc = `mxc://mock.structs/${Date.now().toString(36)}`; }
+    else {
+      if (!this.grant) throw new Error('채팅에 로그인하지 않았습니다.');
+      const r = await fetch(`${endpoints.matrix}/_matrix/media/v3/upload?filename=${encodeURIComponent(name)}`, { method: 'POST', headers: { authorization: 'Bearer ' + this.grant.access_token, 'content-type': blob.type || 'image/png' }, body: blob });
+      if (!r.ok) throw new Error(`이미지 업로드 실패 (${r.status})`);
+      mxc = (await r.json() as { content_uri: string }).content_uri;
+    }
+    this.blobs.set(mxc, Promise.resolve(URL.createObjectURL(blob)));
+    return this.put(roomId, 'm.room.message', { msgtype: 'm.image', body: name, url: mxc, info: { w, h, mimetype: blob.type || 'image/png', size: blob.size } });
+  }
+  /** A thumbnail of an mxc:// image as a blob: URL (media needs the access token now). */
+  thumbnail(mxc: string, size = 360): Promise<string | null> {
+    const hit = this.blobs.get(mxc);
+    if (hit) return hit;
+    const m = mxc.match(/^mxc:\/\/([^/]+)\/([A-Za-z0-9_-]+)$/);
+    if (!m || !this.grant || MOCK) return Promise.resolve(null);
+    const url = `${endpoints.matrix}/_matrix/client/v1/media/thumbnail/${encodeURIComponent(m[1])}/${encodeURIComponent(m[2])}?width=${size}&height=${size}&method=scale`;
+    const p = fetch(url, { headers: { authorization: 'Bearer ' + this.grant.access_token } })
+      .then((r) => (r.ok && /^image\//.test(r.headers.get('content-type') ?? '') ? r.blob() : null))
+      .then((b) => (b ? URL.createObjectURL(b) : null)).catch(() => null);
+    this.blobs.set(mxc, p);
+    if (this.blobs.size > 120) this.blobs.delete(this.blobs.keys().next().value!);
+    return p;
+  }
   displayName(roomId: string | null, uid: string) {
     const m = roomId ? this.rooms.get(roomId)?.memberList.get(uid) : undefined;
     return m?.name || localpart(uid);

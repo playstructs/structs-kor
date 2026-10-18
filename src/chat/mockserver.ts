@@ -150,7 +150,7 @@ export async function mockMatrix<T>(path: string, init: RequestInit, user: strin
     switch (seg[4]) {
       case 'send': {
         const ev = push(roomId, { type: seg[5], sender: me, content: body, unsigned: { transaction_id: seg[6] } });
-        if (seg[5] === 'm.room.message' && !body['m.relates_to']?.toString().includes('replace') && !(body['m.relates_to'] as { rel_type?: string } | undefined)?.rel_type) answer(roomId, String(body.body ?? ''));
+        if (seg[5] === 'm.room.message' && body.msgtype !== 'm.image' && !(body['m.relates_to'] as { rel_type?: string } | undefined)?.rel_type) answer(roomId, String(body.body ?? ''));
         return ok({ event_id: ev.event_id });
       }
       case 'redact': { const ev = push(roomId, { type: 'm.room.redaction', sender: me, content: {}, redacts: seg[5] }); return ok({ event_id: ev.event_id }); }
