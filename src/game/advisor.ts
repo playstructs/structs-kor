@@ -13,6 +13,9 @@ export function advise(rank = 99): Tip[] {
   const ready = (id: 'surge' | 'overshield' | 'rally') => rank >= ABILITIES.find((a) => a.id === id)!.rank && !demo.abilityLeft(id);
   const refining = st.structs.some((x) => x.type === 15 && x.online && x.building == null && x.hp > 0);
   // Abilities, when they'd turn a raid.
+  // A delivery on the board that would empty the pile before the raid lands.
+  const del = demo.jobs?.offers.filter((o) => o.kind === 'deliver' && o.need <= st.ore).sort((a, z) => z.need - a.need)[0];
+  if (raid && raid.eta > 0 && del) tips.push({ pri: 97, tone: 'hwang', text: `의뢰 게시판에 광석 ${del.need} 단위 납품 의뢰 (+${del.reward} α). 습격 전에 넘기면 약탈당할 광석이 줄어듭니다.`, go: '/market', cta: '납품' });
   // At most one ability tip, so the base's other troubles still show.
   const cap = demo.surgeCap();
   if (raid && raid.eta > 0 && st.ore >= 20 && refining && cap >= st.ore * 0.5 && ready('surge')) tips.push({ pri: 101, tone: 'hwang', text: `습격 전에 긴급 정제[7]: 광석 ${Math.floor(Math.min(cap, st.ore))} 단위를 지금 알파로 바꿔 약탈을 피하세요.`, go: '/console', cta: '함교' });

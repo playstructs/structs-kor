@@ -16,6 +16,7 @@ const ORDERS: Order[] = [
   { id: 'decide', title: '결단 2회 내리기', target: 2, demoOnly: true, value: () => (demo.on ? demo.state.decided ?? 0 : 0) },
   { id: 'bounty', title: '현상금 1회 수령', target: 1, demoOnly: true, value: () => (demo.on ? demo.state.bountiesClaimed ?? 0 : 0) },
   { id: 'tribute', title: '공물 5 α 받기', target: 5, demoOnly: true, value: () => (demo.on ? demo.tributeTotal : 0) },
+  { id: 'jobs', title: '의뢰 1회 완수', target: 1, demoOnly: true, value: () => (demo.on ? demo.jobs?.done ?? 0 : 0) },
 ];
 export const DAILY_XP = 40, DAILY_BONUS = 100;
 
