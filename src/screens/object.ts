@@ -3,7 +3,7 @@
  * raiding fleet, the battle log); a player shows their record and recent moves; a guild its roster.
  * /s/<code>: a shared situation (a frozen moment), with the objects it names as live cards. */
 import type { Screen } from '../router';
-import { current, href } from '../router';
+import { current, href, go } from '../router';
 import { html, mount, raw, n, micro, esc, toast, type Safe } from '../ui/dom';
 import { guildApi, type ActivityRow, type StructRow } from '../api/guild';
 import { session } from '../api/session';
@@ -55,10 +55,21 @@ const screen: Screen = {
     if (path.startsWith('/s/')) return situationScreen(root, seg);
     const id = decodeURIComponent(seg);
     if (!isRefId(id)) {
-      mount(root, html`<section class="card" style="max-width:560px;margin:40px auto"><h1 style="font-size:26px">객체 찾기</h1><p class="note">플레이어(1-), 행성(2-), 구조체(5-), 함대(9-), 길드(0-), 변전소(4-), 공급자(10-) ID를 입력하세요.</p>
-        <form data-act="find" data-on="submit" style="display:flex;gap:8px"><input class="input mono" name="id" placeholder="2-14" autofocus><button class="btn primary">열기</button></form>
+      mount(root, html`<section class="card" style="max-width:560px;margin:40px auto"><h1 style="font-size:26px">객체 찾기</h1><p class="note">플레이어(1-), 행성(2-), 구조체(5-), 함대(9-), 길드(0-), 변전소(4-), 공급자(10-) ID나 사령관 이름을 입력하세요.</p>
+        <form data-act="find" data-on="submit" style="display:flex;gap:8px"><input class="input mono" name="id" placeholder="2-14 · 사령관 이름" aria-label="객체 ID 또는 사령관 이름" autofocus><button class="btn primary">열기</button></form><div id="obj-found" class="pay-recent"></div>
         ${watchlist().length ? html`<h2 style="font-size:18px">감시 목록</h2><div class="obj-watch">${watchlist().map((w) => raw(refSlot(w, { base: base(), compact: true, me: session.playerId })))}</div>` : ''}</section>`, {
-        find: (el) => { const v = String(new FormData(el as HTMLFormElement).get('id') || '').trim(); if (isRefId(v)) location.assign(href(`/o/${v}`)); },
+        find: (el) => {
+          const v = String(new FormData(el as HTMLFormElement).get('id') || '').trim();
+          if (isRefId(v)) { go(`/o/${v}`); return; }
+          if (v.length < 2) return;
+          // A name: the guild's player search.
+          void guildApi.playerSearch(v).then((r) => {
+            const box = root.querySelector<HTMLElement>('#obj-found');
+            if (!box) return;
+            if (r.length === 1) { go(`/o/${r[0].id}`); return; }
+            box.innerHTML = r.length ? r.slice(0, 12).map((p) => `<a class="pill" href="${href(`/o/${p.id}`)}">${esc(p.username || p.id)} <small class="mono">${esc(p.id)}</small></a>`).join('') : '<p class="note">맞는 사령관이 없습니다.</p>';
+          });
+        },
       });
       return;
     }
