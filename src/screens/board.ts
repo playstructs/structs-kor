@@ -76,7 +76,7 @@ const screen: Screen = {
       return html`
       <div class="card-head"><h1 style="font-size:28px">작전 보드</h1><span class="label c-cheong">TERMINAL</span>
         <span class="end" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost sm" data-act="edit" aria-pressed="${editing}">${editing ? '편집 끝' : '편집'}</button><button class="btn primary sm" data-act="add">카드 추가</button><button class="btn ghost sm" data-act="shareBoard">보드 공유</button></span></div>
-      <div class="tabs board-tabs" role="tablist">${store.boards.map((x, i) => html`<button class="tab ${i === store.at ? 'on' : ''}" role="tab" aria-selected="${i === store.at}" data-act="ws" data-i="${i}">${x.name}</button>`)}<button class="tab" data-act="newWs" title="새 보드">+</button></div>
+      <div class="board-tabrow"><div class="tabs board-tabs" role="tablist" aria-label="보드">${store.boards.map((x, i) => html`<button class="tab ${i === store.at ? 'on' : ''}" role="tab" aria-selected="${i === store.at}" data-act="ws" data-i="${i}">${x.name}</button>`)}</div><button class="tab" data-act="newWs" title="새 보드" aria-label="새 보드">+</button></div>
       ${editing ? html`<div class="board-edit"><input class="input" name="wsName" value="${b.name}" data-act="rename" data-on="change" aria-label="보드 이름">
         <select class="input" data-act="preset" data-on="change" aria-label="프리셋"><option value="">프리셋 적용…</option>${Object.keys(PRESETS).map((k) => html`<option value="${k}">${k}</option>`)}</select>
         <form class="invite-form" data-act="import" data-on="submit"><input class="input mono" name="code" placeholder="보드 코드 (B…)"><button class="btn ghost sm">가져오기</button></form>

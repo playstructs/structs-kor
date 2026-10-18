@@ -63,7 +63,7 @@ const screen: Screen = {
     root.innerHTML = `<div class="chatx">
       <nav class="comms-rail" aria-label="대화방 목록"></nav>
       <section class="comms-room" aria-label="대화">
-        <div class="comms-tabs" role="tablist"></div>
+        <div class="comms-tabs" aria-label="열린 대화"></div>
         <header class="comms-head"></header>
         <div class="comms-pins"></div>
         <div class="comms-tl" tabindex="0" aria-live="polite"></div>
@@ -148,7 +148,7 @@ const screen: Screen = {
     /* ── Tabs + header ── */
     const paintHead = () => {
       const r = room();
-      mount(tabsEl, html`${tabs.map((id) => matrix.rooms.get(id)).filter(Boolean).map((t) => html`<span class="comms-tab ${t!.id === active ? 'on' : ''}" role="tab" aria-selected="${t!.id === active}"><button data-act="open" data-id="${t!.id}">${t!.direct ? '@' : '#'}${t!.name.replace(/^#/, '').split(':')[0]}${t!.unread ? html` <b>${t!.unread}</b>` : ''}</button><button class="x" data-act="close" data-id="${t!.id}" aria-label="탭 닫기">×</button></span>`)}`, {
+      mount(tabsEl, html`${tabs.map((id) => matrix.rooms.get(id)).filter(Boolean).map((t) => html`<span class="comms-tab ${t!.id === active ? 'on' : ''}"><button data-act="open" data-id="${t!.id}" aria-current="${t!.id === active ? 'page' : 'false'}">${t!.direct ? '@' : '#'}${t!.name.replace(/^#/, '').split(':')[0]}${t!.unread ? html` <b>${t!.unread}</b>` : ''}</button><button class="x" data-act="close" data-id="${t!.id}" aria-label="탭 닫기">×</button></span>`)}`, {
         open: (el) => open(el.dataset.id!),
         close: (el) => { tabs = tabs.filter((t) => t !== el.dataset.id); saveTabs(tabs); if (active === el.dataset.id) open(tabs[0] ?? null); else paintHead(); },
       });
@@ -169,7 +169,7 @@ const screen: Screen = {
         shareroom: () => { void navigator.clipboard?.writeText(webRoot() + (`/chat?room=${encodeURIComponent(r.alias ?? r.id)}`)).then(() => toast('대화방 링크를 복사했습니다.')); },
       });
       const top = r.pinned[0] ? r.events.find((m) => m.id === r.pinned[0]) : null;
-      pinsEl.innerHTML = top ? `<button class="comms-pinbar" data-pinjump="${esc(top.id)}"><i class="si icon-key"></i><b>${esc(matrix.displayName(r.id, top.sender))}</b> ${messageHtml(top.body, base)}</button>` : '';
+      pinsEl.innerHTML = top ? `<button class="comms-pinbar" data-pinjump="${esc(top.id)}"><i class="si icon-key"></i><b>${esc(matrix.displayName(r.id, top.sender))}</b> ${esc(top.body.slice(0, 160))}</button>` : '';
     };
 
     /* ── Timeline ── */

@@ -325,3 +325,4 @@ tr.me td { background: var(--cheong-bg); }
 .ledger li { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 5px 8px; background: var(--sunken); border-left: 3px solid var(--cheong); font-size: 13px; }
 .ledger li.out { border-left-color: var(--jeok-strong); }
 .ledger li.in .mono:nth-child(2) { color: var(--cheong-hi); } .ledger li.out .mono:nth-child(2) { color: var(--jeok-hi); }
+.board-tabrow { display: flex; align-items: flex-end; gap: 2px; }

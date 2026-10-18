@@ -39,7 +39,7 @@
 .comms-tab button b { color: var(--warn); }
 .comms-tab.on { background: var(--surface); box-shadow: inset 0 2px 0 var(--cheong); }
 .comms-tab.on button { color: #fff; }
-.comms-tab .x { padding: 6px 6px 6px 0; }
+.comms-tab .x { min-width: 24px; min-height: 24px; padding: 4px 6px; }
 .comms-head { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: var(--bg-raised); border-bottom: 1px solid var(--line); min-height: 52px; }
 .comms-head:empty { display: none; }
 .comms-title { flex: 1 1 auto; min-width: 0; }
