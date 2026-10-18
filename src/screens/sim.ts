@@ -69,6 +69,8 @@ const screen: Screen = {
     let stats = { player: zero(), computer: zero() }, blocks = 0, winner: 'player' | 'computer' | 'draw' | null = null, stars = 0, xpWon = 0;
     // Kill streaks: kills within 6 blocks (about one weapon charge) of each other chain; each link is worth a little XP.
     let streak = 0, lastKill = -99, streakXp = 0;
+    // Who did the work on your side: damage and kills by unit (chain id → its type), for the MVP.
+    let ace: Record<string, { type: number; dmg: number; kills: number }> = {};
     let picked: string | null = null, ws: WeaponSystem = 'primaryWeapon', queued: Msg | null = null, guard = false, moving = false;
     let ladder: Awaited<ReturnType<typeof daily>> | null = null;
     let board: Board | null = null;
@@ -163,7 +165,7 @@ const screen: Screen = {
       const setup = cs.setup; idMap = cs.idMap;
       chain = new Chain(setup);
       ai = new Ai(CPU.id, diff, seed); auto = new Ai(YOU.id, 'hard', seed + ':you');
-      log = []; stats = { player: zero(), computer: zero() }; blocks = 0; quiet = 0; winner = null; picked = null; queued = null; paused = false; stars = 0; xpWon = 0; streak = 0; lastKill = -99; streakXp = 0;
+      log = []; stats = { player: zero(), computer: zero() }; blocks = 0; quiet = 0; winner = null; picked = null; queued = null; paused = false; stars = 0; xpWon = 0; streak = 0; lastKill = -99; streakXp = 0; ace = {};
       phase = 'battle';
       newBoard().setStructs(Object.values(chain.structs).map((s) => fromSim(chain!, s)));
       sfx.play('alarm');
@@ -219,6 +221,7 @@ const screen: Screen = {
             const dmg = Math.max(0, (shot.targetHealthBefore ?? 0) - (shot.targetHealthAfter ?? 0));
             const them = side(shot.targetPlayerId);
             stats[who].damage += dmg;
+            if (who === 'player') { const a = (ace[d.attackerStructId] ??= { type: chain.get(d.attackerStructId)?.typeId ?? 0, dmg: 0, kills: 0 }); a.dmg += dmg; if (shot.targetDestroyed) a.kills++; }
             if (shot.evaded) stats[them].evaded++;
             if (shot.blocked) stats[them].blocked++;
             if (shot.targetDestroyed) stats[them].lost++;
@@ -403,6 +406,7 @@ const screen: Screen = {
             <span class="debrief-stars" aria-label="별 3개 중 ${stars}개">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>
             <span class="mono">${blocks}블록 · 격파 ${c.lost} · 손실 ${p.lost}</span>
             ${xpWon ? html`<span class="chip hwang mono" style="font-size:16px">+${xpWon} XP</span>` : ''}
+            ${(() => { const best = Object.values(ace).sort((a, z) => z.kills * 10 + z.dmg - (a.kills * 10 + a.dmg))[0]; return best && (best.dmg || best.kills) ? html`<div class="mvp">${pixel(best.type, 56)}<div><span class="label c-hwang">최우수 전투원</span><b>${STRUCT_TYPE[best.type] ?? best.type}</b><span class="mono">피해 ${best.dmg} · 격파 ${best.kills}</span></div></div>` : ''; })()}
             ${mission && winner === 'player' ? (() => { const next = MISSIONS[mission.no]; return next ? html`<a class="btn danger" href="${href('/sim?mission=' + next.id)}">다음 작전 · ${next.title}</a>` : html`<span class="chip hwang">작전 완수 · 붉은 연합 격파</span>`; })() : ''}
             ${mission ? html`<a class="btn ghost" href="${href('/campaign')}">작전 지도</a>` : ''}
             ${raidOn && loot ? html`<span class="chip ${loot.ore || loot.alpha ? 'hwang' : 'jeok'} mono" style="font-size:16px">${loot.alpha ? `전리품 +${n(loot.alpha)} α` : loot.ore ? `노획 광석 +${n(loot.ore)}` : '노획 없음'}</span><a class="btn gold" href="${href('/console')}">함교로 귀환</a>` : ''}
