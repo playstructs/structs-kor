@@ -31,7 +31,7 @@ function creditInner(byId: Record<string, number>): { id: string; type: number; 
 export const vetRank = (kills = 0) => (kills >= 15 ? 3 : kills >= 8 ? 2 : kills >= 3 ? 1 : 0);
 export type Stance = 'intercept' | 'entrench';
 /** 전투 보고: the last defence of the base, as the bridge shows it afterwards. */
-export interface RaidReport { h: number; won: boolean; name: string; stance?: Stance; odds?: number; kills: { id: string; type: number; n: number; name?: string }[]; blocked: number; hits: number; seized: number; promoted: { id: string; type: number; rank: number; name?: string }[] }
+export interface RaidReport { h: number; won: boolean; /** They gave up against a held shield (참호). */ withdrew?: boolean; name: string; stance?: Stance; odds?: number; kills: { id: string; type: number; n: number; name?: string }[]; blocked: number; hits: number; seized: number; promoted: { id: string; type: number; rank: number; name?: string }[] }
 export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number; /** Chosen while it approaches. */ stance?: Stance; /** A coalition's second house (연합 전선). */ partner?: string; /** Forecast win chance as it landed. */ odds?: number; /** Tally for the after-action report. */ tally?: { kills: Record<string, number>; blocked: number; hits: number } }
 interface Contract { id: string; kw: number; rate: number; left: number; buyer: string; dir?: 'buy' | 'sell' }
 
@@ -1054,6 +1054,7 @@ function raidStep() {
   if (s.height - r.startedAt > RATE.raidEta + 8 && r.stance === 'entrench' && s.shield >= entrenchHold(r) && s.structs.some((x) => x.cat === 'fleet' && x.hp > 0)) {
     fileReport(r, true);
     s.raid = null; s.raidsRepelled++; s.nextRaid = raidGap(); jobRepelled(r.startedAt);
+    s.report!.withdrew = true;
     s.withdrawals = (s.withdrawals ?? 0) + 1;
     if (s.withdrawals === 1) chronicle('cheong', `참호가 버텼다 · ${r.name} 함대 철수`);
     log('raid_status', 'attackerRetreated');
