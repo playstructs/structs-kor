@@ -9,9 +9,8 @@ import { wallet } from '../wallet/wallet';
 import { career, RANKS } from '../game/progress';
 import { sfx } from '../game/sfx';
 import { music } from '../game/music';
-import { roll, notes, float } from '../game/fx';
+import { roll, notes } from '../game/fx';
 import { NAV_KEYS } from '../game/keys';
-import { demo, HEGEMONY } from '../game/demo';
 import { portraitHtml, myPfp, onPfp } from '../game/portrait';
 import { guildApi } from '../api/guild';
 
@@ -23,7 +22,6 @@ const NAV: { path: string; label: string; icon: string }[] = [
   { path: '/galaxy', label: '은하', icon: I('<circle cx="12" cy="12" r="2"/><path d="M12 4c5 0 8 3 8 6M12 20c-5 0-8-3-8-6M4 8c2-3 5-4 8-4M20 16c-2 3-5 4-8 4"/>') },
   { path: '/energy', label: '전력망', icon: I('<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>') },
   { path: '/market', label: '거래소', icon: I('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>') },
-  { path: '/research', label: '연구소', icon: I('<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7 15h10"/>') },
   { path: '/campaign', label: '작전', icon: I('<path d="M4 21V4h11l-1 4h6v9h-9l1-4H4"/>') },
   { path: '/daily', label: '일일 교전', icon: I('<rect x="4" y="5" width="16" height="15"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/>') },
   { path: '/sim', label: '전투', icon: I('<path d="M5 19L19 5M15 5h4v4M9 19H5v-4M5 5l5 5M19 19l-5-5"/>') },
@@ -71,7 +69,6 @@ export function shell(root: HTMLElement) {
         <span id="who" class="hud-who"></span>
         <button class="hud-btn menu-btn" id="menu-btn" type="button" aria-label="메뉴 (F10)" aria-expanded="false" title="메뉴 (F10)"><i class="si icon-menu"></i></button>
       </div>
-      <div id="demo-bar" class="hud-tc"></div>
     </div>
     <div class="win-bar" id="win-bar">
       <a class="win-back" href="${href('/console')}"><i class="si icon-arrow" style="transform:scaleX(-1)"></i> 함교 <kbd>C</kbd></a>
@@ -119,10 +116,7 @@ export function shell(root: HTMLElement) {
   const paintPlate = () => {
     const r = career.rank;
     const next = RANKS[r.i + 1];
-    // On the demo base the plate also wears the hegemony title and the era.
-    const t = demo.on && session.status.state !== 'in' ? demo.hegemonyTier : 0;
-    const title = t ? `<span class="plate-title">${esc(HEGEMONY[t - 1].title)}${demo.era ? ` · 제${demo.era + 1}시대` : ''}</span>` : demo.on && demo.era && session.status.state !== 'in' ? `<span class="plate-title">제${demo.era + 1}시대</span>` : '';
-    plate.innerHTML = `<span class="plate-face">${portraitHtml(chainPfp ?? myPfp(), 40)}<span class="plate-ins">${insignia(r.i, 18)}</span></span><span class="plate-txt"><b>${esc(r.name)}${title}</b><span class="plate-xp"><i style="width:${Math.round(r.pct * 100)}%"></i></span><small class="mono">${next ? `${r.into}/${r.need} XP → ${esc(next)}` : `${r.xp} XP · 최고 계급`}</small></span>`;
+    plate.innerHTML = `<span class="plate-face">${portraitHtml(chainPfp ?? myPfp(), 40)}<span class="plate-ins">${insignia(r.i, 18)}</span></span><span class="plate-txt"><b>${esc(r.name)}</b><span class="plate-xp"><i style="width:${Math.round(r.pct * 100)}%"></i></span><small class="mono">${next ? `${r.into}/${r.need} XP → ${esc(next)}` : `${r.xp} XP · 최고 계급`}</small></span>`;
     plate.title = `총 ${r.xp} XP`;
   };
   // Signed in: the commander's own on-chain portrait; otherwise the local one (editable in 전적).
@@ -180,50 +174,20 @@ export function shell(root: HTMLElement) {
   paintBell();
   root.querySelector('#kbd')!.addEventListener('click', () => document.dispatchEvent(new KeyboardEvent('keydown', { key: '?' })));
 
-  const demoBar = root.querySelector<HTMLElement>('#demo-bar')!;
-  const paintDemo = () => {
-    // A signed-in commander is on the real chain: the demo base stays out of sight.
-    const ev = demo.event, bm = demo.on ? demo.black : null;
-    demoBar.innerHTML = demo.on && session.status.state !== 'in' ? `<div class="demo-bar"><b>데모</b>${ev ? `<span class="ev-chip ${ev.tone}" title="${esc(ev.text)}">${esc(ev.name)} · ${ev.left}블록</span>` : ''}${bm?.offers.length ? `<a class="ev-chip hwang" href="${href('/market')}" title="거래소에서 한 번씩만 파는 거래">밀수선 입항 · ${bm.left}블록</a>` : ''}<a class="btn primary" href="${href('/start')}" title="가상의 기지입니다. 실제 체인과 무관합니다.">실전 입대</a><button class="btn ghost" type="button" id="demo-off">데모 종료</button></div>` : '';
-    demoBar.querySelector('#demo-off')?.addEventListener('click', () => { demo.stop(); location.assign(href('/')); });
-  };
-  demo.onChange(paintDemo);
-  session.onChange(paintDemo);
-  paintDemo();
-  // The soundtrack carries the empire's weight (demo base only).
-  const tune = () => music.setPower(demo.on && session.status.state !== 'in' ? demo.hegemonyTier : 0);
-  demo.onChange(tune); session.onChange(tune); tune();
-
-  // The empire's pulse: every few blocks, what came in floats up from the alpha tile.
-  // Only what the blocks made counts: a loan, a hire or a new era moves the baseline, not the float.
-  let lastAlpha = demo.state.alpha, seen = demo.state.alpha, beats = 0, inBlock = false;
-  demo.onChange(() => { if (!inBlock) lastAlpha += demo.state.alpha - seen; seen = demo.state.alpha; });
-  demo.onBlock(() => {
-    inBlock = true; queueMicrotask(() => { inBlock = false; });
-    seen = demo.state.alpha;
-    if (!demo.on || session.status.state === 'in') { lastAlpha = demo.state.alpha; return; }
-    if (++beats % 5) return;
-    const gain = demo.state.alpha - lastAlpha;
-    lastAlpha = demo.state.alpha;
-    const tile = [...document.querySelectorAll<HTMLElement>('#tiles .tile')].find((t) => t.querySelector('small')?.textContent?.includes('알파'));
-    if (tile && Math.abs(gain) >= 0.05) float(tile, `${gain >= 0 ? '+' : '−'}${Math.abs(gain).toFixed(2)} α`, gain >= 0 ? 'var(--hwang)' : 'var(--jeok-hi)');
-  });
-
   const who = root.querySelector<HTMLElement>('#who')!;
   // 내 정보 (profile, where the recovery phrase is revealed) whenever this browser holds a commander;
   // a dot marks a phrase never looked at.
   const paintWho = () => {
     const s = session.status;
     const me = wallet.commander;
-    career.use(s.state === 'in' ? s.playerId : demo.on ? 'demo' : null);
+    career.use(s.state === 'in' ? s.playerId : null);
     const profile = me ? `<a class="btn ghost" href="${href('/profile')}" style="min-height:36px;position:relative">${s.state === 'in' ? `<span class="mono c-cheong">● ${esc(s.playerId)}</span>` : '내 정보'}${wallet.backedUp ? '' : '<span title="복구 문구를 아직 확인하지 않았습니다" style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;background:var(--hwang)"></span>'}</a>` : '';
     who.innerHTML = s.state === 'in'
       ? profile
-      : `${profile}<a class="btn ghost" href="${href('/login')}" style="min-height:36px">로그인</a>${me ? '' : `<a class="btn primary" href="${href('/start')}" style="min-height:36px">지금 시작</a>`}`;
+      : `${profile}<a class="btn ghost" href="${href('/login')}" style="min-height:36px">로그인</a>${me ? '' : `<a class="btn primary" href="${href('/start')}" style="min-height:36px">바로 플레이</a>`}`;
   };
   session.onChange(paintWho);
   wallet.onChange(paintWho);
-  demo.onChange(paintWho);
   onRoute(paintWho);
 
   const foot = root.querySelector<HTMLElement>('#foot')!;

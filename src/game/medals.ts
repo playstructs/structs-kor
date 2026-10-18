@@ -1,7 +1,6 @@
-/* Medals: earned from career stats and the demo base, announced the moment they're won, listed in
+/* Medals: earned from career stats (simulator, tutorial and real raids beaten back), announced the moment they're won, listed in
  * the service record. Which ones were already announced is kept per career in this browser. */
 import { career } from './progress';
-import { demo, vetRank } from './demo';
 import { banner } from './fx';
 import { sfx } from './sfx';
 import { tutorialDone } from './progress';
@@ -12,26 +11,8 @@ export const MEDALS: Medal[] = [
   { id: 'stars3', icon: 2, name: '완벽주의자', how: '3성 승리', earned: () => career.stats.simStars >= 3 },
   { id: 'gauntlet', icon: 1, name: '연전 제패', how: '5연전 완주', earned: () => career.stats.gauntlets >= 1 },
   { id: 'kills50', icon: 12, name: '격추왕', how: '누적 격파 50기', earned: () => career.stats.kills >= 50 },
-  { id: 'wall', icon: 19, name: '철벽', how: '습격 5회 격퇴', earned: () => demo.on && demo.state.raidsRepelled >= 5 },
-  { id: 'scholar', icon: 15, name: '연구자', how: '연구 5단계', earned: () => career.stats.research >= 5 },
-  { id: 'merchant', icon: 17, name: '상인', how: '전력 판매 계약', earned: () => demo.on && demo.state.earned > 0 },
-  { id: 'overlord', icon: 1, name: '패왕', how: '경쟁 세력 2곳 복속', earned: () => demo.on && demo.rivals().filter((r) => r.vassal != null).length >= 2 },
-  { id: 'architect', icon: 20, name: '건설자', how: '월드 엔진 완공', earned: () => demo.on && (demo.engine.done || demo.era >= 1) },
-  { id: 'hunter', icon: 8, name: '현상금 사냥꾼', how: '현상금 3회 수령', earned: () => demo.on && (demo.state.bountiesClaimed ?? 0) >= 3 },
-  { id: 'emperor', icon: 1, name: '은하 황제', how: '패권 지수 70% 돌파', earned: () => demo.on && demo.hegemonyTier >= 4 },
-  { id: 'tributary', icon: 17, name: '조공의 주인', how: '누적 공물 100 α', earned: () => demo.on && demo.tributeTotal >= 100 },
-  { id: 'voidbane', icon: 2, name: '공허 사냥꾼', how: '공허 함대 격파', earned: () => demo.on && (demo.state.voidKills ?? 0) >= 1 },
-  { id: 'veteran', icon: 3, name: '역전의 용사', how: '★★★ 베테랑 함선', earned: () => demo.on && demo.state.structs.some((x) => vetRank(x.kills) >= 3) },
-  { id: 'contractor', icon: 18, name: '해결사', how: '의뢰 5회 완수', earned: () => demo.on && (demo.jobs?.done ?? 0) >= 5 },
-  { id: 'warlord', icon: 10, name: '거점 군주', how: '거점 3곳 모두 장악', earned: () => demo.on && demo.outposts.every((o) => o.mine) },
-  { id: 'era2', icon: 20, name: '새 시대', how: '제2시대 개막', earned: () => demo.on && demo.era >= 1 },
-  { id: 'creed', icon: 15, name: '신념', how: '교리 채택', earned: () => demo.on && !!demo.doctrine },
-  { id: 'publicenemy', icon: 1, name: '공공의 적', how: '연합 함대 격퇴', earned: () => demo.on && (demo.state.coalitionWins ?? 0) >= 1 },
-  { id: 'avenger', icon: 3, name: '되갚음', how: '보복 출격 3회 성공', earned: () => demo.on && (demo.state.revengeWins ?? 0) >= 3 },
-  { id: 'bulwark', icon: 19, name: '철옹성', how: '참호로 습격 3회 철수시키기', earned: () => demo.on && (demo.state.withdrawals ?? 0) >= 3 },
-  { id: 'capitalist', icon: 17, name: '자본가', how: '누적 배당 50 α', earned: () => demo.on && demo.dividends >= 50 },
-  { id: 'smuggler', icon: 16, name: '뒷거래', how: '암시장 거래 3회', earned: () => demo.on && demo.black.deals >= 3 },
-  { id: 'shipwright', icon: 3, name: '조선공', how: '함선 3척 개장', earned: () => demo.on && demo.state.structs.filter((x) => x.mod && x.hp > 0).length >= 3 },
+  { id: 'guard1', icon: 19, name: '첫 방어', how: '행성 습격 격퇴', earned: () => career.stats.repelled >= 1 },
+  { id: 'wall', icon: 19, name: '철벽', how: '습격 5회 격퇴', earned: () => career.stats.repelled >= 5 },
   { id: 'cadet', icon: 16, name: '훈련 수료', how: '전투 훈련 이수', earned: () => tutorialDone() },
 ];
 
@@ -53,4 +34,3 @@ export function checkMedals() {
 }
 
 career.onChange(checkMedals);
-demo.onBlock(checkMedals);

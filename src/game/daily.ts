@@ -1,26 +1,16 @@
 /* 일일 임무: three orders a day, picked by the date (everyone gets the same ones), measured as
  * progress since the day began, 40 XP each and a bonus for all three. Resets at local midnight. */
 import { career } from './progress';
-import { demo } from './demo';
 import { hash32, mulberry } from '../core/util';
 
-interface Order { id: string; title: string; target: number; demoOnly?: boolean; value: () => number }
+interface Order { id: string; title: string; target: number; value: () => number }
 const ORDERS: Order[] = [
   { id: 'wins', title: '모의전 2승', target: 2, value: () => career.stats.simWins },
   { id: 'kills', title: '적 구조체 10기 격파', target: 10, value: () => career.stats.kills },
   { id: 'battles', title: '전투 3회 출격', target: 3, value: () => career.stats.simBattles },
-  { id: 'repel', title: '습격 1회 격퇴', target: 1, demoOnly: true, value: () => (demo.on ? demo.state.raidsRepelled : 0) },
-  { id: 'trade', title: '전력 판매로 2 α 벌기', target: 2, demoOnly: true, value: () => (demo.on ? demo.state.earned : 0) },
-  { id: 'research', title: '연구 1단계 완료', target: 1, demoOnly: true, value: () => career.stats.research },
   { id: 'stars', title: '모의전에서 별 3개 받기', target: 1, value: () => career.stats.perfect },
-  { id: 'decide', title: '결단 2회 내리기', target: 2, demoOnly: true, value: () => (demo.on ? demo.state.decided ?? 0 : 0) },
-  { id: 'bounty', title: '현상금 1회 수령', target: 1, demoOnly: true, value: () => (demo.on ? demo.state.bountiesClaimed ?? 0 : 0) },
-  { id: 'tribute', title: '공물 5 α 받기', target: 5, demoOnly: true, value: () => (demo.on ? demo.tributeTotal : 0) },
-  { id: 'black', title: '암시장 거래 1회', target: 1, demoOnly: true, value: () => (demo.on ? demo.black.deals : 0) },
-  { id: 'revenge', title: '보복 출격 1회 성공', target: 1, demoOnly: true, value: () => (demo.on ? demo.state.revengeWins ?? 0 : 0) },
-  { id: 'dividend', title: '배당 1 α 받기', target: 1, demoOnly: true, value: () => (demo.on ? demo.dividends : 0) },
-  { id: 'refit', title: '함선 1척 개장', target: 1, demoOnly: true, value: () => (demo.on ? demo.state.refits ?? 0 : 0) },
-  { id: 'jobs', title: '의뢰 1회 완수', target: 1, demoOnly: true, value: () => (demo.on ? demo.jobs?.done ?? 0 : 0) },
+  { id: 'daily', title: '일일 교전 1회 출격', target: 1, value: () => career.stats.dailyPlays },
+  { id: 'hits', title: '모의전 명중 15회', target: 15, value: () => career.stats.shotsHit },
 ];
 export const DAILY_XP = 40, DAILY_BONUS = 100;
 
@@ -33,7 +23,7 @@ function load(): Day {
   try { d = JSON.parse(localStorage.getItem(key()) || 'null'); } catch { /* fine */ }
   if (d && d.date === today()) return d;
   // A new day: three orders by the date, from the ones this commander can actually do.
-  const pool = ORDERS.filter((o) => demo.on || !o.demoOnly);
+  const pool = ORDERS;
   const r = mulberry(hash32('daily:' + today()));
   const picks: string[] = [];
   while (picks.length < 3 && picks.length < pool.length) { const o = pool[Math.floor(r() * pool.length)]; if (!picks.includes(o.id)) picks.push(o.id); }

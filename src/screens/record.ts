@@ -5,7 +5,6 @@ import { href } from '../router';
 import { html, mount, n, raw, type Safe } from '../ui/dom';
 import { career, missions, tutorialDone, RANKS, threshold } from '../game/progress';
 import { insignia } from '../ui/shell';
-import { demo, HEGEMONY } from '../game/demo';
 import { session } from '../api/session';
 import { wallet } from '../wallet/wallet';
 import { spriteHtml } from '../game/map/art';
@@ -24,8 +23,7 @@ const screen: Screen = {
     let chainPfp: string | null = null;
     const view = (): Safe => {
       const r = career.rank, st = career.stats;
-      const raids = demo.on ? demo.state.raidsRepelled : 0;
-      const ms = missions({ dash: demo.on ? demo.dashboard() : null, backedUp: wallet.backedUp, tutorial: tutorialDone(), signedIn: session.status.state === 'in' });
+      const ms = missions({ dash: null, backedUp: wallet.backedUp, tutorial: tutorialDone(), signedIn: session.status.state === 'in' });
       return html`
       <section class="card game-panel record-hero">
         <div class="record-face">${raw(portraitHtml(chainPfp ?? myPfp(), 144))}<span class="record-ins">${raw(insignia(r.i, 44))}</span></div>
@@ -42,18 +40,7 @@ const screen: Screen = {
           <button class="hud-btn" data-act="part" data-part="${part}" data-d="-1" aria-label="${PART_KO[part]} 이전">◀</button>
           <span class="mono">${cur()[part]} / ${PFP_COUNTS[part]}</span>
           <button class="hud-btn" data-act="part" data-part="${part}" data-d="1" aria-label="${PART_KO[part]} 다음">▶</button></div>`)}</div></section>`}
-      <div class="g4">${([['모의전', `${st.simWins}승 / ${st.simBattles}전`], ['누적 격파', String(st.kills)], ['최고 별', '★'.repeat(st.simStars) || '—'], ['연구', `${st.research}단계`], ['연전 제패', `${st.gauntlets}회`], ['일일 교전', `${st.dailyPlays}회`], ['습격 격퇴', demo.on ? `${raids}회` : '—'], ['판매 수익', demo.on ? `${demo.state.earned.toFixed(1)} α` : '—'],
-        ...(demo.on ? [
-          ['시대', `제${demo.era + 1}시대`], ['패권', (() => { const best = Math.max(demo.hegemonyTier, demo.state.hegemonyBest ?? 0); return `${Math.round(demo.hegemony() * 100)}%${best ? ` · ${HEGEMONY[best - 1].title}` : ''}`; })()],
-          ['속국', `${demo.rivals().filter((r) => r.vassal != null).length}곳`], ['누적 공물', `${demo.tributeTotal.toFixed(1)} α`],
-          ['현상금', `${demo.state.bountiesClaimed ?? 0}회`], ['공허 함대 격파', `${demo.state.voidKills ?? 0}회`],
-          ['길드 전 우승', `${demo.state.raceWins ?? 0}회`], ['결단', `${demo.state.decided ?? 0}회`],
-          ['보복 성공', `${demo.state.revengeWins ?? 0}회`], ['연합 함대 격퇴', `${demo.state.coalitionWins ?? 0}회`],
-          ['암시장 거래', `${demo.black.deals}회`], ['누적 배당', `${demo.dividends.toFixed(1)} α`], ['참호 철수', `${demo.state.withdrawals ?? 0}회`],
-        ] as [string, string][] : [])] as [string, string][]).map(([k, v]) => html`<div class="stat"><small>${k}</small><strong>${v}</strong></div>`)}</div>
-      ${demo.on ? html`<section class="card game-panel"><div class="card-head"><h2>제국 연대기</h2><span class="end label c-hwang">CHRONICLE</span></div>
-        ${demo.chronicle.length ? html`<ol class="chron">${[...demo.chronicle].reverse().map((c) => html`<li class="${c.tone}"><span class="mono faint">제${c.era + 1}시대 · #${n(c.h)}</span><b>${c.text}</b></li>`)}</ol>`
-          : html`<p class="note">아직 기록할 만한 일이 없습니다. 칭호, 복속, 반란, 월드 엔진, 새 시대가 여기에 남습니다.</p>`}</section>` : ''}
+      <div class="g4">${([['모의전', `${st.simWins}승 / ${st.simBattles}전`], ['누적 격파', String(st.kills)], ['최고 별', '★'.repeat(st.simStars) || '—'], ['연전 제패', `${st.gauntlets}회`], ['일일 교전', `${st.dailyPlays}회`], ['습격 격퇴', `${st.repelled}회`]] as [string, string][]).map(([k, v]) => html`<div class="stat"><small>${k}</small><strong>${v}</strong></div>`)}</div>
       <section class="card game-panel"><h2>훈장</h2>
         <div class="medals">${MEDALS.map((m) => { const got = m.earned(); return html`<div class="medal ${got ? 'got' : ''}">${pixel(m.icon)}<b>${m.name}</b><small>${got ? '획득' : m.how}</small></div>`; })}</div></section>
       <section class="card game-panel"><h2>작전 목표 전체</h2>

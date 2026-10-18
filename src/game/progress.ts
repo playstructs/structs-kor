@@ -4,7 +4,6 @@
 import { banner, notify } from './fx';
 import { sfx } from './sfx';
 import type { Dashboard } from '../api/planned';
-import { demo } from './demo';
 
 export const RANKS = ['이병', '일병', '상병', '병장', '하사', '중사', '상사', '소위', '중위', '대위', '소령', '중령', '대령', '준장', '소장', '중장', '대장', '원수'] as const;
 /** Cumulative XP needed to hold rank i. */
@@ -14,9 +13,9 @@ const PERKS: Record<number, string> = {
   3: '함교 위협 레이더 해금', 7: '장교 진급 · 일일 교전 랭킹 표시', 10: '전력망 워게임 고급 분석', 11: '대위 이상 · 길드 작전 지휘', 13: '장성 진급 · 금빛 휘장', 17: '은하 원수',
 };
 
-export interface Stats { simWins: number; simStars: number; simBattles: number; dailyPlays: number; shotsHit: number; kills: number; contracts: number; research: number; gauntlets: number; perfect: number }
+export interface Stats { simWins: number; simStars: number; simBattles: number; dailyPlays: number; shotsHit: number; kills: number; contracts: number; research: number; gauntlets: number; perfect: number; /** Real raids on your planet beaten back (alerts.ts). */ repelled: number }
 interface Saved { xp: number; claimed: string[]; stats: Stats }
-const blank = (): Saved => ({ xp: 0, claimed: [], stats: { simWins: 0, simStars: 0, simBattles: 0, dailyPlays: 0, shotsHit: 0, kills: 0, contracts: 0, research: 0, gauntlets: 0, perfect: 0 } });
+const blank = (): Saved => ({ xp: 0, claimed: [], stats: { simWins: 0, simStars: 0, simBattles: 0, dailyPlays: 0, shotsHit: 0, kills: 0, contracts: 0, research: 0, gauntlets: 0, perfect: 0, repelled: 0 } });
 
 let who = 'guest';
 const key = () => `structs-kor.career.${who}`;
@@ -28,6 +27,24 @@ const save = () => { try { localStorage.setItem(key(), JSON.stringify(s)); } cat
 const fns = new Set<() => void>();
 const emit = () => { for (const f of fns) f(); };
 
+/* The demo base is retired (src/game/retire.ts): the rank a player earned there comes with them to
+ * their first real commander, once, and the demo career is then gone. */
+function adoptDemoCareer() {
+  try {
+    const raw = localStorage.getItem('structs-kor.career.demo');
+    if (!raw) return;
+    const d = JSON.parse(raw) as Partial<Saved>;
+    if ((d.xp ?? 0) > s.xp) {
+      const keep = new Set(['simWins', 'simStars', 'simBattles', 'dailyPlays', 'shotsHit', 'kills', 'gauntlets', 'perfect']);
+      for (const [k, v] of Object.entries(d.stats ?? {})) if (keep.has(k) && typeof v === 'number') (s.stats as unknown as Record<string, number>)[k] = Math.max((s.stats as unknown as Record<string, number>)[k] ?? 0, v);
+      s.xp = d.xp ?? 0;
+      save();
+    }
+    localStorage.removeItem('structs-kor.career.demo');
+    localStorage.removeItem('structs-kor.demo.retired'); // a real commander needs no "the demo ended" note
+  } catch { /* storage refused: the demo career simply stays behind */ }
+}
+
 export function rankOf(xp: number) {
   let i = 0;
   while (i < RANKS.length - 1 && xp >= threshold(i + 1)) i++;
@@ -36,7 +53,7 @@ export function rankOf(xp: number) {
 }
 
 export const career = {
-  /** Whose career this is: 'guest', 'demo' or a player id. */
+  /** Whose career this is: 'guest' or a player id. */
   get who() { return who; },
   get xp() { return s.xp; },
   get rank() { return rankOf(s.xp); },
@@ -44,7 +61,11 @@ export const career = {
   claimed: (id: string) => s.claimed.includes(id),
   onChange(f: () => void) { fns.add(f); return () => fns.delete(f); },
   /** Switch to a commander's career (guest until someone signs in). */
-  use(id: string | null) { const next = id || 'guest'; if (next === who) return; who = next; s = load(); emit(); },
+  use(id: string | null) {
+    const next = id || 'guest'; if (next === who) return; who = next; s = load();
+    if (next !== 'guest' && next !== 'demo') adoptDemoCareer();
+    emit();
+  },
   award(xp: number, why: string) {
     if (xp <= 0) return;
     const before = rankOf(s.xp).i;
@@ -52,13 +73,9 @@ export const career = {
     const after = rankOf(s.xp);
     notify(`+${xp} XP`, why, 'hwang', 'coin');
     if (after.i > before) {
-      // A promotion also pays the demo base: 5 α a rank (each rank pays once per career).
-      // Only the demo commander's own promotions pay the demo base (a signed-in career never does).
-      const bonus = demo.on && who === 'demo' ? Array.from({ length: after.i - before }, (_, k) => 5 * (before + k + 1)).reduce((a, x) => a + x, 0) : 0;
-      if (bonus) demo.grant(bonus, `${after.name} 진급 상여`);
       setTimeout(() => {
         sfx.play('levelup');
-        banner({ kicker: '진급', title: after.name, sub: `${PERKS[after.i] ?? `${RANKS[before]} → ${after.name}`}${bonus ? ` · 상여 +${bonus} α` : ''}`, tone: 'gold', ms: 3200 });
+        banner({ kicker: '진급', title: after.name, sub: `${PERKS[after.i] ?? `${RANKS[before]} → ${after.name}`}`, tone: 'gold', ms: 3200 });
       }, 400);
     }
     emit();
@@ -98,8 +115,8 @@ export const MISSIONS: Mission[] = [
   { id: 'defense', title: '행성 방어포 배치', hint: '습격에 대비해 방어포를 세우세요', xp: 150, href: '/console', check: (c) => [has(c.dash, 19) ? 1 : 0, 1] },
   { id: 'sim10', title: '모의전 10승', hint: '전술을 다듬으세요', xp: 300, href: '/sim', check: (_, st) => [Math.min(10, st.simWins), 10] },
   { id: 'kills50', title: '격파 50기', hint: '모의전 누적 격파', xp: 350, href: '/sim', check: (_, st) => [Math.min(50, st.kills), 50] },
-  { id: 'guild', title: '길드 가입', hint: '길드에 들어가 이점을 받으세요', xp: 70, href: '/guild', check: (c) => [c.signedIn || (demo.on && demo.guild) ? 1 : 0, 1] },
-  { id: 'research3', title: '연구 3단계', hint: '연구소에서 알파로 기지를 강화하세요', xp: 150, href: '/research', check: (_, st) => [Math.min(3, st.research), 3] },
+  { id: 'guild', title: '길드 가입', hint: '길드에 들어가 이점을 받으세요', xp: 70, href: '/guild', check: (c) => [c.signedIn ? 1 : 0, 1] },
+  { id: 'repel1', title: '첫 습격 격퇴', hint: '방어포와 함대로 행성을 지켜 내세요', xp: 150, href: '/console', check: (_, st) => [Math.min(1, st.repelled), 1] },
   { id: 'gauntlet', title: '연전 제패', hint: '5연전을 끝까지 살아남으세요', xp: 400, href: '/sim', check: (_, st) => [Math.min(1, st.gauntlets), 1] },
   { id: 'daily', title: '일일 교전 참가', hint: '모든 사령관과 같은 시드로 겨루세요', xp: 90, href: '/daily', check: (_, st) => [Math.min(1, st.dailyPlays), 1] },
 ];

@@ -5,8 +5,8 @@ import './styles/sui.css';
 import './game/sfx';
 import './game/keys';
 import './game/music';
-import { demo } from './game/demo';
-import './game/director';
+import { retireDemo } from './game/retire';
+import './game/alerts';
 import './game/medals';
 import { href, onRoute, route, startRouter } from './router';
 import { applySeo } from './seo';
@@ -18,7 +18,7 @@ import { startDesktop } from './core/desktop';
 
 shell(document.getElementById('app')!);
 onRoute((path) => applySeo(path, SITE_URL, href('')));
-demo.run();
+retireDemo();
 
 route('/', () => import('./screens/home'));
 route('/login', () => import('./screens/login'));
@@ -26,7 +26,6 @@ route('/start', () => import('./screens/login'));
 route('/console', () => import('./screens/console'));
 route('/energy', () => import('./screens/energy'));
 route('/market', () => import('./screens/market'));
-route('/research', () => import('./screens/research'));
 route('/record', () => import('./screens/record'));
 route('/galaxy', () => import('./screens/galaxy'));
 route('/campaign', () => import('./screens/campaign'));

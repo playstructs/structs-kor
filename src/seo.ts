@@ -39,11 +39,10 @@ export const PAGES: Record<string, PageSeo> = {
   '/galaxy': { title: '은하 지도', description: '은하의 상위 사령관과 행성을 살펴보고 함대를 출격시키세요.', priority: 0.7, changefreq: 'daily' },
   '/energy': { title: '전력망', description: '발전기, 변전소, 전력 할당. 정전(브라운아웃)을 미리 계산하고 구조체 전력을 관리하세요.', priority: 0.6, changefreq: 'weekly' },
   '/market': { title: '에너지 거래소', description: '전력 계약, 공급자, 길드 은행. 알파 매터와 에너지를 사고파세요.', priority: 0.6, changefreq: 'daily' },
-  '/research': { title: '연구소', description: '기술을 연구해 기지와 함대를 강화하세요.', priority: 0.6, changefreq: 'weekly' },
   '/replicants': { title: '레플리칸트', description: '레플리칸트를 복제하고 상시 명령을 맡겨 기지를 자동으로 운영하세요.', priority: 0.6, changefreq: 'weekly' },
   '/guild': { title: '길드', description: '길드 명단과 은행. 동료와 전력을 나누고 동맹 행성을 함께 방어하세요.', priority: 0.7, changefreq: 'daily' },
   '/chat': { title: '통신', description: '길드 채널과 교신 기록. Matrix 기반 실시간 길드 채팅.', priority: 0.5, changefreq: 'daily' },
-  '/record': { title: '전적 · 제국 연대기', description: '칭호, 봉신, 반란, 시대를 기록한 제국 연대기와 훈장, 순위.', priority: 0.5, changefreq: 'weekly' },
+  '/record': { title: '전적', description: '사령관 계급과 경력, 훈장, 작전 목표.', priority: 0.5, changefreq: 'weekly' },
   '/profile': { title: '사령관 프로필', description: '사령관 프로필.', hidden: true },
   '/404': { title: '찾을 수 없는 좌표', description: '요청한 페이지를 찾을 수 없습니다.', hidden: true },
 };

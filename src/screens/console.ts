@@ -21,7 +21,7 @@ import { hegemonyMeter } from '../game/meter';
 import { advise, adviseReal } from '../game/advisor';
 import { career, activeMissions, tutorialDone, RANKS, type MissionState } from '../game/progress';
 import { sfx } from '../game/sfx';
-import { banner, notify, float, flash, shake } from '../game/fx';
+import { banner, notify, float, shake } from '../game/fx';
 import { keys } from '../game/keys';
 import { spriteHtml, tileUrl, AMBIT_BG } from '../game/map/art';
 import { portraitHtml, seededPfp, myPfp } from '../game/portrait';
@@ -75,7 +75,6 @@ const screen: Screen = {
     let intelTab: string | null = innerWidth > 1100 ? 'radar' : null;
     let opsOpen = false;
     let board: Board | null = null;
-    let lastRaidKey = '';
     const offs: (() => void)[] = [];
 
     const ctx = () => ({ dash: d, backedUp: wallet.backedUp, tutorial: tutorialDone(), signedIn: session.status.state === 'in' });
@@ -699,12 +698,13 @@ const screen: Screen = {
       if (!tourSeen('bridge')) setTimeout(() => { if (root.isConnected) runTour('bridge', BRIDGE_TOUR); }, demo.state.seq === 0 ? 3900 : 600);
     } else {
       const again = throttled(() => void load(), 2000);
+      // A new commander's first look at the bridge: the spotlight tour.
+      if (!tourSeen('bridge')) setTimeout(() => { if (root.isConnected) runTour('bridge', BRIDGE_TOUR); }, 900);
       offs.push(onGrass(`structs.grid.player.${pid}.>`, again), onGrass(`structs.player.*.${pid}`, again));
       if (d?.player.planet_id) offs.push(onGrass(`structs.planet.${d.player.planet_id}.>`, (e) => {
         again();
         if (e.category === 'struct_attack' && e.data.detail && board) board.playAttack(e.data.detail as never);
-        const key = e.category + ':' + String(e.data.status ?? '');
-        if (e.category === 'raid_status' && key !== lastRaidKey) { lastRaidKey = key; sfx.play('alarm'); flash(); }
+        // The raid alarm itself is src/game/alerts.ts, so it sounds on every screen.
       }));
     }
     offs.push(career.onChange(() => repaint()));

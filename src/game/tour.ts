@@ -1,5 +1,4 @@
-/* Coach marks: a short spotlight tour over the bridge the first time someone takes command of the
- * demo base. Each step dims the screen except one element and says what it is for. Enter or the
+/* Coach marks: a short spotlight tour over the bridge the first time a commander takes command. Each step dims the screen except one element and says what it is for. Enter or the
  * button advances; Escape ends it. Replayable from the ? help. */
 import { sfx } from './sfx';
 
@@ -7,11 +6,11 @@ export interface Step { sel: string; title: string; text: string }
 const KEY = 'structs-kor.tour';
 
 export const BRIDGE_TOUR: Step[] = [
-  { sel: '#tiles', title: '자원', text: '알파는 안전한 재화, 광석은 약탈당할 수 있는 원료입니다. 숫자 옆은 블록당 변화량. 다음 습격 칸은 남은 블록과 가장 유력한 세력입니다.' },
+  { sel: '#tiles', title: '자원', text: '알파는 안전한 재화, 광석은 약탈당할 수 있는 원료입니다. 전력은 구조체를 돌리는 용량입니다.' },
   { sel: '.bd-map', title: '전장', text: '내 행성입니다. 빈 칸(신호기)을 누르면 건설, 구조체를 누르면 선택. 오른쪽 안개 너머에서 습격이 옵니다. 드래그로 이동, Z로 확대.' },
-  { sel: '.ops', title: '작전 목표', text: '목표를 채우면 보상 수령으로 XP를 받고 진급합니다. 높은 계급은 깊은 연구를 엽니다.' },
-  { sel: '.ab-bar.player', title: '명령 패널', text: '선택한 것의 명령이 여기 뜹니다. 아무것도 고르지 않으면 기지 명령: Q 정제 · E 건설 · I 주입, 능력은 7–0. 습격이 오면 오른쪽 아래 적 패널에서 A 요격 · S 참호.' },
-  { sel: '#menu-btn', title: '메뉴', text: '은하 지도, 연구소, 거래소, 작전… 모든 화면은 메뉴(F10)에서. 각 화면은 단축키로도 바로 열리고, Esc로 함교에 돌아옵니다. ? 는 모든 단축키.' },
+  { sel: '.ops', title: '작전 목표', text: '목표를 채우면 보상 수령으로 XP를 받고 진급합니다. 건설·채굴·정제의 작업 증명도 여기서 진행됩니다.' },
+  { sel: '.ab-bar.player', title: '명령 패널', text: '선택한 것의 명령이 여기 뜹니다. 아무것도 고르지 않으면 기지 명령: Q 정제 · E 건설 · I 주입. 습격이 오면 적 함대가 판에 나타나고, 내 구조체로 반격할 수 있습니다.' },
+  { sel: '#menu-btn', title: '메뉴', text: '은하 지도, 거래소, 길드, 작전… 모든 화면은 메뉴(F10)에서. 각 화면은 단축키로도 바로 열리고, Esc로 함교에 돌아옵니다. ? 는 모든 단축키.' },
 ];
 
 export const GALAXY_TOUR: Step[] = [

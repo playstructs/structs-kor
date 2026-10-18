@@ -13,7 +13,6 @@ export const NAV_KEYS: { key: string; path: string; label: string }[] = [
   { key: 'p', path: '/galaxy', label: '은하 지도' },
   { key: 'g', path: '/energy', label: '전력망' },
   { key: 't', path: '/market', label: '거래소' },
-  { key: 'u', path: '/research', label: '연구소' },
   { key: 'b', path: '/sim', label: '전투 시뮬' },
   { key: 'v', path: '/daily', label: '일일 교전' },
   { key: 'o', path: '/campaign', label: '작전' },
