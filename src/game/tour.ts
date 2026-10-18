@@ -7,7 +7,7 @@ export interface Step { sel: string; title: string; text: string }
 const KEY = 'structs-kor.tour';
 
 export const BRIDGE_TOUR: Step[] = [
-  { sel: '#tiles', title: '자원', text: '알파는 안전한 재화, 광석은 약탈당할 수 있는 원료입니다. 숫자 옆은 블록당 변화량.' },
+  { sel: '#tiles', title: '자원', text: '알파는 안전한 재화, 광석은 약탈당할 수 있는 원료입니다. 숫자 옆은 블록당 변화량. 다음 습격 칸은 남은 블록과 가장 유력한 세력입니다.' },
   { sel: '.bridge-c', title: '행성', text: '내 기지입니다. 빈 칸을 누르면 건설, 구조체를 누르면 정보와 전원·수리. 오른쪽 안개 너머에서 습격이 옵니다.' },
   { sel: '.bridge-l .obj', title: '작전 목표', text: '목표를 채우면 보상 수령으로 XP를 받고 진급합니다. 높은 계급은 깊은 연구를 엽니다.' },
   { sel: '.cmdbar', title: '명령', text: 'Q 정제 · E 건설 · I 주입 · G 전력망 · T 거래 · B 전투. 키보드로도 지휘할 수 있습니다.' },
@@ -17,7 +17,7 @@ export const BRIDGE_TOUR: Step[] = [
 export const GALAXY_TOUR: Step[] = [
   { sel: 'svg.gx', title: '은하', text: '청록은 내 행성, 붉은 점은 경쟁 세력, ▲는 거점, 보라는 공허 함대. 휠과 드래그로 확대·이동, 0으로 전체 보기.' },
   { sel: '.gx-wrap aside .card', title: '정보', text: '행성이나 거점을 누르면 여기에 정찰·습격·공작·동맹·복속 명령이 나옵니다. 정찰하면 예상 승률이 보입니다.' },
-  { sel: '.hegemony', title: '패권 지수', text: '은하 전체 세력 중 내 몫. 25·40·55·70%에서 칭호를 받고, 70%면 은하 황제입니다.' },
+  { sel: '.hegemony', title: '패권 지수', text: '은하 전체 세력 중 내 몫. 25·40·55·70%에서 칭호를 받고, 70%면 은하 황제입니다. 55%를 넘으면 세력들이 연합해 맞섭니다.' },
 ];
 
 let active: { close: () => void } | null = null;
