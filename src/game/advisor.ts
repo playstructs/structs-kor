@@ -48,6 +48,10 @@ export function advise(rank = 99): Tip[] {
   if (v) tips.push({ pri: 86, tone: 'jeok', text: `공허 함대 출현 · ${v.left}블록 뒤 누군가를 덮칩니다. 요격하면 ${v.reward} α.`, go: '/sim?raid=void', cta: '요격' });
   const b = demo.bounty, bt = b && demo.rivals().find((x) => x.id === b.target);
   if (b && bt && bt.vassal == null) tips.push({ pri: 68, tone: 'hwang', text: `${bt.name}에게 현상금 ${demo.bountyPayout()} α · ${b.left}블록 남음. 습격에 이기면 노획과 함께 받습니다.`, go: `/sim?raid=${bt.id}`, cta: '습격' });
+  // Past the first raids they come bigger: a defence cannon (2 damage a volley) holds the line.
+  const fights = st.raidsRepelled + st.raidsLost;
+  if (fights >= 3 && !st.structs.some((x) => x.type === 19 && x.hp > 0)) tips.push({ pri: 58, tone: 'hwang', text: `습격 함대가 커지고 있습니다. 행성 방어포를 세우면 매 블록 2배 피해로 반격합니다 · 빈 행성 슬롯에 건설하세요.`, go: '/console', cta: '함교' });
+  else if (fights >= 5 && st.raidsLost > st.raidsRepelled / 2 && (demo.level('guns') < 1)) tips.push({ pri: 52, tone: 'hwang', text: `습격을 자주 놓칩니다. 연구소의 함포 조준 체계가 방어 사격에 추가 피해를 줍니다.`, go: '/research', cta: '연구소' });
   // A small fleet can't strike back: building warships is free, it only takes power.
   const ships = st.structs.filter((x) => x.cat === 'fleet' && x.type !== 1 && x.hp > 0).length;
   if (ships < 5 && demo.capacityKw() - demo.structsKw() - demo.soldKw() >= 0.6) tips.push({ pri: 48, tone: 'cheong', text: `함대 ${ships}척 · 여유 전력으로 함대 슬롯에 전함을 건조하면 습격 승률이 오릅니다 (건조는 전력만 듭니다).`, go: '/console', cta: '함교' });
