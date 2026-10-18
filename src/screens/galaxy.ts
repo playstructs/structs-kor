@@ -136,7 +136,7 @@ const screen: Screen = {
         ...demo.rivals().map((r) => ({ id: r.id, label: demo.bounty?.target === r.id ? `◆ ${r.name}` : r.name, index: planetIx(r.id), weight: demo.rivalWorth(r), home: false, vassal: r.vassal != null })),
         { id: DEMO_ID, label: '한빛 IV', index: HOME, weight: demo.netWorth(), home: true },
         ...demo.outposts.map((o) => ({ id: `op:${o.id}`, label: `▲ ${o.name}`, index: o.index, weight: demo.netWorth() * 0.15, home: false, site: (o.mine ? 'mine' : o.owner ? 'theirs' : 'free') as 'mine' | 'theirs' | 'free' })),
-        ...(demo.boss ? [{ id: 'void', label: `공허 함대 · ${demo.boss.left}`, index: 1390, weight: demo.netWorth() * 0.8, home: false, void: true }] : []),
+        ...(demo.boss ? [{ id: 'void', label: `공허 함대 · ${demo.boss.left || '곧'}`, index: 1390, weight: demo.netWorth() * 0.8, home: false, void: true }] : []),
       ];
       const from = raid ? demo.rivals().find((r) => r.id === raid.owner) : null;
       const w = demo.war;
