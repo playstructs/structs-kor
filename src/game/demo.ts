@@ -17,7 +17,9 @@ const ONLINE = 4, DESTROYED = 32, BUILT = 1;
 export const DEMO_ID = '1-0';
 const PLANET = '2-118';
 
-export interface DemoStruct { id: string; type: number; ambit: Ambit; slot: number; cat: 'planet' | 'fleet'; online: boolean; hp: number; max: number; building: number | null; buildBlocks: number; protects: string | null; /** Overclocked: more output, more power, wear. */ oc?: boolean }
+export interface DemoStruct { id: string; type: number; ambit: Ambit; slot: number; cat: 'planet' | 'fleet'; online: boolean; hp: number; max: number; building: number | null; buildBlocks: number; protects: string | null; /** Overclocked: more output, more power, wear. */ oc?: boolean; /** Kills scored in raids (veterancy). */ kills?: number }
+/** Veteran rank from kills: ★ at 3, ★★ at 8, ★★★ at 15. */
+export const vetRank = (kills = 0) => (kills >= 15 ? 3 : kills >= 8 ? 2 : kills >= 3 ? 1 : 0);
 export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number }
 interface Contract { id: string; kw: number; rate: number; left: number; buyer: string; dir?: 'buy' | 'sell' }
 
@@ -875,7 +877,8 @@ function raidStep() {
     const left = r.structs.filter((x) => x.hp > 0);
     if (!left.length) break;
     const tgt = left.find((x) => x.type !== 1) ?? left[0];
-    attack(d, tgt, (d.type === 19 ? 2 : 1) + (rnd() < 0.25 * lv('guns') + (inGuild('iron') ? 0.1 : 0) ? 1 : 0), rnd() < 0.15);
+    // Veterans (★★ and up) hit harder.
+    attack(d, tgt, (d.type === 19 ? 2 : 1) + (vetRank(d.kills) >= 2 ? 1 : 0) + (rnd() < 0.25 * lv('guns') + (inGuild('iron') ? 0.1 : 0) ? 1 : 0), rnd() < 0.15);
   }
   const cmdDown = r.structs.find((x) => x.type === 1)!.hp <= 0;
   if (cmdDown || r.structs.every((x) => x.hp <= 0)) {
@@ -1075,6 +1078,18 @@ export const demo = {
     return null;
   },
   covert,
+  /** Credit kills from a raid to the ships that scored them; returns the promotions (name, new rank). */
+  creditKills(byId: Record<string, number>): { id: string; type: number; rank: number }[] {
+    adoptStored();
+    const up: { id: string; type: number; rank: number }[] = [];
+    for (const x of s.structs) {
+      const k = byId[x.id]; if (!k) continue;
+      const before = vetRank(x.kills); x.kills = (x.kills ?? 0) + k;
+      if (vetRank(x.kills) > before) up.push({ id: x.id, type: x.type, rank: vetRank(x.kills) });
+    }
+    persist(); for (const f of changeFns) f();
+    return up;
+  },
   get ally() { const id = allyId(); return id ? { id, left: s.ally!.until - s.height, name: rivals().find((r) => r.id === id)?.name ?? id } : null; },
   /** Buy an alliance with a rival for ALLY.term blocks. */
   formAlliance(id: string): string | null {

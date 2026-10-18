@@ -16,7 +16,7 @@ import { onGrass, throttled } from '../grass/grass';
 import { AMBIT, STRUCT_TYPE, activityLabel } from '../i18n/ko';
 import { TYPES_BY_ID, STRUCT_TYPES, AMBIT_FLAG, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
 import { Board, type BoardStruct } from '../game/map/board';
-import { demo, DEMO_ID, ENGINE, OC } from '../game/demo';
+import { demo, DEMO_ID, ENGINE, OC, vetRank } from '../game/demo';
 import { hegemonyMeter } from '../game/meter';
 import { advise, adviseReal } from '../game/advisor';
 import { career, activeMissions, tutorialDone, type MissionState } from '../game/progress';
@@ -45,6 +45,7 @@ function toBoard(d: Dashboard): BoardStruct[] {
       online: (s.status & ONLINE) !== 0, protects: s.protected_struct_id,
       building: d.player.id === DEMO_ID ? demo.buildProgress(s.id) : null,
       hot: d.player.id === DEMO_ID && !!demo.state.structs.find((x) => x.id === s.id)?.oc,
+      vet: d.player.id === DEMO_ID ? vetRank(demo.state.structs.find((x) => x.id === s.id)?.kills) : 0,
     } satisfies BoardStruct;
   });
 }
@@ -252,6 +253,7 @@ const screen: Screen = {
             <div class="stat"><small>전력 소비</small><strong>${watts(t?.passiveDraw)}</strong></div>
             <div class="stat"><small>상태</small><strong class="${building != null ? 'c-warn' : online ? 'c-cheong' : 'c-hwang'}">${building != null ? `건설 ${Math.round(building * 100)}%` : online ? '가동' : '꺼짐'}</strong></div>
             <div class="stat"><small>무기</small><strong style="font-size:13px">${t?.primaryWeaponDamage ? `${t.primaryWeaponDamage}×${t.primaryWeaponShots} 피해` : '없음'}</strong></div>
+            ${isDemo && (demo.state.structs.find((x) => x.id === s.id)?.kills ?? 0) > 0 ? (() => { const k = demo.state.structs.find((x) => x.id === s.id)!.kills!, v = vetRank(k); return html`<div class="stat"><small>전과</small><strong style="font-size:13px" class="c-hwang">${v ? `베테랑 ${'★'.repeat(v)} · ` : ''}격파 ${k}${v >= 2 ? ' · 방어 사격 +1' : ''}</strong></div>`; })() : ''}
           </div>
           ${t ? html`<p class="note">${[t.passiveWeaponry, t.unitDefenses, t.planetaryDefenses, t.planetaryMining, t.planetaryRefinery, t.powerGeneration].filter((v) => v && !/^no[A-Z]/.test(String(v))).join(' · ') || '특수 능력 없음'}</p>` : ''}
           <div style="display:flex;gap:8px;flex-wrap:wrap">

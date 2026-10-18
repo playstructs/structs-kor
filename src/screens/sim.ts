@@ -299,6 +299,10 @@ const screen: Screen = {
             const cs = chain?.get(idMap[u.id]);
             if (raidIds[u.id]) hp[raidIds[u.id]] = !cs || chain!.isDestroyed(cs) ? 0 : cs.health;
           }
+          // Kills scored by your own ships stay with them (veterancy); an ally's don't.
+          const kills: Record<string, number> = {};
+          for (const [uid, sid] of Object.entries(raidIds)) { const k = ace[idMap[uid]]?.kills; if (k) kills[sid] = k; }
+          for (const v of demo.creditKills(kills)) setTimeout(() => notify('베테랑 진급', `${STRUCT_TYPE[v.type] ?? v.type} ${'★'.repeat(v.rank)}`, 'hwang', 'levelup'), 2400);
           loot = demo.settleRaid(raidOn.id, w === 'player', hp);
           if (w === 'player') setTimeout(() => career.award(80 + raidOn.fleet * 10, `${raidOn.name} 습격 성공`), 1600);
         }

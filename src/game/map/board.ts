@@ -23,6 +23,8 @@ export interface BoardStruct {
   online?: boolean; hidden?: boolean; protects?: string | null; building?: number | null;
   /** Running past spec (demo overclock): drawn hot. */
   hot?: boolean;
+  /** Veteran rank (0–3): stars on its tag. */
+  vet?: number;
 }
 export interface BoardOpts {
   /** Planetary slots per ambit; omit for a fleet-only (simulator) board. */
@@ -253,7 +255,7 @@ export class Board {
     if (!s || !cell) return;
     const mount = cell.querySelector<HTMLElement>('.bd-mount')!;
     const hp = hpOverride ?? s.health;
-    const sig = [s.typeId, hp, s.maxHealth, s.online, s.hidden, s.protects, s.building, s.isCommand, s.hot].join('|');
+    const sig = [s.typeId, hp, s.maxHealth, s.online, s.hidden, s.protects, s.building, s.isCommand, s.hot, s.vet].join('|');
     if (this.painted.get(id) === sig && cell.querySelector('.bd-still')) return;
     this.painted.set(id, sig);
     if (hp <= 0) { this.clear(cell); return; }
@@ -263,7 +265,7 @@ export class Board {
       ? `<img src="${import.meta.env.BASE_URL}img/structs/deployment-indicator/deployment-indicator.gif" style="z-index:200" alt="">`
       : stillLayers(s.typeId, hp, s.maxHealth, s.hidden).map((l) => `<img src="${l.src}" style="z-index:${l.z}" alt="">`).join('');
     const pips = Array.from({ length: s.maxHealth }, (_, i) => `<i class="${i < hp ? 'on' : ''}"></i>`).join('');
-    const badges = [offline ? '<span class="bd-badge off" title="오프라인">OFF</span>' : '', s.protects ? '<span class="bd-badge def" title="방어 중">DEF</span>' : '', s.isCommand ? '<span class="bd-badge cmd" title="지휘함">CMD</span>' : '', s.hot && !offline ? '<span class="bd-badge hot" title="과부하 운전">OC</span>' : '', s.building != null ? `<span class="bd-badge bld">${Math.round(s.building * 100)}%</span>` : ''].join('');
+    const badges = [offline ? '<span class="bd-badge off" title="오프라인">OFF</span>' : '', s.protects ? '<span class="bd-badge def" title="방어 중">DEF</span>' : '', s.isCommand ? '<span class="bd-badge cmd" title="지휘함">CMD</span>' : '', s.hot && !offline ? '<span class="bd-badge hot" title="과부하 운전">OC</span>' : '', s.vet ? `<span class="bd-badge vet" title="베테랑">${'★'.repeat(s.vet)}</span>` : '', s.building != null ? `<span class="bd-badge bld">${Math.round(s.building * 100)}%</span>` : ''].join('');
     mount.innerHTML = `<div class="bd-still${offline ? ' bd-offline' : ''}${s.hot && !offline ? ' bd-hot' : ''}${s.hidden ? ' bd-stealth' : ''}">${layers}</div><div class="bd-anims"></div>`;
     let hud = cell.querySelector<HTMLElement>('.bd-hud');
     if (!hud) { hud = document.createElement('div'); hud.className = 'bd-hud'; cell.appendChild(hud); }

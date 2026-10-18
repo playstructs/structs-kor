@@ -64,3 +64,4 @@
 .bd-hot { filter: drop-shadow(0 0 6px rgba(238,90,70,.85)) saturate(1.3); animation: bd-heat .9s steps(3) infinite alternate; }
 @keyframes bd-heat { to { filter: drop-shadow(0 0 12px rgba(255,120,60,.95)) saturate(1.5) brightness(1.08); } }
 @media (prefers-reduced-motion: reduce) { .bd-hot { animation: none; } }
+.bd-badge.vet { color: #F3C878; border-color: #785B02; letter-spacing: -1px; }

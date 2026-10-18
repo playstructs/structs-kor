@@ -593,3 +593,13 @@ test('chaos: 3000 blocks of random player actions never throw or produce NaN, an
   assert.ok(finite(demo.state), 'no NaN or Infinity anywhere in the base');
   assert.ok(JSON.stringify(demo.state).length < 60_000, 'the save stays small');
 });
+
+test('veterancy: kills credited from raids raise a ship to ★, ★★, ★★★', async () => {
+  const { vetRank } = await import('../src/game/demo');
+  demo.reset();
+  const ship = demo.state.structs.find((x) => x.cat === 'fleet' && x.type !== 1)!;
+  assert.deepEqual(demo.creditKills({ [ship.id]: 3 }).map((v) => v.rank), [1]);
+  assert.deepEqual(demo.creditKills({ [ship.id]: 5 }).map((v) => v.rank), [2]);
+  assert.equal(vetRank(ship.kills), 2);
+  assert.deepEqual(demo.creditKills({ [ship.id]: 1 }), [], 'no promotion between ranks');
+});
