@@ -16,6 +16,7 @@ import { Board, type BoardStruct } from '../game/map/board';
 import { TYPES_BY_ID, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
 import { portraitHtml, seededPfp } from '../game/portrait';
 import { setTiles } from '../ui/shell';
+import { onGrass, throttled } from '../grass/grass';
 import { serviceRecord, roman, type Ribbon } from '../social/record';
 import { actions } from '../api/actions';
 import { wallet } from '../wallet/wallet';
@@ -147,7 +148,13 @@ const screen: Screen = {
     await load();
     // Live: a watched planet refreshes every 15 s (raids move fast); everything else every minute.
     timer = window.setInterval(() => { if (root.isConnected && !document.hidden) void load(); }, kind === 'planet' ? 15_000 : 60_000);
-    return () => { clearInterval(timer); board?.dispose(); setTiles([]); };
+    // A watched planet plays its fights as they happen (GRASS), like the bridge does for your own.
+    const again = throttled(() => { if (root.isConnected) void load(); }, 2500);
+    const offLive = kind === 'planet' ? onGrass(`structs.planet.${id}.>`, (e) => {
+      if (e.category === 'struct_attack' && e.data.detail && board) board.playAttack(e.data.detail as never);
+      else again();
+    }) : () => undefined;
+    return () => { clearInterval(timer); offLive(); board?.dispose(); setTiles([]); };
   },
 };
 export default screen;
