@@ -91,6 +91,19 @@ async function send(name: string, value: MsgValue, index: number): Promise<strin
   return r.txhash;
 }
 
+/** A dry run: sign the message as the commander would and ask the chain's LCD to simulate it. Nothing is
+ * broadcast, no sequence is used, no fee is paid; a pass proves the encoding, the account and the
+ * message's own checks against the live chain. Each step's result is reported to `step`. */
+export async function simulate(name: string, value: MsgValue, step: (what: string, detail: string) => void, index = 0): Promise<{ gasUsed: string }> {
+  if (MOCK) throw new Error('모의 모드에서는 체인 점검을 하지 않습니다');
+  const key = wallet.key(index);
+  const chain = await chainId(); step('체인', chain);
+  const acc = await account(key.address); step('계정', `번호 ${acc.account_number} · 순번 ${acc.sequence}`);
+  const tx = signTx(key, [{ typeUrl: typeUrlOf(name), value: { creator: key.address, ...value } }], chain, acc); step('서명', `${name} · ${tx.length}바이트`);
+  const r = await lcd<{ gas_info?: { gas_used: string } }>('/cosmos/tx/v1beta1/simulate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tx_bytes: toB64(tx) }) });
+  return { gasUsed: r.gas_info?.gas_used ?? '?' };
+}
+
 export const actions = {
   structActivate: (structId: string) => act('MsgStructActivate', { structId }),
   structDeactivate: (structId: string) => act('MsgStructDeactivate', { structId }),

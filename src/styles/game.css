@@ -627,3 +627,7 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .gx-node.site.mine .core { fill: var(--cheong); }
 .gx-node.site.mine .halo { stroke: var(--cheong); fill: rgba(67,205,182,.12); }
 .gx-node.site.theirs .core { fill: var(--jeok); }
+
+/* 체인 점검 */
+.chain-check { display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--line); }
+.chain-check .btn { justify-self: start; }

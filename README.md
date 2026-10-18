@@ -62,6 +62,8 @@ Signed-in commanders can finish builds, mining, refining and raids from the brid
 
 Starting the work is signed in the browser too: the bridge's build menu sends `MsgStructBuildInitiate`, and the galaxy map's 출격 sends `MsgFleetMove` (behind a confirmation) so the raid begins on arrival; both then appear as work rows the engine proves. During a raid on your planet the raiding fleet's structs appear on the bridge board, and a selected struct can fire on them (`MsgStructAttack`, confirmed), or be ordered to guard another (`MsgStructDefenseSet`). Dev: `?mockraid=1` adds a raid to the mock.
 
+**Checking real mode without risk:** 내 정보 (`/profile`) has a 체인 점검: it signs a power order for one of your structs exactly as a real move would and asks the chain's LCD to *simulate* it (`/cosmos/tx/v1beta1/simulate`). Nothing is broadcast, no sequence or fee is used; a pass proves the browser's signing, the message encoding and the account against the live chain.
+
 ## The game layer (`src/game`)
 
 | | |

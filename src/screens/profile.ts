@@ -7,12 +7,17 @@ import { html, mount, toast, type Safe } from '../ui/dom';
 import { wallet } from '../wallet/wallet';
 import { session } from '../api/session';
 import { GUILD_ID } from '../config';
+import { simulate } from '../api/actions';
+import { guildApi } from '../api/guild';
+import { MOCK } from '../api/http';
 
 const SHOW_FOR_MS = 60_000;
 
 const screen: Screen = {
   render(root) {
     let phrase: string | null = null, err = '', busy = false;
+    // 체인 점검: the dry run's steps as they come back, and the verdict.
+    let check: { steps: [string, string][]; verdict: string | null; ok: boolean | null; running: boolean } = { steps: [], verdict: null, ok: null, running: false };
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
     const hide = () => { phrase = null; if (hideTimer) clearTimeout(hideTimer); hideTimer = null; };
 
@@ -30,6 +35,14 @@ const screen: Screen = {
             <tr><td class="dim">주소</td><td class="mono" style="overflow-wrap:anywhere">${c.address}</td></tr>
             <tr><td class="dim">레플리칸트</td><td class="mono">${wallet.accounts.filter((a) => a.index > 0).length}개 저장됨 · <a href="${href('/replicants')}">분대 명단</a></td></tr>
           </tbody></table>
+          <section class="chain-check">
+            <div class="card-head"><h2 style="font-size:20px">체인 점검</h2><span class="end note">전송 없음 · 수수료 없음</span></div>
+            <p class="note">내 구조체 하나의 전원 명령을 실제로 서명해 체인에 <b>시뮬레이션만</b> 요청합니다. 블록에 올라가지 않고 상태도 바뀌지 않습니다. 통과하면 이 브라우저의 서명과 메시지 인코딩이 실제 체인에서 통한다는 뜻입니다.</p>
+            ${check.steps.length ? html`<ol class="newswire">${check.steps.map(([k, v]) => html`<li><b>${k}</b> · <span class="mono">${v}</span></li>`)}</ol>` : ''}
+            ${check.verdict ? html`<div class="notice ${check.ok ? '' : 'err'}" role="status">${check.verdict}</div>` : ''}
+            <button class="btn gold" data-act="check" ${check.running || wallet.state !== 'unlocked' || !c.playerId || MOCK ? 'disabled' : ''}>${check.running ? '점검 중…' : '체인 점검 실행'}</button>
+            ${wallet.state !== 'unlocked' ? html`<small class="dim">지갑 잠금을 해제해야 서명할 수 있습니다.</small>` : MOCK ? html`<small class="dim">모의 모드에서는 꺼져 있습니다.</small>` : ''}
+          </section>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
             ${wallet.deviceSealed ? '' : wallet.state === 'unlocked' ? html`<button class="btn ghost" data-act="lock">지갑 잠그기</button>` : html`<a class="btn ghost" href="${href('/login')}">지갑 잠금 해제</a>`}
             ${s.state === 'in' ? html`<button class="btn ghost" data-act="signout">길드 로그아웃</button>` : ''}
@@ -58,6 +71,26 @@ const screen: Screen = {
     };
     const paint = () => { if (root.isConnected) mount(root, view(), handlers); };
     const handlers = {
+      check: () => {
+        const pid = wallet.commander?.playerId;
+        if (!pid || check.running) return;
+        check = { steps: [], verdict: null, ok: null, running: true }; paint();
+        const step = (k: string, v: string) => { check.steps.push([k, v]); paint(); };
+        void (async () => {
+          try {
+            const mine = (await guildApi.structsOf(pid)).filter((x) => !(x.status & 32) && !x.is_destroyed);
+            step('구조체', `${mine.length}기`);
+            const s = mine.find((x) => x.status & 4) ?? mine[0];
+            if (!s) throw new Error('점검에 쓸 구조체가 없습니다 (하나 건설한 뒤 다시 시도)');
+            // Power off a running struct (or on an idle one): a harmless order the chain fully checks.
+            const name = s.status & 4 ? 'MsgStructDeactivate' : 'MsgStructActivate';
+            const r = await simulate(name, { structId: s.id }, step);
+            check.ok = true; check.verdict = `통과 · 가스 ${r.gasUsed} · 실제로 보내면 체인이 받아들입니다.`;
+          } catch (e) {
+            check.ok = false; check.verdict = `실패 · ${(e as Error).message}`;
+          } finally { check.running = false; paint(); }
+        })();
+      },
       reveal: (el: HTMLElement) => {
         const pass = String(new FormData(el as HTMLFormElement).get('pass') ?? '');
         busy = true; err = ''; paint();
