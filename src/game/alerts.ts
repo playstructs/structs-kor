@@ -78,3 +78,7 @@ function syncWatch() {
 }
 session.onChange(syncWatch);
 onWatch(syncWatch);
+
+/* A transaction that made it into a block but failed there: say so (the broadcast toast said 전송됨). */
+import { onTxFailed } from '../api/txlog';
+onTxFailed((t) => notify('거래 실패', `${t.name.replace(/^Msg/, '')} · ${(t.error ?? '').slice(0, 120)}`, 'jeok', 'error'));

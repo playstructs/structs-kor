@@ -18,6 +18,7 @@ import { wallet } from '../wallet/wallet';
 import { doctrine, dutyLog } from '../game/orders';
 import { prefs as notifyPrefs, permission } from '../game/native';
 import { setTiles } from '../ui/shell';
+import { txLog, onTx } from '../api/txlog';
 
 interface Probe { name: string; target: string; ok: boolean | null; ms: number | null; note: string }
 
@@ -56,6 +57,8 @@ const screen: Screen = {
         <section class="card game-panel"><h2>작업 증명 엔진</h2>
           <div class="stat-grid"><div class="stat"><small>상태</small><strong>${pow.running ? '해싱 중' : '정지'}</strong></div><div class="stat"><small>속도</small><strong class="mono">${n(pow.rate / 1000, 1)} kH/s</strong></div><div class="stat"><small>작업</small><strong class="mono">${n(pow.tasks.size)}</strong></div><div class="stat"><small>코어</small><strong class="mono">${n(navigator.hardwareConcurrency || 0)}</strong></div></div>
           <a class="btn ghost sm" href="${href('/console')}">함교의 작업 증명 카드</a></section>
+        <section class="card game-panel"><h2>최근 거래</h2>
+          ${txLog().length ? html`<ol class="ledger">${txLog().slice(0, 20).map((t) => html`<li class="${t.status === 'failed' || t.status === 'refused' ? 'out' : 'in'}"><b>${({ pending: '대기', ok: '완료', failed: '실패', unknown: '확인 불가', refused: '거부' } as Record<string, string>)[t.status]}</b><span class="mono">${t.name.replace(/^Msg/, '')}${t.signer ? ` · #${t.signer}` : ''}</span><small class="mono faint">${t.hash ? t.hash.slice(0, 10) + '…' : ''}${t.height ? ` #${n(t.height)}` : ''}</small><small class="mono faint">${new Date(t.at).toLocaleTimeString('ko-KR')}</small>${t.error ? html`<small class="c-jeok" style="grid-column:1/-1">${t.error.slice(0, 160)}</small>` : ''}</li>`)}</ol>` : html`<p class="note">이번 세션에 보낸 거래가 없습니다.</p>`}</section>
         <section class="card game-panel"><h2>대체 경로 (Guild API)</h2>
           ${used.length ? html`<ul class="diag-list">${REQUIREMENTS.filter((r) => used.includes(r.id)).map((r) => html`<li><span class="planned">${r.id}</span><b>${r.title}</b><small class="mono faint">${r.endpoint} → ${r.fallback}</small></li>`)}</ul>` : html`<p class="note">이번 세션에서는 대체 경로를 쓰지 않았습니다.</p>`}
           <p class="note">길드가 이 경로들을 제공하면 클라이언트는 코드 변경 없이 더 빨라집니다 (docs/guild-api-requirements.md).</p></section>
@@ -96,8 +99,9 @@ const screen: Screen = {
     };
     paint();
     const offGrass = grassState((s) => { grass = s; paint(); });
+    const offTx = onTx(paint);
     await run();
-    return () => { offGrass(); setTiles([]); };
+    return () => { offGrass(); offTx(); setTiles([]); };
   },
 };
 export default screen;

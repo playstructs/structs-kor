@@ -11,6 +11,7 @@ import { encodeAny, typeUrlOf, type Msg, type MsgValue } from '../wallet/encode'
 import { signBytes, toB64, type KeyPair } from '../wallet/keys';
 import { ApiError, MOCK, get, post } from './http';
 import { fellBack, isMissing, markMissing } from './requirements';
+import { track, noteRefused } from './txlog';
 
 const FEE = { amount: [{ denom: 'ualpha', amount: '0' }], gas: 500_000 };
 
@@ -44,9 +45,9 @@ const broadcastBytes = (tx: Uint8Array) => viaGuild<{ txhash: string; code: numb
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tx_bytes: toB64(tx), mode: 'BROADCAST_MODE_SYNC' }),
   })).tx_response);
 
-export const txResult = (hash: string) => viaGuild<{ code: number; height: string } | null>('REQ-TX-3',
+export const txResult = (hash: string) => viaGuild<{ code: number; height: string; raw_log?: string } | null>('REQ-TX-3',
   () => get(`tx/${hash}`),
-  async () => (await lcd<{ tx_response: { code: number; height: string } }>(`/cosmos/tx/v1beta1/txs/${hash}`).catch(() => null))?.tx_response ?? null);
+  async () => (await lcd<{ tx_response: { code: number; height: string; raw_log?: string } }>(`/cosmos/tx/v1beta1/txs/${hash}`).catch(() => null))?.tx_response ?? null);
 
 function signTx(key: KeyPair, msgs: Msg[], chain: string, acc: Account): Uint8Array {
   const body = new Writer();
@@ -87,8 +88,9 @@ async function send(name: string, value: MsgValue, index: number): Promise<strin
   const seq = local !== undefined && local > BigInt(fetched.sequence) ? local : BigInt(fetched.sequence);
   const r = await broadcastBytes(signTx(key, [{ typeUrl: typeUrlOf(name), value: { creator: key.address, ...value } }], chain, { ...fetched, sequence: String(seq) }));
   // A refusal at broadcast (sync mode) consumed no sequence: trust the chain's count next time.
-  if (r.code) { nextSeq.delete(key.address); throw new Error(r.raw_log || `체인 오류 ${r.code}`); }
+  if (r.code) { nextSeq.delete(key.address); noteRefused(name, index, r.raw_log || `체인 오류 ${r.code}`); throw new Error(r.raw_log || `체인 오류 ${r.code}`); }
   nextSeq.set(key.address, seq + 1n);
+  track(r.txhash, name, index, txResult);
   return r.txhash;
 }
 
