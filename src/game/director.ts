@@ -37,7 +37,7 @@ demo.onEvent((kind, text) => {
     if (raider) { const who = raider; setTimeout(() => transmit(who, 'repelled'), away ? 600 : 3400); }
     raider = null;
     music.setMode('calm');
-    const at = () => { sfx.play('victory'); if (away) notify('방어 성공', text, 'hwang', null); else banner({ kicker: '방어 성공', title: '습격 격퇴', sub: text, tone: 'gold' }); career.award(120, '습격 격퇴'); };
+    const at = () => { sfx.play('victory'); if (away) notify('방어 성공', text, 'hwang', null); else banner({ kicker: '방어 성공', title: text.includes('철수') ? '적 함대 철수' : '습격 격퇴', sub: text, tone: 'gold' }); career.award(120, '습격 격퇴'); };
     // Let the board finish the last explosion before the fanfare.
     setTimeout(at, away ? 0 : 2400);
   } else if (kind === 'defeat') {
