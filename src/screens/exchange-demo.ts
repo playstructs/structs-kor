@@ -90,7 +90,7 @@ export function demoExchange(root: HTMLElement): () => void {
       ${j.offers.length ? html`<div class="job-row">${j.offers.map((o) => html`<article class="job">
         <span class="label ${o.kind === 'deliver' ? 'c-hwang' : 'c-jeok'}">${o.kind === 'deliver' ? '납품' : '방어'} · ${who(o.who)}</span>
         <b>${o.kind === 'deliver' ? `광석 ${o.need} 단위 → ${o.reward} α` : `${JOBS.defendFor}블록 안에 습격 ${o.need}회 격퇴 → ${o.reward} α`}</b>
-        <small class="dim">${o.kind === 'deliver' ? `정제가보다 ${Math.round((o.reward / o.need - 1) * 100)}% 높게 · 즉시 지급 · 약탈당할 광석이 줄어듭니다` : '격퇴할 때마다 집계 · 기한을 넘기면 무효'}</small>
+        <small class="dim">${o.kind === 'deliver' ? `정제가보다 ${Math.round((o.reward / o.need - 1) * 100)}% 높게 · 즉시 지급 · 약탈당할 광석이 줄어듭니다` : '수락 후 시작된 습격만 집계 · 기한을 넘기면 무효'}</small>
         <button class="btn ${o.kind === 'deliver' ? 'gold' : 'danger'}" data-act="job" data-id="${o.id}" ${o.kind === 'deliver' && demo.state.ore < o.need ? 'disabled' : o.kind === 'defend' && j.active ? 'disabled' : ''}>${o.kind === 'deliver' ? '납품' : '수락'}</button>
       </article>`)}</div>` : html`<p class="note">게시판이 비었습니다. 곧 새 의뢰가 올라옵니다.</p>`}
     </section>`;

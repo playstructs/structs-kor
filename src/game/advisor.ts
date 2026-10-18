@@ -14,9 +14,10 @@ export function advise(rank = 99): Tip[] {
   const refining = st.structs.some((x) => x.type === 15 && x.online && x.building == null && x.hp > 0);
   // A stance for the raid on its way, if none is set: hold behind a strong shield, or meet it with guns.
   if (raid && raid.eta > 0 && !raid.stance) {
-    const guns = st.structs.filter((x) => x.hp > 0 && x.online && x.building == null && (x.cat === 'fleet' || x.type === 19)).length;
-    const pick = st.shield >= 60 ? '참호' : guns >= 4 ? '요격' : st.shield >= 30 ? '참호' : '요격';
-    tips.push({ pri: 94, tone: 'hwang', text: `대응 태세 미정 · 방어막 ${Math.round(st.shield)}% · 함포 ${guns}기. ${pick === '참호' ? '참호: 방어막으로 버티세요.' : '요격: 먼저 쏴서 줄이세요.'} 경보 막대에서 고릅니다.`, go: '/console', cta: '함교' });
+    const guns = st.structs.filter((x) => x.hp > 0 && x.online && x.building == null && x.type !== 1 && (x.cat === 'fleet' || x.type === 19)).length;
+    // With the overcharge ready, the shield is the plan; otherwise strong guns meet them, a weak shield hides.
+    const pick = st.shield >= 60 || ready('overshield') ? '참호' : guns >= 3 ? '요격' : st.shield >= 30 ? '참호' : '요격';
+    tips.push({ pri: 98, tone: 'hwang', text: `대응 태세 미정 · 방어막 ${Math.round(st.shield)}% · 함포 ${guns}기. ${pick === '참호' ? '참호: 방어막으로 버티세요.' : '요격: 먼저 쏴서 줄이세요.'} 경보 막대에서 고릅니다.`, go: '/console', cta: '함교' });
   }
   // A delivery on the board that would empty the pile before the raid lands.
   const del = demo.jobs?.offers.filter((o) => o.kind === 'deliver' && o.need <= st.ore).sort((a, z) => z.need - a.need)[0];
@@ -56,7 +57,9 @@ export function advise(rank = 99): Tip[] {
   if (b && bt && bt.vassal == null) tips.push({ pri: 68, tone: 'hwang', text: `${bt.name}에게 현상금 ${demo.bountyPayout()} α · ${b.left}블록 남음. 습격에 이기면 노획과 함께 받습니다.`, go: `/sim?raid=${bt.id}`, cta: '습격' });
   // Past the first raids they come bigger: a defence cannon (2 damage a volley) holds the line.
   const fights = st.raidsRepelled + st.raidsLost;
-  if (fights >= 3 && !st.structs.some((x) => x.type === 19 && x.hp > 0)) tips.push({ pri: 58, tone: 'hwang', text: `습격 함대가 커지고 있습니다. 행성 방어포를 세우면 매 블록 2배 피해로 반격합니다 · 빈 행성 슬롯에 건설하세요.`, go: '/console', cta: '함교' });
+  const freePlanet = (['land', 'water', 'air', 'space'] as const).some((a) => [0, 1, 2, 3].some((sl) => !st.structs.some((x) => x.cat === 'planet' && x.ambit === a && x.slot === sl && x.hp > 0)));
+  const powerFor = demo.capacityKw() - demo.structsKw() - demo.soldKw() >= 0.6;
+  if (fights >= 3 && freePlanet && powerFor && !st.structs.some((x) => x.type === 19 && x.hp > 0)) tips.push({ pri: 58, tone: 'hwang', text: `습격 함대가 커지고 있습니다. 행성 방어포를 세우면 매 블록 2배 피해로 반격합니다 · 빈 행성 슬롯에 건설하세요.`, go: '/console', cta: '함교' });
   else if (fights >= 5 && st.raidsLost > st.raidsRepelled / 2 && (demo.level('guns') < 1)) tips.push({ pri: 52, tone: 'hwang', text: `습격을 자주 놓칩니다. 연구소의 함포 조준 체계가 방어 사격에 추가 피해를 줍니다.`, go: '/research', cta: '연구소' });
   // A small fleet can't strike back: building warships is free, it only takes power.
   const ships = st.structs.filter((x) => x.cat === 'fleet' && x.type !== 1 && x.hp > 0).length;

@@ -456,13 +456,14 @@ function catchUp(): AwayReport | null {
     for (let i = 0; i < n; i++) {
       block();
       if (--s.nextRaid <= 0) {
-        s.nextRaid = RATE.raidEvery + RATE.raidEta;
         s.rebel = null; // settled here, in summary
         r.raids++;
         const fleet = s.structs.filter((x) => x.cat === 'fleet' && x.hp > 0);
-        const odds = Math.min(0.85, 0.2 + fleet.length * 0.15 + lv('guns') * 0.05);
+        // A new base's first raids are small here too.
+        const odds = Math.min(0.9, 0.2 + fleet.length * 0.15 + lv('guns') * 0.05 + (rookie() ? 0.4 : 0));
         if (rnd() < odds) { r.repelled++; s.raidsRepelled++; jobRepelled(); }
         else { const take = Math.floor(s.ore * (1 - 0.25 * lv('bunker'))); r.stolen += take; s.ore -= take; s.raidsLost++; s.shield = 0; }
+        s.nextRaid = raidGap() + RATE.raidEta;
       }
     }
   } finally { catching = false; }
@@ -899,7 +900,7 @@ function raidStep() {
     const fid = `9-${300 + Math.floor(rnd() * 600)}`;
     const R = (i: number, type: number, ambit: Ambit, slot: number): DemoStruct => ({ id: `5-r${s.height}${i}`, type, ambit, slot, cat: 'fleet', online: true, hp: TYPES_BY_ID[type].maxHealth, max: TYPES_BY_ID[type].maxHealth, building: null, buildBlocks: 0, protects: null });
     // The first raids are a lesson, not a beating: one escort each until three have come and gone.
-    const size = rookie() ? 1 : 2 + Math.min(3, Math.floor(s.raidsRepelled / 3));
+    const size = rookie() ? 1 : 2 + Math.min(3, Math.floor(Math.max(0, s.raidsRepelled - 3) / 3));
     const pool: [number, Ambit][] = [[3, 'space'], [5, 'air'], [9, 'land'], [12, 'water'], [8, 'land'], [4, 'space']];
     s.raid = { fleetId: fid, owner, name, eta: RATE.raidEta, seized: 0, startedAt: s.height, structs: [R(0, 1, 'space', 0), ...pool.slice(0, size).map(([t, a], i) => R(i + 1, t, a, i % 2))] };
     log('fleet_depart', `${fid} → ${PLANET}`);
@@ -925,7 +926,7 @@ function raidStep() {
     const shieldUp = s.shield > 0 && rnd() < (s.shield / 140) * (1 + 0.3 * lv('shield')) * (r.stance === 'entrench' ? 1.6 : 1);
     const t = mineAlive.filter((x) => x.cat === 'planet').concat(mineAlive)[Math.floor(rnd() * mineAlive.length)];
     if (shieldUp) { s.shield = Math.max(0, s.shield - 12); attack(a, t, 0, false, true); }
-    else attack(a, t, 1 + (rnd() < (r.stance === 'intercept' ? 0.4 : 0.3) ? 1 : 0), rnd() < 0.12);
+    else attack(a, t, 1 + (rnd() < (r.stance === 'intercept' ? 0.4 : r.stance === 'entrench' ? 0.15 : 0.3) ? 1 : 0), rnd() < 0.12);
   }
   // The best guns fire first: veterans, then defence cannons.
   const shooters = s.structs.filter((x) => x.hp > 0 && x.online && x.building == null && (x.cat === 'fleet' || x.type === 19))
@@ -940,7 +941,7 @@ function raidStep() {
   }
   const cmdDown = r.structs.find((x) => x.type === 1)!.hp <= 0;
   if (cmdDown || r.structs.every((x) => x.hp <= 0)) {
-    s.raid = null; s.nextRaid = raidGap(); s.raidsRepelled++; raceAdd(15); jobRepelled(r.startedAt);
+    s.raid = null; s.raidsRepelled++; s.nextRaid = raidGap(); raceAdd(15); jobRepelled(r.startedAt);
     // A broken raid costs its owner a ship.
     const owner = rivals().find((x) => x.id === r.owner);
     if (owner) owner.fleet = Math.max(2, owner.fleet - 1);
@@ -952,7 +953,7 @@ function raidStep() {
   if (s.height - r.startedAt > RATE.raidEta + 8 || !s.structs.some((x) => x.cat === 'fleet' && x.hp > 0)) {
     // The raiders break through and take every gram of unrefined ore.
     r.seized = Math.floor(s.ore * (1 - 0.25 * lv('bunker')) * (inGuild('blue') ? 0.85 : 1)); s.ore -= r.seized; s.shield = 0;
-    s.raid = null; s.nextRaid = raidGap(); s.raidsLost++;
+    s.raid = null; s.raidsLost++; s.nextRaid = raidGap();
     log('raid_status', 'raidSuccessful');
     emit('defeat', `습격 성공 · 광석 ${r.seized} 약탈당함`);
   }

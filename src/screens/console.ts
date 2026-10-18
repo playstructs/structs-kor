@@ -300,7 +300,7 @@ const screen: Screen = {
       return html`<section class="raid-alarm ${eta ? '' : 'live'}" role="alert">
         <strong>${eta ? `▲ 적 함대 접근 · ${eta}블록` : '▲ 행성 습격 진행 중'}</strong>
         <span>${r ? `${r.name} 함대 ${r.fleetId} · ${r.structs.length}기` : `함대 ${live!.fleet_id}${live!.fleet_owner ? ` (${live!.fleet_owner})` : ''}`} · 노출된 광석 <b class="mono">${n(Math.floor(Number(d?.player.ore ?? 0)))}</b></span>
-        ${r && eta ? html`<span class="stance" role="group" aria-label="대응 태세"><button class="btn ${r.stance === 'intercept' ? 'danger' : 'ghost'}" data-act="stance" data-v="intercept" title="함포 추가 피해 +30% · 받는 피해도 늘어남">요격</button><button class="btn ${r.stance === 'entrench' ? 'primary' : 'ghost'}" data-act="stance" data-v="entrench" title="방어막 차단 1.6배 · 함포 위력 조금 감소">참호</button></span>` : r?.stance ? html`<span class="chip ${r.stance === 'intercept' ? 'jeok' : 'cheong'}">${r.stance === 'intercept' ? '요격 태세' : '참호 태세'}</span>` : ''}
+        ${r && eta ? html`<span class="stance" role="group" aria-label="대응 태세"><button class="btn ${r.stance === 'intercept' ? 'danger' : 'ghost'}" data-act="stance" data-v="intercept" aria-pressed="${r.stance === 'intercept'}" title="함포 추가 피해 확률 +30%p · 강타당할 확률도 늘어남">요격</button><button class="btn ${r.stance === 'entrench' ? 'primary' : 'ghost'}" data-act="stance" data-v="entrench" aria-pressed="${r.stance === 'entrench'}" title="방어막 차단 확률 1.6배 · 강타 확률 절반 · 함포 추가 피해 확률 −10%p">참호</button></span>` : r?.stance ? html`<span class="chip ${r.stance === 'intercept' ? 'jeok' : 'cheong'}">${r.stance === 'intercept' ? '요격 태세' : '참호 태세'}</span>` : ''}
         <span class="end" style="display:flex;gap:8px;flex-wrap:wrap">${isDemo ? html`<button class="btn gold" data-act="refineAll" style="min-height:36px">정제소 가동 <kbd>Q</kbd></button>` : ''}<a class="btn danger" href="${href('/sim')}" style="min-height:36px">방어 시뮬레이션</a></span>
       </section>`;
     };
@@ -444,8 +444,8 @@ const screen: Screen = {
       },
       nameShip: (el: HTMLElement) => {
         const n = String(new FormData(el as HTMLFormElement).get('n') ?? '');
-        if (err(demo.nameShip(el.dataset.id!, n))) return;
         (document.activeElement as HTMLElement | null)?.blur?.();
+        if (err(demo.nameShip(el.dataset.id!, n))) return;
         sfx.play('confirm'); toast(n.trim() ? `「${n.trim().slice(0, 12)}」` : '이름을 지웠습니다'); refresh();
       },
       repair: (el: HTMLElement) => { if (!err(demo.repair(el.dataset.id!))) { sfx.play('build'); float(el, '수리 완료', 'var(--cheong-hi)'); refresh(); } },
@@ -502,7 +502,12 @@ const screen: Screen = {
     // Mid-typing a ship's name, repaints wait (they'd wipe the field and break Korean input) and run as
     // soon as the field lets go of focus.
     let pending = false;
-    const typing = () => { const a = document.activeElement; return a instanceof HTMLElement && !!a.closest('.ship-name') && root.contains(a); };
+    // Typing in the name field, or mid-click on its button (Safari doesn't focus buttons on click).
+    let pressing = false;
+    const typing = () => { const a = document.activeElement; return pressing || (a instanceof HTMLInputElement && !!a.closest('.ship-name') && root.contains(a)); };
+    root.addEventListener('pointerdown', (e) => { if ((e.target as Element).closest?.('.ship-name')) pressing = true; });
+    const onPointerUp = () => { if (!pressing) return; setTimeout(() => { pressing = false; if (pending && !typing()) { pending = false; paint(); } }, 0); };
+    addEventListener('pointerup', onPointerUp);
     const repaint = () => { if (typing()) { pending = true; return; } pending = false; paint(); };
     const refresh = () => { if (isDemo) { d = demo.dashboard(); repaint(); } };
     // Focus moving within the name form (to its button) isn't leaving it: the click must land first.
@@ -541,6 +546,7 @@ const screen: Screen = {
       }));
     }
     offs.push(career.onChange(() => repaint()));
+    offs.push(() => removeEventListener('pointerup', onPointerUp));
     // The proof card follows every hash; the advisor's proof tips follow at most every few seconds.
     let advisedAt = 0;
     const repaintAdvisor = () => { const el = root.querySelector('.advisor'); if (el && Date.now() - advisedAt > 3000) { advisedAt = Date.now(); el.outerHTML = advisor().s; } };
