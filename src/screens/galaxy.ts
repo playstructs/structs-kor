@@ -53,7 +53,10 @@ const pixel = (type: number, size = 36): Safe => raw(spriteHtml(type, size));
 /* ── Drawing: any set of planets, one optional route ── */
 interface GxNode { id: string; label: string; index: number; weight: number; home: boolean; vassal?: boolean; void?: boolean; site?: 'mine' | 'theirs' | 'free' }
 interface GxRoute { from: number; to: number; t: number; label: string }
-function drawGalaxy(nodes: GxNode[], route: GxRoute | null, sel: string | null, ref = REF, stars = 420, war: { from: number; to: number } | null = null): Safe {
+/** Where the map is looking: centre and zoom (1 = the whole galaxy). */
+interface Cam { x: number; y: number; z: number }
+const viewBox = (c: Cam) => { const w = 300 / c.z; return `${(c.x - w / 2).toFixed(1)} ${(c.y - w / 2).toFixed(1)} ${w.toFixed(1)} ${w.toFixed(1)}`; };
+function drawGalaxy(nodes: GxNode[], route: GxRoute | null, sel: string | null, ref = REF, stars = 420, war: { from: number; to: number } | null = null, cam: Cam = { x: 0, y: 0, z: 1 }): Safe {
   const maxW = Math.max(1, ...nodes.map((x) => x.weight));
   const P = (i: number) => pos(i, ref).map((v) => +v.toFixed(1)) as [number, number];
   const dots = Array.from({ length: stars }, (_, i) => { const [x, y] = pos(i * 3 + 1, Math.max(ref, stars * 3)); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${i % 9 === 0 ? 0.9 : 0.45}" fill="${i % 7 === 0 ? '#86DFC6' : '#C5D7D9'}" opacity="${(0.25 + (i % 5) * 0.12).toFixed(2)}"/>`; }).join('');
@@ -76,7 +79,7 @@ function drawGalaxy(nodes: GxNode[], route: GxRoute | null, sel: string | null, 
       <circle cx="${cx}" cy="${cy}" r="${rr + 4}" class="halo"/><circle cx="${cx}" cy="${cy}" r="${rr}" class="core"/>
       <text x="${cx}" y="${cy - rr - 3}" text-anchor="middle">${x.vassal ? '♛ ' : ''}${label}</text></g>`;
   };
-  return raw(`<svg class="gx" viewBox="-150 -150 300 300" role="img" aria-label="은하 지도: 내 행성과 경쟁 세력">
+  return raw(`<svg class="gx" viewBox="${viewBox(cam)}" role="img" aria-label="은하 지도: 내 행성과 경쟁 세력">
     <defs><radialGradient id="gxcore"><stop offset="0" stop-color="#F3C878" stop-opacity=".55"/><stop offset=".25" stop-color="#43CDB6" stop-opacity=".12"/><stop offset="1" stop-color="#16142A" stop-opacity="0"/></radialGradient></defs>
     <circle r="150" fill="url(#gxcore)"/>${dots}${path}
     ${nodes.filter((x) => !x.home).map(node).join('')}${nodes.filter((x) => x.home).map(node).join('')}</svg>`);
@@ -97,6 +100,24 @@ const screen: Screen = {
     if (!pid) return;
     if (pid !== DEMO_ID) return realGalaxy(root, pid);
     let sel: string | null = null;
+    // The camera: wheel or +/− to zoom, drag to pan, 0 to see everything. Kept across repaints.
+    const cam: Cam = { x: 0, y: 0, z: 1 };
+    const clampCam = () => { cam.z = Math.max(1, Math.min(4, cam.z)); const lim = 150 - 150 / cam.z; cam.x = Math.max(-lim, Math.min(lim, cam.x)); cam.y = Math.max(-lim, Math.min(lim, cam.y)); };
+    const applyCam = () => { clampCam(); root.querySelector('svg.gx')?.setAttribute('viewBox', viewBox(cam)); };
+    const zoom = (f: number) => { cam.z *= f; applyCam(); };
+    const onWheel = (e: WheelEvent) => { if (!(e.target as Element).closest?.('svg.gx')) return; e.preventDefault(); zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2); };
+    let drag: { x: number; y: number; moved: boolean } | null = null;
+    const onDown = (e: PointerEvent) => { if (!(e.target as Element).closest?.('svg.gx') || (e.target as Element).closest('.gx-node')) return; drag = { x: e.clientX, y: e.clientY, moved: false }; };
+    const onMove = (e: PointerEvent) => {
+      if (!drag) return;
+      const svg = root.querySelector<SVGSVGElement>('svg.gx'); if (!svg) return;
+      const k = 300 / cam.z / Math.max(1, svg.getBoundingClientRect().width);
+      cam.x -= (e.clientX - drag.x) * k; cam.y -= (e.clientY - drag.y) * k;
+      drag.x = e.clientX; drag.y = e.clientY; drag.moved = true; applyCam();
+    };
+    const onUp = () => { drag = null; };
+    root.addEventListener('wheel', onWheel, { passive: false });
+    root.addEventListener('pointerdown', onDown); addEventListener('pointermove', onMove); addEventListener('pointerup', onUp);
 
     const map = (): Safe => {
       const raid = demo.raid;
@@ -108,7 +129,7 @@ const screen: Screen = {
       ];
       const from = raid ? demo.rivals().find((r) => r.id === raid.owner) : null;
       const w = demo.war;
-      return drawGalaxy(nodes, raid && from ? { from: planetIx(from.id), to: HOME, t: raid.eta === 0 ? 1 : 1 - raid.eta / 6, label: raid.eta ? raid.eta + '블록' : '교전' } : null, sel, REF, 420, w ? { from: planetIx(w.from), to: planetIx(w.to) } : null);
+      return drawGalaxy(nodes, raid && from ? { from: planetIx(from.id), to: HOME, t: raid.eta === 0 ? 1 : 1 - raid.eta / 6, label: raid.eta ? raid.eta + '블록' : '교전' } : null, sel, REF, 420, w ? { from: planetIx(w.from), to: planetIx(w.to) } : null, cam);
     };
 
     /* Scouted rivals get a war-room estimate: 12 autopilot play-outs, cached until either fleet changes. */
@@ -199,7 +220,7 @@ const screen: Screen = {
     };
     const view = (): Safe => html`
       <div class="card-head"><h1 style="font-size:28px">은하 지도</h1><span class="label c-cheong">GALAXY</span><span class="end mono dim">블록 #${n(demo.state.height)}</span></div>
-      <div class="gx-wrap"><section class="card game-panel gx-card">${map()}</section><aside>${intel()}${news()}</aside></div>`;
+      <div class="gx-wrap"><section class="card game-panel gx-card">${map()}<span class="gx-hint mono">휠·<kbd>+</kbd><kbd>−</kbd> 확대 · 드래그 이동 · <kbd>0</kbd> 전체</span></section><aside>${intel()}${news()}</aside></div>`;
 
     const paint = () => {
       if (!root.isConnected) return;
@@ -262,7 +283,8 @@ const screen: Screen = {
     };
     const unbind = bindNodes(root, (id) => { sel = id === DEMO_ID ? null : id; sfx.play(id === 'void' ? 'alarm' : 'tick'); paint(); });
     paint();
-    const offs = [demo.onBlock(paint), keys.scope({ s: () => sel && handlers.scout(), Escape: () => { sel = null; paint(); } })];
+    const offs = [demo.onBlock(paint), keys.scope({ s: () => sel && handlers.scout(), Escape: () => { sel = null; paint(); }, '=': () => zoom(1.25), '+': () => zoom(1.25), '-': () => zoom(1 / 1.25), '0': () => { cam.x = 0; cam.y = 0; cam.z = 1; applyCam(); } })];
+    offs.push(() => { root.removeEventListener('wheel', onWheel); root.removeEventListener('pointerdown', onDown); removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); });
     return () => { oddsStop?.(); offs.forEach((f) => f()); unbind(); setTiles([]); };
   },
 };
