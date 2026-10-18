@@ -28,6 +28,7 @@ const NAV: { path: string; label: string; icon: string }[] = [
   { path: '/daily', label: '일일 교전', icon: I('<rect x="4" y="5" width="16" height="15"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/>') },
   { path: '/sim', label: '전투', icon: I('<path d="M5 19L19 5M15 5h4v4M9 19H5v-4M5 5l5 5M19 19l-5-5"/>') },
   { path: '/replicants', label: '레플리칸트', icon: I('<rect x="3" y="6" width="8" height="8"/><rect x="13" y="10" width="8" height="8"/><path d="M7 14v4h6"/>') },
+  { path: '/war', label: '상황실', icon: I('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>') },
   { path: '/stats', label: '은하 통계', icon: I('<path d="M4 20V12M9 20V6M14 20v-9M19 20V3"/>') },
   { path: '/guild', label: '길드', icon: I('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>') },
   { path: '/chat', label: '통신', icon: I('<path d="M4 5h16v11H9l-5 4z"/>') },

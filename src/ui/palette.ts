@@ -38,6 +38,8 @@ const VERBS: Verb[] = [
   { word: '지갑', aliases: ['wallet', 'inventory', '잔액'], label: '내 지갑', hint: '지갑', icon: 'icon-key', arg: 'none', run: () => go('/market?tab=wallet') },
   { word: '계약', aliases: ['book', 'agreements', 'contracts'], label: '내 전력 계약', hint: '계약', icon: 'icon-transfers', arg: 'none', run: () => go('/market?tab=mine') },
   { word: '통계', aliases: ['stats', 'universe', 'galaxy stats', '랭킹', 'leaderboard'], label: '은하 통계 · 랭킹', hint: '통계', icon: 'icon-combat-log', arg: 'none', run: () => go('/stats') },
+  { word: '표적', aliases: ['targets', 'war', 'raid', 'scout', '상황실', '정찰'], label: '작전 상황실 · 표적', hint: '표적', icon: 'icon-raid', arg: 'none', run: () => go('/war') },
+  { word: '원한', aliases: ['grudges', 'vetoes', '금지'], label: '원한 · 공격 금지 목록', hint: '원한', icon: 'icon-blocked', arg: 'none', run: () => go('/war?tab=lists') },
   { word: '가입', aliases: ['join', 'apply', 'requests', '신청'], label: '길드 가입 신청 · 초대', hint: '가입', icon: 'icon-member', arg: 'none', run: () => go('/guild?tab=apps') },
   { word: '검색', aliases: ['find', 'search'], label: '통신 메시지 검색', hint: '검색 습격', icon: 'icon-detected', arg: 'text', run: (a) => go(`/chat?search=${encodeURIComponent(a)}`) },
   { word: '도움말', aliases: ['help', '?', 'commands', '명령어'], label: '명령어 목록', hint: '도움말', icon: 'icon-tip', arg: 'none', run: () => undefined },

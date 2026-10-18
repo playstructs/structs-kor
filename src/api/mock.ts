@@ -14,6 +14,9 @@ const PLAYERS: Record<string, ReturnType<typeof player>> = {
   '1-7': player('1-7', '은하수', '2-301', 512, 20), '1-9': player('1-9', '철갑상어', '2-77', 260, 140),
   '1-13': player('1-13', 'nova', '2-990', 120, 8), '1-21': player('1-21', '흑룡', '2-512', 88, 310),
 };
+// Two rivals fly other flags (targets for the war room; others for the guild directory).
+Object.assign(PLAYERS['1-9'], { guild_id: '0-1', guild_name: 'Slow Ninja', tag: 'SN' });
+Object.assign(PLAYERS['1-21'], { guild_id: '0-9', guild_name: '흑룡단', tag: 'BLK' });
 const struct = (id: string, type: number, ambit: string, slot: number, loc: 'planet' | 'fleet', health: number, status = 5) => ({
   id, type, owner: ME, location_type: loc, location_id: loc === 'planet' ? PLANET : '9-42', operating_ambit: ambit, slot, is_destroyed: false, health, status, protected_struct_id: null, defending_struct_ids: [], fuel: 0,
 });
@@ -96,7 +99,7 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
   [/^leaderboard\/reactor$/, () => [{ reactor_id: '3-5', guild_id: '0-5', capacity_p: '420000000' }, { reactor_id: '3-1', guild_id: '0-1', capacity_p: '1800000000' }].sort((a, b) => Number(b.capacity_p) - Number(a.capacity_p))],
   [/^leaderboard\/provider$/, () => PROVIDERS.map((p) => ({ provider_id: p.id, owner: p.owner, capacity: p.capacity_maximum })).sort((a, b) => b.capacity - a.capacity)],
   [/^player\/count$/, () => ({ count: 2982 })], [/^player\/active\/count$/, () => ({ count: 412 })], [/^struct\/count$/, () => ({ count: 18_330 })],
-  [/^leaderboard\/player$/, () => Object.values(PLAYERS).sort((a, b) => b.alpha - a.alpha).map((p) => ({ player_id: p.id, username: p.username, guild_id: '0-5', alpha_balance_p: String(p.alpha), alpha_value_p: String(p.alpha) }))],
+  [/^leaderboard\/player$/, () => Object.values(PLAYERS).sort((a, b) => b.alpha - a.alpha).map((p) => ({ player_id: p.id, username: p.username, guild_id: p.guild_id, alpha_balance_p: String(p.alpha), alpha_value_p: String(p.alpha) }))],
   [/^infusion\/list\/player\//, () => [{ destination_id: '3-15', address: '', destination_type: 'reactor', player_id: ME, fuel: 5e6, defusing: 0, power: 5e6, ratio: 1, commission: 3 }]],
   [/^allocation\/source\//, () => [{ id: '6-77', allocation_type: 'provider-agreement', source_id: ME, index: 0, destination_id: '1-9', creator: ME, controller: ME, created_at: now, updated_at: now }]],
   [/^allocation\/destination\//, () => []],
@@ -107,7 +110,7 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
   [/^provider\/owner\/(1-\d+)/, (m) => PROVIDERS.filter((p) => p.owner === m[1])],
   [/^agreement\/owner\//, () => [{ id: '11-4', provider_id: '10-3', allocation_id: '6-77', capacity: 5e6, start_block: 2_940_000, end_block: 2_990_000, owner: ME, blocks_remaining: 34_199, escrow_remaining: 3.4e8 }]],
   [/^guild\/(0-\d+)$/, (m) => GUILDS[m[1]] ?? null],
-  [/^guild\/(0-\d+)\/roster$/, () => Object.values(PLAYERS).map((p) => ({ id: p.id, guild_id: '0-5', username: p.username, pfp: JSON.stringify({ head: (Number(p.id.split('-')[1]) % 87) + 1, neck: 2, body: 7, arms: 3, background: 2 }), guild_name: 'SN Corp', tag: 'SNC', alpha: p.alpha }))],
+  [/^guild\/(0-\d+)\/roster$/, (m) => Object.values(PLAYERS).filter((p) => p.guild_id === m[1]).map((p) => ({ id: p.id, guild_id: p.guild_id, username: p.username, pfp: JSON.stringify({ head: (Number(p.id.split('-')[1]) % 87) + 1, neck: 2, body: 7, arms: 3, background: 2 }), guild_name: p.guild_name, tag: p.tag, alpha: p.alpha }))],
   [/^guild\/(0-\d+)\/members\/count$/, (m) => ({ count: m[1] === '0-5' ? 5 : m[1] === '0-1' ? 41 : 9 })],
   [/^guild\/this$/, () => GUILDS['0-5']],
   [/^guild\/directory$/, () => Object.values(GUILDS).map((g) => ({ guild_id: g.id, name: g.name, logo: '', alpha: g.id === '0-5' ? 980e6 : g.id === '0-1' ? 2400e6 : 310e6, members: g.id === '0-5' ? 5 : g.id === '0-1' ? 41 : 9 }))],

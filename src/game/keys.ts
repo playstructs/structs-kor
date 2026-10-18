@@ -20,6 +20,7 @@ export const NAV_KEYS: { key: string; path: string; label: string }[] = [
   { key: 'n', path: '/replicants', label: '레플리칸트' },
   { key: 'k', path: '/chat', label: '통신' },
   { key: 'u', path: '/stats', label: '은하 통계' },
+  { key: 'w', path: '/war', label: '작전 상황실' },
   { key: 'h', path: '/tutorial', label: '훈련소' },
   { key: 'x', path: '/codex', label: '교본' },
 ];
