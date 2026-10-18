@@ -44,13 +44,19 @@ The English desktop client (structs-universe) is the reference; this client matc
 | Comms: channels, tabs, refs → cards, slash commands, Tab completion, reactions, pins, presence/typing, search, people, rent from a provider card, sim challenge rows | `/chat` (src/chat, src/screens/chat.ts) |
 | Shared cards (player, guild, provider, planet, struct, fleet), share into Comms, deep links | `src/social/refs.ts` cards everywhere, `/o/<id>`, share sheet with situations (`/s/…`), PNG cards |
 | Pay window | `src/social/transfer.ts` (send alpha or guild tokens, from the commander or any replicant) |
-| Energy market, book, banks, guild tokens | `/market` |
+| Energy market, book, banks, guild tokens | `/market` (bank volume chart) |
+| Industry: infusions, allocations, substations | `/energy` (주입, 배전) |
 | Armada roster, replication window, loops and doctrine | `/replicants` with standing orders (`src/game/orders.ts`) |
 | Guild directory and membership | `/guild` |
-| ⌘K palette and command grammar | `src/ui/palette.ts` (Korean words, English aliases, 초성) |
+| ⌘K palette and command grammar | `src/ui/palette.ts` (Korean words, English aliases, 초성, commanders by name) |
+| Structs Terminal (workspaces, cards, presets, SHARE/IMPORT) | `/board` |
+| RECORD card, charts | 복무 기록 ribbons and 7-day history on `/o/<player>` (`src/social/record.ts`, `history.ts`) |
+| Debug tab, Diagnostics | `/diag` |
+| GRASS Stream | 은하 통계 → 실시간 스트림 |
+| Simulator challenge | `/sim?vs=<player>`: their real fleet against yours, with win odds |
 | Game Stats | `/stats` |
 | War: targets, grudges, vetoes, incidents, live raids | `/war` |
-| Map Viewer (watch any planet) | `/o/<planet>` on the battle board |
+| Map Viewer (watch any planet) | `/o/<planet>` on the battle board, fights animated live from GRASS; watched planets raise the alarm when raided |
 | Native notifications per channel | 내 정보 → 시스템 알림 (`src/game/native.ts`) |
 
 What stays desktop-only: GPU hashing, the MCP server for AI agents, the sound designer, and loops that run while the app is closed (here, standing orders run while the tab is open).
@@ -104,6 +110,8 @@ SUI art (`public/img/sui/`), the Structicons icon font, and DirectiveZero/Extrem
 | `/codex` | 교본: every system on one page, its numbers read from the game's own constants, each linked to where it's played (X) | — (local) |
 | `/o/<id>` | 객체 카드: any object's live card and page (a planet watched on the battle board with its battle log and 통신방; a player's record; a guild's roster); `/s/<code>` a shared situation | `/player`, `/planet`, `/objects`, `/guild`, `/provider/market` |
 | `/stats` | 은하 통계: universe figures, chain liveness, leaderboards (commanders, guilds, reactors, providers) | `/leaderboard/*`, counts, `/block` |
+| `/board` | 작전 보드: workspaces of live widgets (object cards, base, market, banks, armada, raids, comms, feed, leaders, duty log, watchlist), reorder by drag or Alt+←/→, presets, share/import board codes | all of the above |
+| `/diag` | 시스템 진단: identity, connection probes with latency, indexer lag, PoW engine, fallbacks in use, a secrets-free report | `/block`, LCD `node_info`, GRASS, Matrix |
 | `/war` | 작전 상황실: scored target board, grudges / priority guilds / never-attack, planet incidents, live raids | `/leaderboard/player`, `/planet/:id/raid/active`, `/planet-activity` |
 | `/record` | 전적: the 제국 연대기 (empire chronicle: titles, vassals, rebellions, World Engine stages, eras, bounties, kept across eras); portrait, rank, medals, objectives | — (local) |
 
