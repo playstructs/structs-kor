@@ -30,6 +30,17 @@
         "--strictPort"
       ],
       "port": 5191
+    },
+    {
+      "name": "structs-kor-sandbox",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "dev",
+        "--port",
+        "5192",
+        "--strictPort"
+      ],
+      "port": 5192
     }
   ]
 }
