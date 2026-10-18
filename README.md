@@ -28,6 +28,8 @@ Dev only: open any page with `?mock=1` to sign in as a fixture commander against
 
 The build writes `404.html` and `_redirects`, so every screen path (`/console`, `/energy`…) serves the app shell on GitHub Pages, Netlify and Cloudflare Pages.
 
+`.github/workflows/pages.yml` builds and publishes to GitHub Pages on every push to `main` (Settings › Pages › Source: GitHub Actions). Repository variables override the `VITE_*` values; `VITE_BASE` and `VITE_SITE_URL` otherwise follow the Pages site (`/` on a custom domain, `/structs-kor/` on github.io).
+
 ## Search and sharing
 
 - `src/seo.ts` holds every screen's title and description. The build writes one HTML file per screen (`console.html` → `/console`) with its own title, description, canonical, Open Graph/Twitter tags and JSON-LD (`WebSite`, `VideoGame`, `WebPage`), plus `sitemap.xml` and a fully permissive `robots.txt`; all absolute URLs use `VITE_SITE_URL`. In the browser the same tags follow the router.
