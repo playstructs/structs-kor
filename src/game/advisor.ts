@@ -76,7 +76,7 @@ export function advise(rank = 99): Tip[] {
   if (site && site.odds >= 0.5 && st.alpha >= OUTPOST.claim) tips.push({ pri: 47, tone: 'cheong', text: `${site.name} 공략 성공률 ${Math.round(site.odds * 100)}% · 장악하면 ${site.perk}.`, go: '/galaxy', cta: '거점' });
   if (demo.event?.id === 'meteor' && st.shield < 50) tips.push({ pri: 84, tone: 'jeok', text: `유성우 · 방어막 ${Math.round(st.shield)}%. 50% 아래에선 구조체가 부서집니다 · 방어막 발생기를 켜고 버티세요.`, go: '/console', cta: '함교' });
   const v = demo.boss;
-  if (v) tips.push({ pri: 86, tone: 'jeok', text: `공허 함대 출현 · ${v.left}블록 뒤 누군가를 덮칩니다. 요격하면 ${v.reward} α.`, go: '/sim?raid=void', cta: '요격' });
+  if (v) tips.push({ pri: 86, tone: 'jeok', text: `공허 함대 출현 · ${v.left ? `${v.left}블록 뒤` : '곧'} 누군가를 덮칩니다. 요격하면 ${v.reward} α.`, go: '/sim?raid=void', cta: '요격' });
   const b = demo.bounty, bt = b && demo.rivals().find((x) => x.id === b.target);
   if (b && bt && bt.vassal == null) tips.push({ pri: 68, tone: 'hwang', text: `${bt.name}에게 현상금 ${demo.bountyPayout()} α · ${b.left}블록 남음. 습격에 이기면 노획과 함께 받습니다.`, go: `/sim?raid=${bt.id}`, cta: '습격' });
   // Past the first raids they come bigger: a defence cannon (2 damage a volley) holds the line.
