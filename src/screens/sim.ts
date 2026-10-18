@@ -57,7 +57,7 @@ const screen: Screen = {
     // Not your vassal, not your ally.
     const raidOn = !demo.on ? null : params.get('raid') === 'void' ? demo.boss : demo.rivals().find((r) => r.id === params.get('raid') && r.vassal == null && r.id !== demo.ally?.id) ?? null;
     const mission = MISSIONS.find((m) => m.id === params.get('mission') && unlocked(m)) ?? null;
-    let raidIds: Record<string, string> = {}, loot: { ore: number; alpha?: number } | null = null;
+    let raidIds: Record<string, string> = {}, loot: { ore: number; alpha?: number; promoted?: { id: string; type: number; rank: number; name?: string }[] } | null = null;
     // The war room's estimate for this strike: wins out of plays, filled in a battle at a time.
     let odds: { won: number; played: number } | null = null, stopOdds: (() => void) | null = null;
     let phase: Phase = 'setup', mode = 'single', preset: Preset = 'difficult', diff: Difficulty = 'difficult';
@@ -155,7 +155,7 @@ const screen: Screen = {
       // A replay plays the fleets as they were recorded, whatever today's budget says.
       if (!replaying && mode === 'single' && !raidOn && !mission && spent() > budget()) { sfx.play('error'); notify('편성 초과', `함대 점수 ${spent()} / ${budget()} — 유닛을 줄이세요`, 'jeok', null); return; }
       editing = null; stopOdds?.();
-      if (raidOn?.id === 'void') {
+      if (raidOn?.id === 'void' && !replaying) {
         // It may have moved on while you were deploying.
         if (!demo.boss) { sfx.play('error'); notify('공허 함대', '이미 떠났습니다', 'jeok', null); go('/galaxy'); return; }
         demo.holdBoss();
@@ -233,7 +233,12 @@ const screen: Screen = {
                 void board?.idle().then(() => { if (root.isConnected) { callout(t, n >= 4 ? 'jeok' : 'gold'); sfx.play(n >= 3 ? 'levelup' : 'coin'); } });
               }
             }
-            for (const c of shot.eventAttackDefenderCounterDetail || []) stats[them].counter += c.counterDamage || 0;
+            for (const c of shot.eventAttackDefenderCounterDetail || []) {
+              stats[them].counter += c.counterDamage || 0;
+              // A guard's counter that kills the attacker is a kill for the guard (MVP and veterancy too).
+              if (c.counterDestroyedAttacker) stats[who].lost++;
+              if (them === 'player' && !replaying) { const a = (ace[c.counterByStructId] ??= { type: chain.get(c.counterByStructId)?.typeId ?? 0, dmg: 0, kills: 0, id: c.counterByStructId }); a.dmg += c.counterDamage || 0; if (c.counterDestroyedAttacker) a.kills++; }
+            }
             const what = shot.evaded ? '회피' : shot.blocked ? `차단 (${STRUCT_TYPE[chain.get(shot.blockedByStructId!)?.typeId ?? 0] ?? '방어자'})` : shot.targetDestroyed ? '격파!' : `피해 ${dmg}`;
             log.unshift({ h: b.height, text: `${who === 'player' ? '아군' : '적'} ${typeName(d.attackerStructId)} → ${typeName(shot.targetStructId)} · ${what}`, tone: shot.targetDestroyed ? 'c-hwang' : who === 'player' ? 'c-cheong' : 'c-jeok' });
           }
@@ -302,8 +307,9 @@ const screen: Screen = {
           // Kills scored by your own ships stay with them (veterancy); an ally's don't.
           const kills: Record<string, number> = {};
           for (const [uid, sid] of Object.entries(raidIds)) { const k = ace[idMap[uid]]?.kills; if (k) kills[sid] = k; }
-          for (const v of demo.creditKills(kills)) setTimeout(() => notify('베테랑 진급', `${v.name ? `「${v.name}」 ` : ''}${STRUCT_TYPE[v.type] ?? v.type} ${'★'.repeat(v.rank)}`, 'hwang', 'levelup'), 2400);
-          loot = demo.settleRaid(raidOn.id, w === 'player', hp);
+          loot = demo.settleRaid(raidOn.id, w === 'player', hp, kills);
+          // A ship that went down in this raid keeps its record, but its promotion waits for its repair.
+          for (const v of loot.promoted ?? []) if (hp[v.id] !== 0) setTimeout(() => notify('베테랑 진급', `${v.name ? `「${v.name}」 ` : ''}${STRUCT_TYPE[v.type] ?? v.type} ${'★'.repeat(v.rank)}`, 'hwang', 'levelup'), 2400);
           if (w === 'player') setTimeout(() => career.award(80 + raidOn.fleet * 10, `${raidOn.name} 습격 성공`), 1600);
         }
         if (run) {
@@ -410,7 +416,7 @@ const screen: Screen = {
             <span class="debrief-stars" aria-label="별 3개 중 ${stars}개">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>
             <span class="mono">${blocks}블록 · 격파 ${c.lost} · 손실 ${p.lost}</span>
             ${xpWon ? html`<span class="chip hwang mono" style="font-size:16px">+${xpWon} XP</span>` : ''}
-            ${(() => { const best = Object.values(ace).sort((a, z) => z.kills * 10 + z.dmg - (a.kills * 10 + a.dmg))[0]; return best && (best.dmg || best.kills) ? html`<div class="mvp">${pixel(best.type, 56)}<div><span class="label c-hwang">최우수 전투원</span><b>${(() => { const uid = Object.keys(idMap).find((u) => idMap[u] === best.id); const nm = uid && raidIds[uid] ? demo.state.structs.find((x) => x.id === raidIds[uid])?.name : undefined; return nm ? `「${nm}」 ${STRUCT_TYPE[best.type] ?? best.type}` : STRUCT_TYPE[best.type] ?? best.type; })()}</b><span class="mono">피해 ${best.dmg} · 격파 ${best.kills}</span></div></div>` : ''; })()}
+            ${(() => { const own = raidOn ? new Set(Object.keys(raidIds).map((u) => idMap[u])) : null; const best = Object.values(ace).filter((a) => !own || own.has(a.id ?? '')).sort((a, z) => z.kills * 10 + z.dmg - (a.kills * 10 + a.dmg))[0]; return best && (best.dmg || best.kills) ? html`<div class="mvp">${pixel(best.type, 56)}<div><span class="label c-hwang">최우수 함선</span><b>${(() => { const uid = Object.keys(idMap).find((u) => idMap[u] === best.id); const nm = uid && raidIds[uid] ? demo.state.structs.find((x) => x.id === raidIds[uid])?.name : undefined; return nm ? `「${nm}」 ${STRUCT_TYPE[best.type] ?? best.type}` : STRUCT_TYPE[best.type] ?? best.type; })()}</b><span class="mono">피해 ${best.dmg} · 격파 ${best.kills}</span></div></div>` : ''; })()}
             ${mission && winner === 'player' ? (() => { const next = MISSIONS[mission.no]; return next ? html`<a class="btn danger" href="${href('/sim?mission=' + next.id)}">다음 작전 · ${next.title}</a>` : html`<span class="chip hwang">작전 완수 · 붉은 연합 격파</span>`; })() : ''}
             ${mission ? html`<a class="btn ghost" href="${href('/campaign')}">작전 지도</a>` : ''}
             ${raidOn && loot ? html`<span class="chip ${loot.ore || loot.alpha ? 'hwang' : 'jeok'} mono" style="font-size:16px">${loot.alpha ? `전리품 +${n(loot.alpha)} α` : loot.ore ? `노획 광석 +${n(loot.ore)}` : '노획 없음'}</span><a class="btn gold" href="${href('/console')}">함교로 귀환</a>` : ''}

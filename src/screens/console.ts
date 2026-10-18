@@ -476,7 +476,8 @@ const screen: Screen = {
     });
     offs.push(offKeys);
 
-    const refresh = () => { if (isDemo) { d = demo.dashboard(); paint(); } };
+    // Mid-typing (a ship's name), the block's repaint waits: it would wipe the field and break Korean input.
+    const refresh = () => { if (isDemo) { d = demo.dashboard(); const a = document.activeElement; if (a instanceof HTMLInputElement && root.contains(a)) return; paint(); } };
     const load = async () => {
       try {
         d = isDemo ? demo.dashboard() : await dashboard(pid);

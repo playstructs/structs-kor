@@ -18,6 +18,15 @@ export const DEMO_ID = '1-0';
 const PLANET = '2-118';
 
 export interface DemoStruct { id: string; type: number; ambit: Ambit; slot: number; cat: 'planet' | 'fleet'; online: boolean; hp: number; max: number; building: number | null; buildBlocks: number; protects: string | null; /** Overclocked: more output, more power, wear. */ oc?: boolean; /** Kills scored in raids (veterancy). */ kills?: number; /** The name its commander gave it (veterans only). */ name?: string }
+function creditInner(byId: Record<string, number>): { id: string; type: number; rank: number; name?: string }[] {
+  const up: { id: string; type: number; rank: number; name?: string }[] = [];
+  for (const x of s.structs) {
+    const k = byId[x.id]; if (!k) continue;
+    const before = vetRank(x.kills); x.kills = (x.kills ?? 0) + k;
+    if (vetRank(x.kills) > before) up.push({ id: x.id, type: x.type, rank: vetRank(x.kills), name: x.name });
+  }
+  return up;
+}
 /** Veteran rank from kills: ★ at 3, ★★ at 8, ★★★ at 15. */
 export const vetRank = (kills = 0) => (kills >= 15 ? 3 : kills >= 8 ? 2 : kills >= 3 ? 1 : 0);
 export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number }
@@ -872,7 +881,9 @@ function raidStep() {
     if (shieldUp) { s.shield = Math.max(0, s.shield - 12); attack(a, t, 0, false, true); }
     else attack(a, t, 1 + (rnd() < 0.3 ? 1 : 0), rnd() < 0.12);
   }
-  const shooters = s.structs.filter((x) => x.hp > 0 && x.online && x.building == null && (x.cat === 'fleet' || x.type === 19));
+  // The best guns fire first: veterans, then defence cannons.
+  const shooters = s.structs.filter((x) => x.hp > 0 && x.online && x.building == null && (x.cat === 'fleet' || x.type === 19))
+    .sort((a, z) => vetRank(z.kills) - vetRank(a.kills) || Number(z.type === 19) - Number(a.type === 19));
   for (const d of shooters.slice(0, 2)) {
     const left = r.structs.filter((x) => x.hp > 0);
     if (!left.length) break;
@@ -993,11 +1004,15 @@ export const demo = {
     adoptStored(); // another tab may have moved on: act on the newest base
     const t = TYPES_BY_ID[type];
     if (!t) return '알 수 없는 구조체';
-    if (s.structs.some((x) => x.ambit === ambit && x.slot === slot && x.cat === cat && x.hp > 0)) return '이미 사용 중인 슬롯입니다';
+    // The command ship rides with the fleet but holds no slot (as in battle).
+    const inSlot = (x: DemoStruct) => x.ambit === ambit && x.slot === slot && x.cat === cat && x.type !== 1;
+    if (s.structs.some((x) => inSlot(x) && x.hp > 0)) return '이미 사용 중인 슬롯입니다';
     if (structsKw() + soldKw() + kwOf(type) > capacityKw()) return `전력이 부족합니다 (${kwOf(type).toFixed(2)} kW 필요)`;
     const id = `5-${920 + s.seq}`;
-    s.structs = s.structs.filter((x) => !(x.ambit === ambit && x.slot === slot && x.cat === cat));
-    s.structs.push({ id, type, ambit, slot, cat, online: false, hp: t.maxHealth, max: t.maxHealth, building: 0, buildBlocks: Math.max(3, Math.round(t.buildDifficulty / 140)), protects: null });
+    // Rebuilding a fallen veteran's hull in its own slot keeps its record and name.
+    const fallen = s.structs.find((x) => inSlot(x) && x.hp <= 0 && x.type === type);
+    s.structs = s.structs.filter((x) => !inSlot(x));
+    s.structs.push({ id, type, ambit, slot, cat, online: false, hp: t.maxHealth, max: t.maxHealth, building: 0, buildBlocks: Math.max(3, Math.round(t.buildDifficulty / 140)), protects: null, kills: fallen?.kills, name: fallen?.name });
     log('struct_block_build_start', id);
     persist(); for (const f of changeFns) f();
     return null;
@@ -1078,7 +1093,6 @@ export const demo = {
     return null;
   },
   covert,
-  /** Credit kills from a raid to the ships that scored them; returns the promotions (name, new rank). */
   /** Name a veteran ship (1–12 characters; empty clears it). */
   nameShip(id: string, name: string): string | null {
     adoptStored();
@@ -1089,14 +1103,10 @@ export const demo = {
     persist(); for (const f of changeFns) f();
     return null;
   },
-  creditKills(byId: Record<string, number>): { id: string; type: number; rank: number; name?: string }[] {
+  /** Credit kills from a raid to the ships that scored them; returns the promotions (name, new rank). */
+  creditKills(byId: Record<string, number>) {
     adoptStored();
-    const up: { id: string; type: number; rank: number; name?: string }[] = [];
-    for (const x of s.structs) {
-      const k = byId[x.id]; if (!k) continue;
-      const before = vetRank(x.kills); x.kills = (x.kills ?? 0) + k;
-      if (vetRank(x.kills) > before) up.push({ id: x.id, type: x.type, rank: vetRank(x.kills), name: x.name });
-    }
+    const up = creditInner(byId);
     persist(); for (const f of changeFns) f();
     return up;
   },
@@ -1368,20 +1378,21 @@ export const demo = {
     return { units, ids };
   },
   /** Settle a counter-raid: the fleet comes home as hurt as it fought; a win loots the rival. */
-  settleRaid(rivalId: string, won: boolean, hp: Record<string, number>): { ore: number; alpha: number } {
+  settleRaid(rivalId: string, won: boolean, hp: Record<string, number>, kills: Record<string, number> = {}): { ore: number; alpha: number; promoted?: ReturnType<typeof creditInner> } {
     adoptStored(); // another tab may have moved on: act on the newest base
     // Held still while settling: the bounty, grant and promotion it sets off must not swap the base.
     busy++;
     try {
+    const promoted = creditInner(kills);
     for (const x of s.structs) if (x.id in hp) { x.hp = hp[x.id]; if (x.hp <= 0) x.online = false; }
     if (rivalId === 'void') {
-      if (!won || !s.boss) { if (s.boss) s.boss.engaged = undefined; persist(); for (const f of changeFns) f(); return { ore: 0, alpha: 0 }; }
+      if (!won || !s.boss) { if (s.boss) s.boss.engaged = undefined; persist(); for (const f of changeFns) f(); return { ore: 0, alpha: 0, promoted }; }
       const g = VOID.reward + 10 * s.boss.n;
       s.alpha += g; s.voidKills = (s.voidKills ?? 0) + 1; s.boss = null; s.nextBoss = s.height + VOID.every;
       chronicle('hwang', `공허 함대 격파 · 전리품 +${g} α`);
       log('raid_status', `공허 함대 격파 +${g} α`);
       persist(); for (const f of changeFns) f();
-      return { ore: 0, alpha: g };
+      return { ore: 0, alpha: g, promoted };
     }
     const r = rivals().find((y) => y.id === rivalId);
     let loot = { ore: 0, alpha: 0 };
@@ -1405,7 +1416,7 @@ export const demo = {
       log('raid_status', `${r.name} 약탈 +${loot.ore}`);
     } else log('raid_status', `${r?.name ?? rivalId} 습격 실패`);
     persist(); for (const f of changeFns) f();
-    return loot;
+    return { ...loot, promoted };
       } finally { busy--; }
   },
   level: (t: TechId) => lv(t),

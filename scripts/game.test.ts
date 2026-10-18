@@ -614,3 +614,18 @@ test('ship names: only veterans can be named, and names are trimmed to 12', () =
   assert.equal(demo.nameShip(ship.id, ''), null);
   assert.equal(ship.name, undefined);
 });
+
+test('veterancy: a raid credits kills as it settles, and rebuilding a fallen veteran keeps its record', () => {
+  demo.reset();
+  demo.state.infusedKw = 20;
+  const ship = demo.state.structs.find((x) => x.cat === 'fleet' && x.type !== 1)!;
+  const r = demo.rivals()[0];
+  const res = demo.settleRaid(r.id, true, { [ship.id]: 0 }, { [ship.id]: 3 });
+  assert.equal(res.promoted?.[0]?.rank, 1, 'promoted as it settled');
+  assert.equal(ship.hp, 0, 'went down in the raid');
+  demo.nameShip(ship.id, '불사조');
+  assert.equal(demo.build(ship.type, ship.ambit, ship.slot, 'fleet'), null);
+  const rebuilt = demo.state.structs.find((x) => x.cat === 'fleet' && x.type !== 1 && x.ambit === ship.ambit && x.slot === ship.slot)!;
+  assert.equal(rebuilt.kills, 3);
+  assert.equal(rebuilt.name, '불사조');
+});
