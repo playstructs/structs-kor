@@ -665,4 +665,5 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .job .btn { justify-self: start; min-height: 36px; }
 
 .raid-alarm .stance { display: inline-flex; gap: 6px; }
+.raid-alarm .forecast { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; }
 .raid-alarm .stance .btn { min-height: 36px; padding: 0 12px; }

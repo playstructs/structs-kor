@@ -301,6 +301,9 @@ const screen: Screen = {
         <strong>${eta ? `▲ 적 함대 접근 · ${eta}블록` : '▲ 행성 습격 진행 중'}</strong>
         <span>${r ? `${r.name} 함대 ${r.fleetId} · ${r.structs.length}기` : `함대 ${live!.fleet_id}${live!.fleet_owner ? ` (${live!.fleet_owner})` : ''}`} · 노출된 광석 <b class="mono">${n(Math.floor(Number(d?.player.ore ?? 0)))}</b></span>
         ${r && eta ? html`<span class="stance" role="group" aria-label="대응 태세"><button class="btn ${r.stance === 'intercept' ? 'danger' : 'ghost'}" data-act="stance" data-v="intercept" aria-pressed="${r.stance === 'intercept'}" title="함포 추가 피해 확률 +30%p · 강타당할 확률도 늘어남">요격</button><button class="btn ${r.stance === 'entrench' ? 'primary' : 'ghost'}" data-act="stance" data-v="entrench" aria-pressed="${r.stance === 'entrench'}" title="방어막 차단 확률 1.6배 · 강타 확률 절반 · 함포 추가 피해 확률 −10%p">참호</button></span>` : r?.stance ? html`<span class="chip ${r.stance === 'intercept' ? 'jeok' : 'cheong'}">${r.stance === 'intercept' ? '요격 태세' : '참호 태세'}</span>` : ''}
+        ${r ? (() => { const f = demo.raidForecast(); if (!f) return ''; const p = (x: number) => `${Math.round(x * 100)}%`, tone = (x: number) => (x >= 0.7 ? 'cheong' : x >= 0.4 ? 'hwang' : 'jeok');
+          return eta ? html`<span class="forecast" title="지금 기지로 이 습격을 40번씩 모의한 승률 (현재 방어막 기준)">예상 승률 <span class="chip ${tone(f.intercept)}">요격 ${p(f.intercept)}</span><span class="chip ${tone(f.entrench)}">참호 ${p(f.entrench)}</span><span class="chip ${tone(f.none)}">미정 ${p(f.none)}</span></span>`
+            : html`<span class="forecast">승률 <span class="chip ${tone(f[r.stance ?? 'none'])}">${p(f[r.stance ?? 'none'])}</span></span>`; })() : ''}
         <span class="end" style="display:flex;gap:8px;flex-wrap:wrap">${isDemo ? html`<button class="btn gold" data-act="refineAll" style="min-height:36px">정제소 가동 <kbd>Q</kbd></button>` : ''}<a class="btn danger" href="${href('/sim')}" style="min-height:36px">방어 시뮬레이션</a></span>
       </section>`;
     };

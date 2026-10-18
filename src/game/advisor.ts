@@ -16,8 +16,12 @@ export function advise(rank = 99): Tip[] {
   if (raid && raid.eta > 0 && !raid.stance) {
     const guns = st.structs.filter((x) => x.hp > 0 && x.online && x.building == null && x.type !== 1 && (x.cat === 'fleet' || x.type === 19)).length;
     // With the overcharge ready, the shield is the plan; otherwise strong guns meet them, a weak shield hides.
-    const pick = st.shield >= 60 || ready('overshield') ? '참호' : guns >= 3 ? '요격' : st.shield >= 30 ? '참호' : '요격';
-    tips.push({ pri: 98, tone: 'hwang', text: `대응 태세 미정 · 방어막 ${Math.round(st.shield)}% · 함포 ${guns}기. ${pick === '참호' ? '참호: 방어막으로 버티세요.' : '요격: 먼저 쏴서 줄이세요.'} 경보 막대에서 고릅니다.`, go: '/console', cta: '함교' });
+    // The forecast decides when it can tell them apart; the rule of thumb only breaks a tie.
+    const f = demo.raidForecast();
+    const rule = st.shield >= 60 || ready('overshield') ? '참호' : guns >= 3 ? '요격' : st.shield >= 30 ? '참호' : '요격';
+    const pick = f && Math.abs(f.intercept - f.entrench) >= 0.05 ? (f.intercept > f.entrench ? '요격' : '참호') : rule;
+    const odds = f ? ` (예상 승률 ${Math.round((pick === '요격' ? f.intercept : f.entrench) * 100)}%)` : '';
+    tips.push({ pri: 98, tone: 'hwang', text: `대응 태세 미정 · 방어막 ${Math.round(st.shield)}% · 함포 ${guns}기. ${pick === '참호' ? '참호: 방어막으로 버티세요' : '요격: 먼저 쏴서 줄이세요'}${odds}. 경보 막대에서 고릅니다.`, go: '/console', cta: '함교' });
   }
   // A delivery on the board that would empty the pile before the raid lands.
   const del = demo.jobs?.offers.filter((o) => o.kind === 'deliver' && o.need <= st.ore).sort((a, z) => z.need - a.need)[0];

@@ -303,7 +303,9 @@ const persist = () => { if (catching) return; s.savedAt = Date.now(); try { loca
 /* One random stream per block: every draw within a block is a fresh number (re-seeding per call made
  * successive draws identical: the event roll that passed "< 0.09" always picked event 0). */
 let rngBlock = -1, rngStream: () => number = () => 0;
+let forecastRng: (() => number) | null = null;
 const rnd = () => {
+  if (forecastRng) return forecastRng();
   if (rngBlock !== s.height) { rngBlock = s.height; rngStream = rngFor(`demo:${s.height}:${s.seq}`); }
   return rngStream();
 };
@@ -1002,7 +1004,38 @@ function attack(a: DemoStruct, t: DemoStruct, dmg: number, evaded: boolean, shie
   };
   log('struct_attack', `${a.id} → ${t.id}`);
   if (t.hp === 0 && before > 0) t.online = false;
-  for (const f of attackFns) f(d);
+  if (!forecastRng) for (const f of attackFns) f(d);
+}
+
+/** 전황 예측: play the raid out many times on a copy of the base (same rules, its own dice) and count
+ * the wins for each stance. Nothing real is touched: the copy is thrown away, events and saves muted. */
+export type Forecast = Record<'none' | Stance, number>;
+let forecastMemo: { key: string; f: Forecast } | null = null;
+function raidForecast(n = 40): Forecast | null {
+  if (!s.raid) return null;
+  const key = `${s.height}:${s.seq}:${s.shield}:${s.structs.map((x) => x.hp).join('')}:${s.raid.structs.map((x) => x.hp).join('')}`;
+  if (forecastMemo?.key === key) return forecastMemo.f;
+  const real = s, wasCatching = catching;
+  const f: Forecast = { none: 0, intercept: 0, entrench: 0 };
+  catching = true;
+  try {
+    for (const st of ['none', 'intercept', 'entrench'] as const) {
+      let won = 0;
+      for (let i = 0; i < n; i++) {
+        s = structuredClone(real);
+        const r = s.raid!;
+        // An approaching raid is played from its arrival, with the stance it would have.
+        if (r.eta > 0) { s.height += r.eta - 1; r.eta = 1; }
+        r.stance = st === 'none' ? undefined : st;
+        forecastRng = rngFor(`forecast:${key}:${st}:${i}`);
+        for (let b = 0; b < 40 && s.raid; b++) { raidStep(); s.height++; }
+        if (s.raidsRepelled > real.raidsRepelled) won++;
+      }
+      f[st] = won / n;
+    }
+  } finally { s = real; catching = wasCatching; forecastRng = null; }
+  forecastMemo = { key, f };
+  return f;
 }
 
 /* ── What the screens read ── */
@@ -1178,6 +1211,7 @@ export const demo = {
     persist(); for (const f of changeFns) f();
     return null;
   },
+  raidForecast,
   get black() { const b = s.black; return b && b.offers.length && s.height <= b.until ? { offers: b.offers, left: b.until - s.height, deals: b.deals ?? 0 } : { offers: [] as BlackOffer[], left: 0, next: Math.max(0, (b?.next ?? s.height) - s.height), deals: b?.deals ?? 0 }; },
   /** Why a black-market deal can't be bought now (null = it can). */
   blackBlocked(id: BlackId): string | null {

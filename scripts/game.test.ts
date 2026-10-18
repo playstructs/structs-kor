@@ -687,6 +687,17 @@ test('black market: a smuggler docks with three deals, each sold once, then leav
   assert.equal(demo.black.offers.length, 0, 'the ship left');
 });
 
+test('raid forecast: plays the raid out on a copy and leaves the real base untouched', () => {
+  demo.reset();
+  assert.equal(demo.raidForecast(), null, 'no raid, no forecast');
+  demo.state.raidsRepelled = 12; demo.state.nextRaid = 1; demo.step();
+  const before = JSON.stringify(demo.state);
+  const f = demo.raidForecast()!;
+  assert.equal(JSON.stringify(demo.state), before, 'nothing real changed');
+  for (const v of Object.values(f)) assert.ok(v >= 0 && v <= 1);
+  assert.equal(demo.raidForecast(), f, 'memoized within the block');
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);
