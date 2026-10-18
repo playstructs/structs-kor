@@ -16,10 +16,10 @@ import { onGrass, throttled } from '../grass/grass';
 import { AMBIT, STRUCT_TYPE, activityLabel } from '../i18n/ko';
 import { TYPES_BY_ID, STRUCT_TYPES, AMBIT_FLAG, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
 import { Board, type BoardStruct } from '../game/map/board';
-import { demo, DEMO_ID, ENGINE, OC, vetRank } from '../game/demo';
+import { demo, DEMO_ID, ENGINE, OC, vetRank, ABILITIES, type AbilityId } from '../game/demo';
 import { hegemonyMeter } from '../game/meter';
 import { advise, adviseReal } from '../game/advisor';
-import { career, activeMissions, tutorialDone, type MissionState } from '../game/progress';
+import { career, activeMissions, tutorialDone, RANKS, type MissionState } from '../game/progress';
 import { sfx } from '../game/sfx';
 import { banner, notify, float, flash, shake } from '../game/fx';
 import { keys } from '../game/keys';
@@ -146,6 +146,15 @@ const screen: Screen = {
       if (!tips.length) return html``;
       return html`<section class="card game-panel advisor"><div class="card-head"><h2>참모 보고</h2><span class="end label c-cheong">ADVISOR</span></div>
         <ol class="tips">${tips.map((t) => html`<li class="tip ${t.tone}"><p>${t.text}</p>${t.go === '/console' ? '' : html`<a class="btn ghost" href="${href(t.go)}">${t.cta}</a>`}</li>`)}</ol></section>`;
+    };
+    /* 지휘관 능력: three active powers, each on its cooldown, unlocked by rank. */
+    const abilities = (): Safe => {
+      if (!isDemo) return html``;
+      const rank = career.rank.i, rally = demo.rallying;
+      return html`<section class="card game-panel abilities"><div class="card-head"><h2>지휘관 능력</h2>${rally ? html`<span class="end chip jeok mono">총동원 ${rally}블록</span>` : ''}</div>
+        <div class="ab-row">${ABILITIES.map((a) => { const left = demo.abilityLeft(a.id), locked = rank < a.rank; return html`<button class="ab ${left || locked ? '' : 'ready'}" data-act="ability" data-id="${a.id}" ${left || locked ? 'disabled' : ''} title="${a.what}">
+          <b>${a.name} <kbd>${a.key}</kbd></b><small>${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : a.what}</small>
+          ${left && !locked ? html`<i class="ab-cd" style="width:${Math.round((left / a.cooldown) * 100)}%"></i>` : ''}</button>`; })}</div></section>`;
     };
     const daily = (): Safe => {
       const d = dailyOrders();
@@ -329,7 +338,7 @@ const screen: Screen = {
           <div id="bd-host" class="bd-host"></div>
           <div class="planet-foot"><span>보유 광석 <b class="mono c-white">${n(Math.floor(Number(d?.player.ore ?? 0)))}</b> <span class="faint">(약탈 가능)</span></span><span>알파 <b class="mono c-hwang">${micro(d?.player.alpha)} g</b> <span class="faint">(안전)</span></span><span>블록 <b class="mono c-white">${d?.height == null ? '—' : '#' + n(d.height)}</b></span><span class="faint" style="margin-left:auto">빈 슬롯을 누르면 건설 · 구조체를 누르면 정보</span></div>
         </section>
-        <aside class="bridge-r">${inspector()}${isDemo ? '' : html`<div id="pow-host">${powCard()}</div>`}${standings()}${feed()}</aside>
+        <aside class="bridge-r">${abilities()}${inspector()}${isDemo ? '' : html`<div id="pow-host">${powCard()}</div>`}${standings()}${feed()}</aside>
       </div>
       ${commandBar()}`;
 
@@ -421,6 +430,12 @@ const screen: Screen = {
         career.award(500, `제${demo.era + 1}시대 개막`);
         refresh();
       },
+      ability: (el: HTMLElement) => {
+        const id = el.dataset.id as AbilityId, a = ABILITIES.find((x) => x.id === id)!;
+        if (err(demo.useAbility(id, career.rank.i))) return;
+        sfx.play(id === 'rally' ? 'alarm' : id === 'overshield' ? 'shield' : 'coin'); if (id === 'rally') shake('sm');
+        float(el, a.name, 'var(--hwang)', true); refresh();
+      },
       nameShip: (el: HTMLElement) => {
         const n = String(new FormData(el as HTMLFormElement).get('n') ?? '');
         if (err(demo.nameShip(el.dataset.id!, n))) return;
@@ -471,6 +486,7 @@ const screen: Screen = {
       v: () => { const b = root.querySelector<HTMLElement>('[data-act="overclock"]'); if (!b) return false; handlers.overclock(b); },
       r: () => { if (isDemo && panel?.kind === 'struct') handlers.repair(document.querySelector('[data-act="repair"]') ?? document.body); },
       Escape: () => handlers.close(),
+      ...Object.fromEntries(ABILITIES.map((a) => [a.key, () => { if (!isDemo) return false; const b = root.querySelector<HTMLElement>(`[data-act="ability"][data-id="${a.id}"]`); if (!b) return false; handlers.ability(b); }])),
       '1': () => (isDemo && demo.decision ? handlers.decide({ dataset: { i: '0' } } as unknown as HTMLElement) : false),
       '2': () => (isDemo && demo.decision ? handlers.decide({ dataset: { i: '1' } } as unknown as HTMLElement) : false),
     });

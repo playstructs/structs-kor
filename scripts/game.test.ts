@@ -629,3 +629,19 @@ test('veterancy: a raid credits kills as it settles, and rebuilding a fallen vet
   assert.equal(rebuilt.kills, 3);
   assert.equal(rebuilt.name, '불사조');
 });
+
+test('commander abilities: rank-gated, effective, then on cooldown', () => {
+  demo.reset();
+  for (const x of demo.state.structs) if (x.type === 15) x.online = true;
+  demo.state.ore = 50;
+  assert.match(demo.useAbility('surge', 0) ?? '', /계급/);
+  const a = demo.state.alpha;
+  assert.equal(demo.useAbility('surge', 17), null);
+  assert.ok(demo.state.alpha > a, 'refined at once');
+  assert.match(demo.useAbility('surge', 17) ?? '', /재사용/);
+  demo.state.shield = 10;
+  assert.equal(demo.useAbility('overshield', 17), null);
+  assert.equal(demo.state.shield, 50);
+  assert.equal(demo.useAbility('rally', 17), null);
+  assert.equal(demo.rallying, 20);
+});

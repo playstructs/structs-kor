@@ -122,6 +122,8 @@ interface State {
   era?: number;
   /** Bounties collected, all time (survives new eras). */
   bountiesClaimed?: number;
+  /** Commander abilities: the block each is ready again; and total mobilisation's end. */
+  cd?: Partial<Record<AbilityId, number>>; rallyUntil?: number;
   /** An alliance: the rival, and the block it lapses. */
   ally?: { id: string; until: number } | null;
   /** Outposts: who holds each (DEMO_ID for you), and your garrison level there. */
@@ -655,6 +657,14 @@ function allyStep() {
   }
 }
 
+/* ── 지휘관 능력: active powers with cooldowns, unlocked by rank. ── */
+export type AbilityId = 'surge' | 'overshield' | 'rally';
+export const ABILITIES: { id: AbilityId; name: string; what: string; cooldown: number; rank: number; key: string }[] = [
+  { id: 'surge', name: '긴급 정제', what: '정제소 3블록치를 즉시 정제', cooldown: 60, rank: 3, key: '7' },
+  { id: 'overshield', name: '방어막 과충전', what: '방어막 +40%', cooldown: 90, rank: 4, key: '8' },
+  { id: 'rally', name: '총동원', what: '20블록 동안 모든 함포가 방어 사격', cooldown: 150, rank: 7, key: '9' },
+];
+
 /* ── 대출 (credit): 청룡 상단 lends against your future. 20% on top, due in 200 blocks, repaid
  * from the treasury when it falls due. Can't pay, and the house takes ore and sends its fleet. ── */
 export const LOAN = { max: 50, rate: 0.2, term: 200 };
@@ -884,7 +894,8 @@ function raidStep() {
   // The best guns fire first: veterans, then defence cannons.
   const shooters = s.structs.filter((x) => x.hp > 0 && x.online && x.building == null && (x.cat === 'fleet' || x.type === 19))
     .sort((a, z) => vetRank(z.kills) - vetRank(a.kills) || Number(z.type === 19) - Number(a.type === 19));
-  for (const d of shooters.slice(0, 2)) {
+  // 총동원: every gun fires while it lasts.
+  for (const d of shooters.slice(0, (s.rallyUntil ?? 0) > s.height ? shooters.length : 2)) {
     const left = r.structs.filter((x) => x.hp > 0);
     if (!left.length) break;
     const tgt = left.find((x) => x.type !== 1) ?? left[0];
@@ -1093,6 +1104,30 @@ export const demo = {
     return null;
   },
   covert,
+  /** Blocks until an ability is ready (0 = now). */
+  abilityLeft: (id: AbilityId) => Math.max(0, (s.cd?.[id] ?? 0) - s.height),
+  get rallying() { return Math.max(0, (s.rallyUntil ?? 0) - s.height); },
+  /** Use a commander ability (`rank` is the commander's rank index). */
+  useAbility(id: AbilityId, rank: number): string | null {
+    adoptStored();
+    const a = ABILITIES.find((x) => x.id === id)!;
+    if (rank < a.rank) return '계급이 부족합니다';
+    const left = Math.max(0, (s.cd?.[id] ?? 0) - s.height);
+    if (left) return `${a.name} 재사용까지 ${left}블록`;
+    if (id === 'surge') {
+      const cap = s.structs.filter((x) => x.type === 15 && x.online && x.building == null && x.hp > 0).length * refineRate() * 3;
+      const amt = Math.min(s.ore, cap);
+      if (amt <= 0) return '정제할 광석이나 가동 중인 정제소가 없습니다';
+      s.ore -= amt; s.alpha += amt * RATE.alphaPerOre;
+    } else if (id === 'overshield') {
+      if (s.shield >= 100) return '방어막이 이미 가득합니다';
+      s.shield = Math.min(100, s.shield + 40);
+    } else s.rallyUntil = s.height + 20;
+    s.cd = { ...s.cd, [id]: s.height + a.cooldown };
+    log('event', `능력 · ${a.name}`);
+    persist(); for (const f of changeFns) f();
+    return null;
+  },
   /** Name a veteran ship (1–12 characters; empty clears it). */
   nameShip(id: string, name: string): string | null {
     adoptStored();

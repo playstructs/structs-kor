@@ -647,3 +647,12 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 
 .ship-name { display: flex; gap: 6px; }
 .ship-name .input { flex: 1; min-width: 0; }
+
+/* 지휘관 능력 */
+.ab-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ab { position: relative; overflow: hidden; display: grid; gap: 2px; align-content: start; text-align: left; padding: 8px 10px; min-height: 64px; font: inherit; color: var(--text); background: var(--surface); border: 2px solid var(--line); cursor: pointer; }
+.ab b { font-size: 14px; color: var(--white); }
+.ab small { font-size: 11px; opacity: .85; }
+.ab.ready { border-color: var(--hwang); box-shadow: 0 0 14px rgba(235,170,73,.3); }
+.ab:disabled { cursor: default; opacity: .7; }
+.ab-cd { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--jeok-strong); }
