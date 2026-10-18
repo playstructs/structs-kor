@@ -169,6 +169,16 @@ export const actions = {
   reactorInfuse: (validatorAddress: string, ualpha: number, index = 0) => act('MsgReactorInfuse', { delegator_address: wallet.key(index).address, validator_address: validatorAddress, amount: { denom: 'ualpha', amount: String(ualpha) } }, index),
   reactorDefuse: (validatorAddress: string, ualpha: number, index = 0) => act('MsgReactorDefuse', { delegator_address: wallet.key(index).address, validator_address: validatorAddress, amount: { denom: 'ualpha', amount: String(ualpha) } }, index),
   substationConnect: (substationId: string, playerId: string, index = 0) => act('MsgSubstationPlayerConnect', { substationId, playerId }, index),
+  /* Distribution: allocations carry power from a source (player, reactor, generator) to a substation.
+   * controller: optional player id that may manage it (blank: the creator). Automated: one per source. */
+  allocationCreate: (sourceObjectId: string, allocationType: 'static' | 'dynamic' | 'automated', power: number, controller = '') =>
+    act('MsgAllocationCreate', { controller, sourceObjectId, allocationType, power: String(power) }),
+  allocationUpdate: (allocationId: string, power: number) => act('MsgAllocationUpdate', { allocationId, power: String(power) }),
+  allocationDelete: (allocationId: string) => act('MsgAllocationDelete', { allocationId }),
+  allocationConnect: (allocationId: string, destinationId: string) => act('MsgSubstationAllocationConnect', { allocationId, destinationId }),
+  allocationDisconnect: (allocationId: string) => act('MsgSubstationAllocationDisconnect', { allocationId }),
+  substationCreate: (owner: string, allocationId: string) => act('MsgSubstationCreate', { owner, allocationId }),
+  substationName: (substationId: string, name: string) => act('MsgSubstationUpdateName', { substationId, name }),
   stealth: (structId: string, on: boolean) => act(on ? 'MsgStructStealthActivate' : 'MsgStructStealthDeactivate', { structId }),
 };
 

@@ -39,6 +39,32 @@ function demoEnergy(): { p: PlayerRow; e: Energy; structs: StructRow[] } {
 }
 
 interface Inf { reactor: string; amount: string; busy: boolean }
+interface Dist { source: string; type: 'static' | 'dynamic' | 'automated'; kw: string; subs: { id: string; name: string }[]; busy: boolean }
+function distribution(p: PlayerRow, e: Energy, d: Dist, canSign: boolean): Safe {
+  const pw = e.power;
+  const supply = Number(pw?.capacity ?? p.capacity) + Number(pw?.connection_capacity ?? p.connection_capacity);
+  const demand = Number(pw?.load ?? p.load) + Number(pw?.structs_load ?? p.structs_load);
+  const after = supply - demand - Number(d.kw || 0) * 1e6;
+  return html`<section class="card game-panel"><div class="card-head"><h2>배전 · 할당과 변전소</h2><span class="end dim" style="font-size:13px">내 전력을 변전소로 보내 나와 길드원(레플리칸트)에게 나눔</span></div>
+    <div class="g2" style="align-items:start;gap:14px">
+      <div><h3 class="sub-h">보내는 할당</h3>
+        ${e.allocations_out.length ? html`<ul class="coins">${e.allocations_out.map((a) => html`<li><span class="rank mono">${a.cascade_rank}</span><div><b>${ALLOCATION_TYPE[a.allocation_type] ?? a.allocation_type} · ${a.id}</b><small class="mono">→ ${a.destination_id ? html`<a href="${href(`/o/${a.destination_id}`)}">${entityOf(a.destination_id)} ${a.destination_id}</a>` : '연결 안 됨'} · 출처 ${a.source_id}</small></div><strong class="mono">${a.power == null ? '—' : watts(Number(a.power))}</strong>
+          <span class="alloc-acts"><button class="btn ghost sm" data-act="allocPower" data-id="${a.id}" ${canSign ? '' : 'disabled'}>전력</button>${a.destination_id ? html`<button class="btn ghost sm" data-act="allocDisc" data-id="${a.id}" ${canSign ? '' : 'disabled'}>끊기</button>` : html`<button class="btn ghost sm" data-act="allocConn" data-id="${a.id}" ${canSign ? '' : 'disabled'}>연결</button><button class="btn ghost sm" data-act="subNew" data-id="${a.id}" ${canSign ? '' : 'disabled'} title="이 할당으로 새 변전소">변전소 만들기</button>`}<button class="btn outline-danger sm" data-act="allocDel" data-id="${a.id}" ${canSign ? '' : 'disabled'}>삭제</button></span></li>`)}</ul>` : html`<p class="note">보내는 할당이 없습니다.</p>`}
+        <form class="alloc-form" data-act="allocNew" data-on="submit">
+          <label class="field"><span>출처 (나·리액터·발전기)</span><input class="input mono" name="source" value="${d.source}" data-act="dSource" placeholder="1-… / 3-… / 5-…"></label>
+          <label class="field"><span>방식</span><select class="input" name="type" data-act="dType" data-on="change">${(['static', 'dynamic', 'automated'] as const).map((t) => html`<option value="${t}" ${d.type === t ? 'selected' : ''}>${ALLOCATION_TYPE[t]}</option>`)}</select></label>
+          <label class="field"><span>전력 (kW)</span><input class="input mono" name="kw" value="${d.kw}" data-act="dKw" inputmode="decimal"></label>
+          <button class="btn gold" ${canSign && !d.busy ? '' : 'disabled'}>할당 만들기</button>
+        </form>
+        <div class="verdict ${after < 0 ? 'bad' : after < supply * 0.1 ? 'warn' : 'ok'}" style="margin-top:8px"><strong>${after < 0 ? '정전 위험' : '여유'} ${watts(Math.abs(after))}</strong><span>${after < 0 ? '이 할당을 만들면 부하가 용량을 넘습니다. 먼저 만든 할당부터 끊깁니다.' : '할당 후 남는 용량입니다. 자동 할당은 용량에 맞춰 늘고, 출처당 하나만 됩니다.'}</span></div>
+      </div>
+      <div><h3 class="sub-h">내 변전소</h3>
+        ${d.subs.length ? html`<ul class="coins">${d.subs.map((x) => html`<li><span class="coin-ico token"></span><div><b><a href="${href(`/o/${x.id}`)}">${x.name || '이름 없음'}</a></b><small class="mono">${x.id}${p.substation_id === x.id ? ' · 연결됨' : ''}</small></div>
+          <span class="alloc-acts"><button class="btn ghost sm" data-act="subName" data-id="${x.id}" ${canSign ? '' : 'disabled'}>이름</button>${p.substation_id === x.id ? '' : html`<button class="btn ghost sm" data-act="subJoin" data-id="${x.id}" ${canSign ? '' : 'disabled'}>여기로 연결</button>`}</span></li>`)}</ul>` : html`<p class="note">소유한 변전소가 없습니다. 연결되지 않은 할당으로 하나 만들 수 있습니다.</p>`}
+        <p class="note">지금 연결: <a href="${href(`/o/${p.substation_id}`)}">${p.substation_id || '—'}</a> · 레플리칸트를 내 변전소에 연결하면 그 몫만큼 복제 여유가 생깁니다.</p>
+      </div>
+    </div></section>`;
+}
 function infusionPanel(e: Energy, inf: Inf, canSign: boolean): Safe {
   return html`<div class="inf-panel">
     ${e.infusions.length ? html`<ul class="coins">${e.infusions.map((i) => html`<li><span class="coin-ico"></span><div><b><a href="${href(`/o/${i.destination_id}`)}">${entityOf(i.destination_id)} ${i.destination_id}</a></b><small class="mono">주입 ${micro(i.fuel_p ?? i.fuel, 2)} g · 회수 중 ${micro(i.defusing, 2)} g · 수수료 ${n(Number(i.commission))}%</small></div><strong class="mono c-hwang">${watts(Number(i.power_p ?? i.power ?? 0))}</strong>
@@ -130,6 +156,7 @@ const screen: Screen = {
     let dropKw = 0;
     let cut = new Set<string>(), offline = false;
     const inf: Inf = { reactor: '', amount: '1', busy: false };
+    const dist: Dist = { source: pid, type: 'static', kw: '1', subs: [], busy: false };
     const validatorOf = async (reactorId: string) => String(((await guildApi.objects([reactorId])).find((o) => o.id === reactorId)?.object as Record<string, unknown> | undefined)?.validator ?? '');
     const tiles = () => {
       const pw = e.power;
@@ -140,7 +167,13 @@ const screen: Screen = {
         { label: '여유 전력', value: pw ? watts(Math.max(0, Number(pw.total_capacity) - Number(pw.total_load))) : '—', tone: 'var(--cheong-hi)' },
       ]);
     };
-    const paint = () => { if (root.isConnected) { mount(root, view(p, e, structs, dropKw, cut, offline, isDemo, inf), handlers); tiles(); } };
+    const sign = (pr: Promise<string>, done: string) => {
+      dist.busy = true; paint();
+      pr.then((h) => { sfx.play('confirm'); toast(`${done} · ${h.slice(0, 10)}…`); setTimeout(() => void load(), 6000); })
+        .catch((err) => { sfx.play('error'); toast('실패: ' + (err as Error).message, 5000); })
+        .finally(() => { dist.busy = false; paint(); });
+    };
+    const paint = () => { if (root.isConnected) { mount(root, html`${view(p, e, structs, dropKw, cut, offline, isDemo, inf)}${isDemo ? '' : distribution(p, e, dist, wallet.state === 'unlocked')}`, handlers); tiles(); } };
     const recompute = () => { const local = whatIfLocal(e, dropKw * 1e6); cut = new Set(local.cut); offline = local.offline; };
     const handlers = {
       drop: (el: HTMLElement) => {
@@ -160,6 +193,17 @@ const screen: Screen = {
           .catch((err) => { sfx.play('error'); toast('실패: ' + (err as Error).message, 5000); })
           .finally(() => { (el as HTMLButtonElement).disabled = false; });
       },
+      dSource: (el: HTMLElement) => { dist.source = (el as HTMLInputElement).value.trim(); },
+      dType: (el: HTMLElement) => { dist.type = (el as HTMLSelectElement).value as Dist['type']; },
+      dKw: (el: HTMLElement) => { dist.kw = (el as HTMLInputElement).value; paint(); },
+      allocNew: () => { const kw = Number(dist.kw); if (!(kw > 0) || !dist.source) { toast('출처와 전력을 입력하세요.'); return; } sign(actions.allocationCreate(dist.source, dist.type, Math.round(kw * 1e6)), '할당을 만들었습니다'); },
+      allocPower: (el: HTMLElement) => { const v = Number(prompt('새 전력 (kW)')); if (v > 0) sign(actions.allocationUpdate(el.dataset.id!, Math.round(v * 1e6)), '전력을 바꿨습니다'); },
+      allocConn: (el: HTMLElement) => { const to = (prompt('연결할 변전소 ID', dist.subs[0]?.id ?? p.substation_id) || '').trim(); if (/^4-\d+$/.test(to)) sign(actions.allocationConnect(el.dataset.id!, to), `${to}에 연결했습니다`); },
+      allocDisc: (el: HTMLElement) => sign(actions.allocationDisconnect(el.dataset.id!), '연결을 끊었습니다'),
+      allocDel: (el: HTMLElement) => { if (confirm(`할당 ${el.dataset.id}을(를) 삭제할까요? 받던 쪽이 전력을 잃습니다.`)) sign(actions.allocationDelete(el.dataset.id!), '할당을 삭제했습니다'); },
+      subNew: (el: HTMLElement) => sign(actions.substationCreate(pid, el.dataset.id!), '변전소를 만들었습니다'),
+      subName: (el: HTMLElement) => { const nm = (prompt('변전소 이름') || '').trim(); if (nm) sign(actions.substationName(el.dataset.id!, nm), '이름을 바꿨습니다'); },
+      subJoin: (el: HTMLElement) => sign(actions.substationConnect(el.dataset.id!, pid), '변전소에 연결했습니다'),
       infReactor: (el: HTMLElement) => { inf.reactor = (el as HTMLInputElement).value.trim(); },
       infAmount: (el: HTMLElement) => { inf.amount = (el as HTMLInputElement).value; },
       infuseReal: async () => {
@@ -204,6 +248,7 @@ const screen: Screen = {
         else {
           p = await guildApi.player(pid);
           [e, structs] = await Promise.all([energy(p), guildApi.structsOf(pid).catch(() => [])]);
+          dist.subs = await guildApi.substationsOf(pid).then((r) => r.map((x) => ({ id: x.id, name: x.name }))).catch(() => []);
           if (!inf.reactor) inf.reactor = e.infusions[0]?.destination_id ?? (await guildApi.guild(p.guild_id).catch(() => null))?.primary_reactor_id ?? '';
         }
         recompute();

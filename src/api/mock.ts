@@ -103,6 +103,7 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
   [/^infusion\/list\/player\//, () => [{ destination_id: '3-15', address: '', destination_type: 'reactor', player_id: ME, fuel: 5e6, defusing: 0, power: 5e6, ratio: 1, commission: 3 }]],
   [/^allocation\/source\//, () => [{ id: '6-77', allocation_type: 'provider-agreement', source_id: ME, index: 0, destination_id: '1-9', creator: ME, controller: ME, created_at: now, updated_at: now }]],
   [/^allocation\/destination\//, () => []],
+  [/^substation\/owner\/(1-\d+)/, (m) => (m[1] === ME ? [{ id: '4-31', owner: ME, name: '한빛 변전소' }] : [])],
   [/^objects$/, (_m, q) => objects(q.get('ids') ?? '')],
   [/^grid\/object\//, () => [{ attribute_type: 'connectionCount', object_id: '4-7', val: 12 }]],
   [/^player\/list\/substation\//, () => []],
