@@ -70,7 +70,7 @@ const screen: Screen = {
     // Kill streaks: kills within 6 blocks (about one weapon charge) of each other chain; each link is worth a little XP.
     let streak = 0, lastKill = -99, streakXp = 0;
     // Who did the work on your side: damage and kills by unit (chain id → its type), for the MVP.
-    let ace: Record<string, { type: number; dmg: number; kills: number }> = {};
+    let ace: Record<string, { type: number; dmg: number; kills: number; id?: string }> = {};
     let picked: string | null = null, ws: WeaponSystem = 'primaryWeapon', queued: Msg | null = null, guard = false, moving = false;
     let ladder: Awaited<ReturnType<typeof daily>> | null = null;
     let board: Board | null = null;
@@ -221,7 +221,7 @@ const screen: Screen = {
             const dmg = Math.max(0, (shot.targetHealthBefore ?? 0) - (shot.targetHealthAfter ?? 0));
             const them = side(shot.targetPlayerId);
             stats[who].damage += dmg;
-            if (who === 'player') { const a = (ace[d.attackerStructId] ??= { type: chain.get(d.attackerStructId)?.typeId ?? 0, dmg: 0, kills: 0 }); a.dmg += dmg; if (shot.targetDestroyed) a.kills++; }
+            if (who === 'player') { const a = (ace[d.attackerStructId] ??= { type: chain.get(d.attackerStructId)?.typeId ?? 0, dmg: 0, kills: 0, id: d.attackerStructId }); a.dmg += dmg; if (shot.targetDestroyed) a.kills++; }
             if (shot.evaded) stats[them].evaded++;
             if (shot.blocked) stats[them].blocked++;
             if (shot.targetDestroyed) stats[them].lost++;
@@ -302,7 +302,7 @@ const screen: Screen = {
           // Kills scored by your own ships stay with them (veterancy); an ally's don't.
           const kills: Record<string, number> = {};
           for (const [uid, sid] of Object.entries(raidIds)) { const k = ace[idMap[uid]]?.kills; if (k) kills[sid] = k; }
-          for (const v of demo.creditKills(kills)) setTimeout(() => notify('베테랑 진급', `${STRUCT_TYPE[v.type] ?? v.type} ${'★'.repeat(v.rank)}`, 'hwang', 'levelup'), 2400);
+          for (const v of demo.creditKills(kills)) setTimeout(() => notify('베테랑 진급', `${v.name ? `「${v.name}」 ` : ''}${STRUCT_TYPE[v.type] ?? v.type} ${'★'.repeat(v.rank)}`, 'hwang', 'levelup'), 2400);
           loot = demo.settleRaid(raidOn.id, w === 'player', hp);
           if (w === 'player') setTimeout(() => career.award(80 + raidOn.fleet * 10, `${raidOn.name} 습격 성공`), 1600);
         }
@@ -410,7 +410,7 @@ const screen: Screen = {
             <span class="debrief-stars" aria-label="별 3개 중 ${stars}개">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>
             <span class="mono">${blocks}블록 · 격파 ${c.lost} · 손실 ${p.lost}</span>
             ${xpWon ? html`<span class="chip hwang mono" style="font-size:16px">+${xpWon} XP</span>` : ''}
-            ${(() => { const best = Object.values(ace).sort((a, z) => z.kills * 10 + z.dmg - (a.kills * 10 + a.dmg))[0]; return best && (best.dmg || best.kills) ? html`<div class="mvp">${pixel(best.type, 56)}<div><span class="label c-hwang">최우수 전투원</span><b>${STRUCT_TYPE[best.type] ?? best.type}</b><span class="mono">피해 ${best.dmg} · 격파 ${best.kills}</span></div></div>` : ''; })()}
+            ${(() => { const best = Object.values(ace).sort((a, z) => z.kills * 10 + z.dmg - (a.kills * 10 + a.dmg))[0]; return best && (best.dmg || best.kills) ? html`<div class="mvp">${pixel(best.type, 56)}<div><span class="label c-hwang">최우수 전투원</span><b>${(() => { const uid = Object.keys(idMap).find((u) => idMap[u] === best.id); const nm = uid && raidIds[uid] ? demo.state.structs.find((x) => x.id === raidIds[uid])?.name : undefined; return nm ? `「${nm}」 ${STRUCT_TYPE[best.type] ?? best.type}` : STRUCT_TYPE[best.type] ?? best.type; })()}</b><span class="mono">피해 ${best.dmg} · 격파 ${best.kills}</span></div></div>` : ''; })()}
             ${mission && winner === 'player' ? (() => { const next = MISSIONS[mission.no]; return next ? html`<a class="btn danger" href="${href('/sim?mission=' + next.id)}">다음 작전 · ${next.title}</a>` : html`<span class="chip hwang">작전 완수 · 붉은 연합 격파</span>`; })() : ''}
             ${mission ? html`<a class="btn ghost" href="${href('/campaign')}">작전 지도</a>` : ''}
             ${raidOn && loot ? html`<span class="chip ${loot.ore || loot.alpha ? 'hwang' : 'jeok'} mono" style="font-size:16px">${loot.alpha ? `전리품 +${n(loot.alpha)} α` : loot.ore ? `노획 광석 +${n(loot.ore)}` : '노획 없음'}</span><a class="btn gold" href="${href('/console')}">함교로 귀환</a>` : ''}

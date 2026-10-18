@@ -17,7 +17,7 @@ const ONLINE = 4, DESTROYED = 32, BUILT = 1;
 export const DEMO_ID = '1-0';
 const PLANET = '2-118';
 
-export interface DemoStruct { id: string; type: number; ambit: Ambit; slot: number; cat: 'planet' | 'fleet'; online: boolean; hp: number; max: number; building: number | null; buildBlocks: number; protects: string | null; /** Overclocked: more output, more power, wear. */ oc?: boolean; /** Kills scored in raids (veterancy). */ kills?: number }
+export interface DemoStruct { id: string; type: number; ambit: Ambit; slot: number; cat: 'planet' | 'fleet'; online: boolean; hp: number; max: number; building: number | null; buildBlocks: number; protects: string | null; /** Overclocked: more output, more power, wear. */ oc?: boolean; /** Kills scored in raids (veterancy). */ kills?: number; /** The name its commander gave it (veterans only). */ name?: string }
 /** Veteran rank from kills: ★ at 3, ★★ at 8, ★★★ at 15. */
 export const vetRank = (kills = 0) => (kills >= 15 ? 3 : kills >= 8 ? 2 : kills >= 3 ? 1 : 0);
 export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number }
@@ -1079,13 +1079,23 @@ export const demo = {
   },
   covert,
   /** Credit kills from a raid to the ships that scored them; returns the promotions (name, new rank). */
-  creditKills(byId: Record<string, number>): { id: string; type: number; rank: number }[] {
+  /** Name a veteran ship (1–12 characters; empty clears it). */
+  nameShip(id: string, name: string): string | null {
     adoptStored();
-    const up: { id: string; type: number; rank: number }[] = [];
+    const x = s.structs.find((y) => y.id === id);
+    if (!x || vetRank(x.kills) < 1) return '베테랑 함선만 이름을 붙일 수 있습니다';
+    const n = name.trim().slice(0, 12);
+    x.name = n || undefined;
+    persist(); for (const f of changeFns) f();
+    return null;
+  },
+  creditKills(byId: Record<string, number>): { id: string; type: number; rank: number; name?: string }[] {
+    adoptStored();
+    const up: { id: string; type: number; rank: number; name?: string }[] = [];
     for (const x of s.structs) {
       const k = byId[x.id]; if (!k) continue;
       const before = vetRank(x.kills); x.kills = (x.kills ?? 0) + k;
-      if (vetRank(x.kills) > before) up.push({ id: x.id, type: x.type, rank: vetRank(x.kills) });
+      if (vetRank(x.kills) > before) up.push({ id: x.id, type: x.type, rank: vetRank(x.kills), name: x.name });
     }
     persist(); for (const f of changeFns) f();
     return up;

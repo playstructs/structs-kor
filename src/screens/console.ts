@@ -253,7 +253,8 @@ const screen: Screen = {
             <div class="stat"><small>전력 소비</small><strong>${watts(t?.passiveDraw)}</strong></div>
             <div class="stat"><small>상태</small><strong class="${building != null ? 'c-warn' : online ? 'c-cheong' : 'c-hwang'}">${building != null ? `건설 ${Math.round(building * 100)}%` : online ? '가동' : '꺼짐'}</strong></div>
             <div class="stat"><small>무기</small><strong style="font-size:13px">${t?.primaryWeaponDamage ? `${t.primaryWeaponDamage}×${t.primaryWeaponShots} 피해` : '없음'}</strong></div>
-            ${isDemo && (demo.state.structs.find((x) => x.id === s.id)?.kills ?? 0) > 0 ? (() => { const k = demo.state.structs.find((x) => x.id === s.id)!.kills!, v = vetRank(k); return html`<div class="stat"><small>전과</small><strong style="font-size:13px" class="c-hwang">${v ? `베테랑 ${'★'.repeat(v)} · ` : ''}격파 ${k}${v >= 2 ? ' · 방어 사격 +1' : ''}</strong></div>`; })() : ''}
+            ${isDemo && (demo.state.structs.find((x) => x.id === s.id)?.kills ?? 0) > 0 ? (() => { const ds = demo.state.structs.find((x) => x.id === s.id)!, k = ds.kills!, v = vetRank(k); return html`<div class="stat"><small>전과${ds.name ? ` · 「${ds.name}」` : ''}</small><strong style="font-size:13px" class="c-hwang">${v ? `베테랑 ${'★'.repeat(v)} · ` : ''}격파 ${k}${v >= 2 ? ' · 방어 사격 +1' : ''}</strong></div>
+              ${v ? html`<form class="ship-name" data-act="nameShip" data-on="submit" data-id="${s.id}"><input class="input" name="n" maxlength="12" placeholder="함선 이름" value="${ds.name ?? ''}" aria-label="함선 이름"><button class="btn ghost" type="submit">이름 붙이기</button></form>` : ''}`; })() : ''}
           </div>
           ${t ? html`<p class="note">${[t.passiveWeaponry, t.unitDefenses, t.planetaryDefenses, t.planetaryMining, t.planetaryRefinery, t.powerGeneration].filter((v) => v && !/^no[A-Z]/.test(String(v))).join(' · ') || '특수 능력 없음'}</p>` : ''}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -419,6 +420,11 @@ const screen: Screen = {
         banner({ kicker: '새 시대', title: `제${demo.era + 1}시대`, sub: `생산 +${15 * demo.era}% · 은하가 다시 깨어납니다`, tone: 'gold', ms: 3600 });
         career.award(500, `제${demo.era + 1}시대 개막`);
         refresh();
+      },
+      nameShip: (el: HTMLElement) => {
+        const n = String(new FormData(el as HTMLFormElement).get('n') ?? '');
+        if (err(demo.nameShip(el.dataset.id!, n))) return;
+        sfx.play('confirm'); toast(n.trim() ? `「${n.trim().slice(0, 12)}」` : '이름을 지웠습니다'); refresh();
       },
       repair: (el: HTMLElement) => { if (!err(demo.repair(el.dataset.id!))) { sfx.play('build'); float(el, '수리 완료', 'var(--cheong-hi)'); refresh(); } },
       build: (el: HTMLElement) => {

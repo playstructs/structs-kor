@@ -644,3 +644,6 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .mvp { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border: 2px solid var(--hwang); background: rgba(235,170,73,.08); text-align: left; animation: banner-in .5s cubic-bezier(.2,.8,.2,1.1) both .4s; }
 .mvp div { display: grid; gap: 2px; }
 .mvp b { font-family: var(--f-display); font-size: 20px; color: var(--white); }
+
+.ship-name { display: flex; gap: 6px; }
+.ship-name .input { flex: 1; min-width: 0; }

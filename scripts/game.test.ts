@@ -603,3 +603,14 @@ test('veterancy: kills credited from raids raise a ship to ★, ★★, ★★�
   assert.equal(vetRank(ship.kills), 2);
   assert.deepEqual(demo.creditKills({ [ship.id]: 1 }), [], 'no promotion between ranks');
 });
+
+test('ship names: only veterans can be named, and names are trimmed to 12', () => {
+  demo.reset();
+  const ship = demo.state.structs.find((x) => x.cat === 'fleet' && x.type !== 1)!;
+  assert.match(demo.nameShip(ship.id, '번개') ?? '', /베테랑/);
+  demo.creditKills({ [ship.id]: 3 });
+  assert.equal(demo.nameShip(ship.id, '  천둥의 칼날 그리고 더 긴 이름  '), null);
+  assert.equal(ship.name, '천둥의 칼날 그리고 더 긴'.slice(0, 12));
+  assert.equal(demo.nameShip(ship.id, ''), null);
+  assert.equal(ship.name, undefined);
+});
