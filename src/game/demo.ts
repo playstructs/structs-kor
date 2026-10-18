@@ -313,11 +313,11 @@ const changeFns = new Set<() => void>();
 const blockFns = new Set<() => void>();
 const attackFns = new Set<(d: AttackDetail) => void>();
 const eventFns = new Set<(kind: string, text: string) => void>();
-const persist = () => { if (catching) return; s.savedAt = Date.now(); try { localStorage.setItem(KEY + '.state', JSON.stringify(s)); } catch { /* storage refused */ } };
+const persist = () => { if (catching || forecasting) return; s.savedAt = Date.now(); try { localStorage.setItem(KEY + '.state', JSON.stringify(s)); } catch { /* storage refused */ } };
 /* One random stream per block: every draw within a block is a fresh number (re-seeding per call made
  * successive draws identical: the event roll that passed "< 0.09" always picked event 0). */
 let rngBlock = -1, rngStream: () => number = () => 0;
-let forecastRng: (() => number) | null = null;
+let forecastRng: (() => number) | null = null, forecasting = false;
 const rnd = () => {
   if (forecastRng) return forecastRng();
   if (rngBlock !== s.height) { rngBlock = s.height; rngStream = rngFor(`demo:${s.height}:${s.seq}`); }
@@ -334,7 +334,7 @@ function log(category: string, detail = '') {
   s.log.unshift({ time: new Date().toISOString(), seq: ++s.seq, planet_id: PLANET, block_height: s.height, category, detail });
   s.log = s.log.slice(0, 30);
 }
-const emit = (kind: string, text: string) => { if (!catching) for (const f of eventFns) f(kind, text); };
+const emit = (kind: string, text: string) => { if (!catching && !forecasting) for (const f of eventFns) f(kind, text); };
 
 /* ── Power ── */
 /* ── Overclock: extractors, refineries and generators can be pushed past spec. More output for
@@ -459,6 +459,7 @@ function blockInner() {
   decisionStep();
   raidStep();
   persist();
+  if (forecasting) return;
   for (const f of blockFns) f();
   for (const f of changeFns) f();
 }
@@ -1067,25 +1068,23 @@ function raidForecast(n = 40): Forecast | null {
   if (!s.raid) return null;
   const key = `${s.height}:${s.seq}:${s.shield}:${s.structs.map((x) => x.hp).join('')}:${s.raid.structs.map((x) => x.hp).join('')}`;
   if (forecastMemo?.key === key) return forecastMemo.f;
-  const real = s, wasCatching = catching;
+  const real = s, fid = s.raid.fleetId;
   const f: Forecast = { none: 0, intercept: 0, entrench: 0 };
-  catching = true;
+  forecasting = true;
   try {
     for (const st of ['none', 'intercept', 'entrench'] as const) {
       let won = 0;
       for (let i = 0; i < n; i++) {
         s = structuredClone(real);
-        const r = s.raid!;
-        // An approaching raid is played from its arrival, with the stance it would have.
-        if (r.eta > 0) { s.height += r.eta - 1; r.eta = 1; }
-        r.stance = st === 'none' ? undefined : st;
+        // Whole blocks, as the clock would run them (shield regen, repairs, the lot), with this stance.
+        if (s.raid!.eta > 0) s.raid!.stance = st === 'none' ? undefined : st;
         forecastRng = rngFor(`forecast:${key}:${st}:${i}`);
-        for (let b = 0; b < 40 && s.raid; b++) { raidStep(); s.height++; }
+        for (let b = 0; b < 40 && s.raid?.fleetId === fid; b++) blockInner();
         if (s.raidsRepelled > real.raidsRepelled) won++;
       }
       f[st] = won / n;
     }
-  } finally { s = real; catching = wasCatching; forecastRng = null; }
+  } finally { s = real; forecasting = false; forecastRng = null; }
   forecastMemo = { key, f };
   return f;
 }
