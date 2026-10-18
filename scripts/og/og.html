@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- Source for public/og.png (1200×630). Regenerate with: node scripts/og/render.mjs -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Orbit&family=IBM+Plex+Sans+KR:wght@500&family=IBM+Plex+Mono:wght@600&display=block">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #16142A; color: #C5D7D9; }
+  body { position: relative; font-family: 'IBM Plex Sans KR', sans-serif; word-break: keep-all; }
+  .grid { position: absolute; inset: 0; background-image: linear-gradient(#22203466 1px, transparent 1px), linear-gradient(90deg, #22203466 1px, transparent 1px); background-size: 40px 40px; }
+  .strip { position: absolute; left: 0; right: 0; height: 12px; background: repeating-linear-gradient(90deg, #43CDB6 0 36px, #16142A 36px 42px, #EE7D69 42px 78px, #16142A 78px 84px, #EBAA49 84px 120px, #16142A 120px 126px, #C5D7D9 126px 144px, #16142A 144px 150px); }
+  .top { top: 0; } .bottom { bottom: 0; }
+  .vert { position: absolute; right: 36px; top: 46px; writing-mode: vertical-rl; font-family: 'Black Han Sans'; font-size: 150px; line-height: 1; letter-spacing: 14px; color: #222034; }
+  .copy { position: absolute; left: 72px; top: 70px; width: 640px; display: flex; flex-direction: column; gap: 22px; }
+  .chips { display: flex; gap: 10px; }
+  .chip { font-family: 'Orbit'; font-size: 18px; letter-spacing: 3px; padding: 6px 14px; border: 2px solid; }
+  .jeok { color: #EE7D69; background: #2E1F3E; border-color: #EE7D69; }
+  .cheong { color: #43CDB6; background: #133546; border-color: #43CDB6; }
+  h1 { margin: 0; font-family: 'Black Han Sans'; font-weight: 400; font-size: 104px; line-height: 1.02; color: #fff; }
+  h1 span { color: #43CDB6; }
+  p { margin: 0; font-size: 26px; line-height: 1.55; color: #A7C0C6; }
+  .brand { position: absolute; left: 72px; bottom: 48px; display: flex; align-items: center; gap: 16px; }
+  .brand svg { width: 52px; height: 52px; }
+  .brand b { font-family: 'Black Han Sans'; font-weight: 400; font-size: 36px; color: #fff; }
+  .brand span { font-family: 'Orbit'; font-size: 20px; letter-spacing: 6px; color: #A7C0C6; }
+  .url { position: absolute; right: 72px; bottom: 54px; font-family: 'IBM Plex Mono'; font-weight: 600; font-size: 28px; color: #EBAA49; }
+  .fleet { position: absolute; left: 700px; top: 120px; width: 420px; height: 380px; overflow: hidden; clip-path: inset(24px 18px 4px 22px); }
+  .fleet img { position: absolute; image-rendering: pixelated; filter: drop-shadow(8px 8px 0 #0E0D1C); }
+  .card { position: absolute; left: 720px; top: 96px; width: 412px; height: 400px; background: #0E0D1C radial-gradient(#5D7E9033 1px, transparent 1.5px) 0 0 / 24px 24px; border: 2px solid #394958; box-shadow: 12px 12px 0 #0E0D1C; }
+  .card .head { display: flex; justify-content: space-between; padding: 12px 16px; background: #133546; color: #86DFC6; font-family: 'Orbit'; font-size: 15px; letter-spacing: 3px; }
+  .card .head i { font-style: normal; color: #43CDB6; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="strip top"></div>
+  <div class="copy">
+    <div class="chips"><span class="chip jeok">시즌 1</span><span class="chip cheong">한국 서버 오픈</span></div>
+    <h1>우주는<br><span>구조체</span>가<br>지배한다</h1>
+    <p>행성을 채굴하고, 길드와 함께 함대를 지휘하세요.</p>
+  </div>
+  <div class="card"><div class="head"><span>실시간 교전</span><i>● LIVE</i></div></div>
+  <div class="fleet">
+    <img src="../../public/img/structs/battleship/battleship-struct-base.webp" style="left:-10px;top:60px;width:384px;height:384px">
+    <img src="../../public/img/structs/cruiser/cruiser-struct-base.webp" style="left:200px;top:-10px;width:256px;height:256px">
+    <img src="../../public/img/structs/starfighter/starfighter-struct-base.webp" style="left:240px;top:200px;width:224px;height:224px">
+  </div>
+  <div class="brand">
+    <svg viewBox="0 0 9 9" shape-rendering="crispEdges"><rect width="9" height="9" fill="#133546"/><rect x="1" y="1" width="3" height="3" fill="#43CDB6"/><rect x="5" y="1" width="3" height="3" fill="#EE7D69"/><rect x="1" y="5" width="3" height="3" fill="#EBAA49"/><rect x="5" y="5" width="3" height="3" fill="#C5D7D9"/></svg>
+    <b>구조체</b><span>STRUCTS</span>
+  </div>
+  <div class="url">구조체.com</div>
+  <div class="strip bottom"></div>
+</body>
+</html>

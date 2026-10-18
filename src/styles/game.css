@@ -631,3 +631,7 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 /* 체인 점검 */
 .chain-check { display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--line); }
 .chain-check .btn { justify-self: start; }
+
+/* 은하 통일 */
+.victory .away-in { max-width: 480px; border-color: var(--hwang); box-shadow: 8px 8px 0 var(--hwang-bg), 0 0 60px rgba(235,170,73,.35); }
+.victory .away-in h2 { font-size: 56px; color: var(--hwang); text-shadow: 4px 4px 0 #785B02; }

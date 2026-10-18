@@ -51,6 +51,8 @@ demo.onEvent((kind, text) => {
     sfx.play('levelup'); shake('sm');
     banner({ kicker: `패권 지수 ${Math.round(t.at * 100)}% 돌파`, title: t.title, sub: '은하가 당신의 이름을 압니다', tone: 'gold', ms: 3200 });
     if (fresh === '1') career.award(t.xp, `패권 · ${t.title}`);
+    // The top title, the first time ever: the war is won. A screen worth stopping for.
+    if (fresh === '1' && Number(ti) === HEGEMONY.length - 1) setTimeout(victory, 3400);
   } else if (kind === 'era') {
     raider = null; music.setMode('calm');
   } else if (kind === 'bounty') {
@@ -87,6 +89,33 @@ demo.onEvent((kind, text) => {
     if (!away) banner({ kicker: '은하 소식', title: e?.name ?? '', sub: e?.text, tone: e?.tone === 'cheong' ? 'cheong' : e?.tone === 'jeok' ? 'jeok' : 'gold', ms: 2200 });
   } else notify(kind === 'jeok' ? '경고' : '보고', text, kind === 'jeok' ? 'jeok' : 'cheong', kind === 'jeok' ? 'error' : 'tick');
 });
+
+/* 은하 통일: the victory screen, shown once, the first time the top hegemony title is reached. */
+function victory() {
+  if (session.status.state === 'in') return;
+  const st = demo.state;
+  const row = (k: string, v: string) => `<div><span>${k}</span><b class="mono">${v}</b></div>`;
+  const el = document.createElement('div');
+  el.className = 'away victory';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', '은하 통일');
+  el.innerHTML = `<div class="away-in"><span class="label c-hwang">은하 통일 · 제${demo.era + 1}시대 · 블록 #${st.height.toLocaleString('ko-KR')}</span><h2>은하 황제</h2>
+    <p class="note">은하 세력의 ${Math.round(demo.hegemony() * 100)}%가 당신의 깃발 아래 있습니다.</p>
+    ${row('속국', `${demo.rivals().filter((r) => r.vassal != null).length}곳`)}
+    ${row('거점', `${demo.outposts.filter((o) => o.mine).length} / ${demo.outposts.length}`)}
+    ${row('습격 격퇴', `${st.raidsRepelled}회`)}
+    ${row('누적 공물', `${demo.tributeTotal.toFixed(1)} α`)}
+    ${row('공허 함대 격파', `${st.voidKills ?? 0}회`)}
+    ${row('결단', `${st.decided ?? 0}회`)}
+    <p class="note">${demo.engine.done ? '월드 엔진이 가동 중입니다. 함교에서 새 시대를 열어 더 강한 은하에 도전하세요.' : '이제 월드 엔진을 완공하세요. 완공하면 새 시대를 열 수 있습니다.'}</p>
+    <button class="btn gold lg" type="button">계속 지배하기</button></div>`;
+  const close = () => el.remove();
+  el.querySelector('button')!.addEventListener('click', () => { sfx.play('confirm'); close(); });
+  el.addEventListener('click', (e) => { if (e.target === el) close(); });
+  document.body.appendChild(el);
+  music.setMode('battle'); sfx.play('victory'); shake('lg');
+  setTimeout(() => music.setMode(demo.raid ? 'battle' : 'calm'), 9000);
+}
 
 /* Coming back to the base: what it made, what it lost, while you were gone. */
 demo.onAway((r) => {

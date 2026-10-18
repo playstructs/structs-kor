@@ -6,12 +6,15 @@ import './game/music';
 import { demo } from './game/demo';
 import './game/director';
 import './game/medals';
-import { route, startRouter } from './router';
+import { href, onRoute, route, startRouter } from './router';
+import { applySeo } from './seo';
+import { SITE_URL } from './config';
 import { shell } from './ui/shell';
 import { session } from './api/session';
 import { wallet } from './wallet/wallet';
 
 shell(document.getElementById('app')!);
+onRoute((path) => applySeo(path, SITE_URL, href('')));
 demo.run();
 
 route('/', () => import('./screens/home'));

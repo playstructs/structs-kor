@@ -1,4 +1,5 @@
-import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
+import { defineConfig, loadEnv, type Plugin, type ProxyOptions } from 'vite';
+import { PAGES, headFor, robotsTxt, sitemapXml } from './src/seo';
 
 /* The dev relay.
  *
@@ -37,6 +38,34 @@ function relay(target: string, prefix: string, rewriteTo: string, ws = false): P
   };
 }
 
+/* Search and share metadata (src/seo.ts). The shell's <head> gets the home page's tags; the build
+ * also writes one HTML file per screen (console.html → /console on GitHub Pages, Netlify and
+ * Cloudflare Pages) with that screen's tags, a noindex 404.html, sitemap.xml and robots.txt. */
+function seo(siteUrl: string, base: string): Plugin {
+  const block = (path: string) => `<!--seo-->\n  ${headFor(path, siteUrl, base)}\n  <!--/seo-->`;
+  const swap = (html: string, path: string) => html.replace(/<!--seo-->[\s\S]*?<!--\/seo-->/, () => block(path));
+  return {
+    name: 'structs-seo',
+    transformIndexHtml(html) {
+      return html
+        .replace(/<!-- seo:[^>]*-->/, () => block('/'))
+        .replace(/(<noscript>[\s\S]*?<\/noscript>)/, (m) => m.replace(/href="\//g, `href="${base}/`));
+    },
+    generateBundle(_, bundle) {
+      const shell = bundle['index.html'];
+      if (shell?.type !== 'asset') return;
+      const html = String(shell.source);
+      for (const path of Object.keys(PAGES)) {
+        if (path === '/') continue;
+        this.emitFile({ type: 'asset', fileName: path === '/404' ? '404.html' : path.slice(1) + '.html', source: swap(html, path) });
+      }
+      const lastmod = new Date().toISOString().slice(0, 10);
+      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemapXml(siteUrl, base, lastmod) });
+      this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robotsTxt(siteUrl, base) });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const guild = env.RELAY_GUILD_ORIGIN || 'https://beta.playstructs.com';
@@ -50,9 +79,12 @@ export default defineConfig(({ mode }) => {
     '/relay/lcd': relay(lcd, '/relay/lcd', ''),
     '/relay/matrix': relay(matrix, '/relay/matrix', ''),
   };
+  const base = env.VITE_BASE || '/';
+  const siteUrl = (env.VITE_SITE_URL || 'https://xn--2e0b952cv5c.com').replace(/\/+$/, '');
   const headers = { 'x-frame-options': 'DENY', 'content-security-policy': "frame-ancestors 'none'" };
   return {
-    base: env.VITE_BASE || '/',
+    base,
+    plugins: [seo(siteUrl, base.replace(/\/+$/, ''))],
     build: { target: 'es2022' },
     server: { port: 5180, host: true, cors: false, headers, proxy },
     // `vite preview` serves the production build; it keeps the relay so a built copy can be tried
