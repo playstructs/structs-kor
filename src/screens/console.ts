@@ -383,6 +383,7 @@ const screen: Screen = {
         { label: `전력 · ${Math.round(use * 100)}%`, value: pw ? `${watts(Number(pw.total_load))} / ${watts(Number(pw.total_capacity))}` : '—', tone: use > 0.95 ? 'var(--jeok)' : use > 0.8 ? 'var(--warn)' : 'var(--cheong)', href: '/energy', alert: use > 0.95 },
         { label: '구조체', value: `${alive}`, num: alive, fmt: (v) => n(Math.round(v)) },
         { label: '보호막', value: d.shield_health == null ? '—' : d.shield_health + '%', tone: (d.shield_health ?? 100) < 35 ? 'var(--jeok)' : 'var(--cheong-hi)' },
+        ...(() => { const nx = isDemo ? demo.nextRaider() : null; return nx ? [{ label: '다음 습격', value: `${nx.in}블록 · ${nx.name}`, tone: nx.in <= 8 ? 'var(--jeok)' : 'var(--text)', href: '/galaxy' }] : []; })(),
       ]);
     };
 
