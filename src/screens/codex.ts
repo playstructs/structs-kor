@@ -22,7 +22,7 @@ const SECTIONS: [string, string, Entry[]][] = [
   ]],
   ['세력', '은하의 다른 세력을 꺾고, 부리고, 늦춘다.', [
     { icon: 3, title: '습격', body: html`은하 지도에서 세력을 고르고 출격. 이기면 비축 광석을 약탈하고 그 세력의 함대가 1기 줄어 다음엔 더 쉬워집니다. 정찰(1 g)하면 맞설 함대와 예상 승률을 볼 수 있습니다.`, go: ['/galaxy', '은하 지도'] },
-    { icon: 9, title: '베테랑', body: html`습격에서 적을 격파한 내 함선은 전과가 쌓여 베테랑이 됩니다: ★ 3격파 · ★★ 8격파 · ★★★ 15격파. ★★부터 기지 방어 사격 피해 +1. 동맹 함선의 전과는 쌓이지 않습니다.`, go: ['/galaxy', '은하 지도'] },
+    { icon: 9, title: '베테랑', body: html`습격과 기지 방어전에서 적을 격파한 내 함선·방어포는 전과가 쌓여 베테랑이 됩니다(방어전이 끝나면 함교에 전투 보고): ★ 3격파 · ★★ 8격파 · ★★★ 15격파. ★★부터 기지 방어 사격 피해 +1. 동맹 함선의 전과는 쌓이지 않습니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 3, title: '보복', body: html`습격을 막아내면 그 세력이 ${REVENGE.window}블록 동안 드러납니다. 그 안에 반격해 이기면 노획 +${Math.round((REVENGE.bonus - 1) * 100)}%. 이기든 지든 기회는 한 번입니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 3, title: '개장', body: html`함대 함선마다 모듈 하나: ${Object.values(REFITS).map((r) => `${r.name}(${r.what}, ${r.cost} α)`).join(' · ')}. 바꾸면 다시 값을 치르고, 함선이 파괴되면 모듈도 사라집니다. 함교에서 함선을 눌러 고릅니다.`, go: ['/console', '함교'] },
     { icon: 1, title: '복속', body: html`${DOMINION.raidsToSubjugate}번 약탈한 세력에게 복속을 요구(${DOMINION.cost} g). 속국은 성장의 ${pct(DOMINION.tribute)}를 공물로 바치고 습격하지 않습니다. 함대가 ${DOMINION.rebelFleet}기가 되면 반란 위험: 함선 해체(${DOMINION.disarmCost} g)로 막으세요.`, go: ['/galaxy', '은하 지도'] },

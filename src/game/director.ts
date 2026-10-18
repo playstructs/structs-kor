@@ -80,6 +80,8 @@ demo.onEvent((kind, text) => {
     const b = demo.bounty;
     if (b && text.includes('현상금')) setTimeout(() => transmit(b.patron, 'bounty'), 700);
     notify('은하 전황', text, 'hwang', null);
+  } else if (kind === 'promote') {
+    setTimeout(() => { sfx.play('levelup'); if (away) notify('베테랑 진급', text, 'hwang', null); else banner({ kicker: '베테랑 진급', title: '기지 방어전 전과', sub: text, tone: 'gold', ms: 2600 }); }, away ? 0 : 5200);
   } else if (kind === 'revenge') {
     // After the victory fanfare: the opening.
     setTimeout(() => notify('보복 기회', `${text}${away ? '' : ' · 은하 지도에서 출격'}`, 'hwang', null), away ? 0 : 3600);

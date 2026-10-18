@@ -733,6 +733,21 @@ test('revenge: a broken raid opens a window for a richer counter-raid, once', ()
   assert.equal(demo.settleRaid(owner, true, {}).ore, 60, 'back to the plain share');
 });
 
+test('after-action report: a home defence credits kills and files a report', () => {
+  demo.reset();
+  const s = demo.state;
+  s.nextRaid = 1; demo.step();
+  s.raid!.eta = 0;
+  for (let i = 0; i < 40 && s.raid; i++) demo.step();
+  const p = demo.report!;
+  assert.ok(p, 'filed');
+  const credited = s.structs.reduce((a, x) => a + (x.kills ?? 0), 0);
+  assert.equal(credited, p.kills.reduce((a, k) => a + k.n, 0), 'kills credited to the ships that scored them');
+  assert.ok(p.blocked >= 0 && p.hits >= 0);
+  demo.dismissReport();
+  assert.equal(demo.report, null);
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);

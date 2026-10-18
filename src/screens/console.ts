@@ -293,6 +293,19 @@ const screen: Screen = {
       </section>`;
     };
 
+    /* 전투 보고: the last defence, shown for a while after it ends. */
+    const report = (): Safe => {
+      const p = isDemo && !demo.raid ? demo.report : null;
+      if (!p) return html``;
+      const stance = p.stance === 'intercept' ? '요격' : p.stance === 'entrench' ? '참호' : '태세 없음';
+      const stars = (k: number) => '★'.repeat(k);
+      return html`<section class="card game-panel aar ${p.won ? 'won' : 'lost'}"><div class="card-head"><span class="label ${p.won ? 'c-cheong' : 'c-jeok'}">전투 보고</span><h2>${p.won ? `${p.name} 격퇴` : `${p.name}에게 약탈당함`}</h2><button class="end hud-btn" data-act="dismissReport" aria-label="보고 닫기">✕</button></div>
+        <div class="aar-stats"><div class="stat"><small>태세</small><strong>${stance}</strong></div><div class="stat"><small>방어막 차단</small><strong class="c-cheong">${p.blocked}</strong></div><div class="stat"><small>피격</small><strong class="${p.hits ? 'c-jeok' : ''}">${p.hits}</strong></div><div class="stat"><small>약탈 광석</small><strong class="${p.seized ? 'c-jeok' : ''}">${n(p.seized)}</strong></div></div>
+        ${p.kills.length ? html`<div class="aar-kills">${p.kills.map((k) => html`<span class="aar-kill">${pixel(k.type, 28)}<b>${k.name ? `「${k.name}」` : STRUCT_TYPE[k.type] ?? k.type}</b><span class="mono">격파 ${k.n}</span></span>`)}</div>` : html`<p class="note">아무도 적을 격파하지 못했습니다.</p>`}
+        ${p.promoted.length ? html`<p class="aar-promo">${p.promoted.map((x) => `${x.name ? `「${x.name}」` : STRUCT_TYPE[x.type] ?? x.type} 베테랑 ${stars(x.rank)}`).join(' · ')}</p>` : ''}
+      </section>`;
+    };
+
     const alarm = (): Safe => {
       const r = isDemo ? demo.raid : null;
       const live = d?.active_raid;
@@ -336,6 +349,7 @@ const screen: Screen = {
 
     const view = (): Safe => html`
       ${alarm()}
+      ${report()}
       <div class="bridge">
         <aside class="bridge-l">${decision()}${advisor()}${daily()}${objectives()}${engine()}${radar()}</aside>
         <section class="bridge-c card game-panel" aria-label="행성">
@@ -405,6 +419,7 @@ const screen: Screen = {
         sfx.play('build'); float(el, `+${g} α`, 'var(--hwang)', true); refresh();
       },
       close: () => { panel = null; board?.select(null); paint(); },
+      dismissReport: () => { demo.dismissReport(); },
       nav: (el: HTMLElement) => go(el.dataset.to!),
       power: (el: HTMLElement) => {
         const id = el.dataset.id!;

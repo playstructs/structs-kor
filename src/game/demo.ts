@@ -30,7 +30,9 @@ function creditInner(byId: Record<string, number>): { id: string; type: number; 
 /** Veteran rank from kills: ★ at 3, ★★ at 8, ★★★ at 15. */
 export const vetRank = (kills = 0) => (kills >= 15 ? 3 : kills >= 8 ? 2 : kills >= 3 ? 1 : 0);
 export type Stance = 'intercept' | 'entrench';
-export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number; /** Chosen while it approaches. */ stance?: Stance }
+/** 전투 보고: the last defence of the base, as the bridge shows it afterwards. */
+export interface RaidReport { h: number; won: boolean; name: string; stance?: Stance; kills: { id: string; type: number; n: number; name?: string }[]; blocked: number; hits: number; seized: number; promoted: { id: string; type: number; rank: number; name?: string }[] }
+export interface DemoRaid { fleetId: string; owner: string; name: string; eta: number; structs: DemoStruct[]; seized: number; startedAt: number; /** Chosen while it approaches. */ stance?: Stance; /** Tally for the after-action report. */ tally?: { kills: Record<string, number>; blocked: number; hits: number } }
 interface Contract { id: string; kw: number; rate: number; left: number; buyer: string; dir?: 'buy' | 'sell' }
 
 /* ── Galactic events: the weather of the economy. One at a time, a few dozen blocks each. ── */
@@ -126,6 +128,7 @@ interface State {
   /** 의뢰 게시판: offers on the board, when it refreshes, and the job in hand. */
   /** 보복: the rival whose raid you just broke is exposed until `until`. */
   revenge?: { rival: string; until: number } | null;
+  report?: RaidReport | null;
   black?: { next: number; until: number; offers: BlackOffer[]; deals?: number };
   jobs?: { offers: Job[]; next: number; active?: Job & { until: number; count: number; taken?: number } | null; done?: number };
   /** Commander abilities: the block each is ready again; and total mobilisation's end. */
@@ -927,6 +930,14 @@ function decide(i: number): string | null {
 /** A new commander's grace: the first three raids are small and come further apart. */
 const rookie = () => s.raidsRepelled + s.raidsLost < 3;
 const raidGap = () => (rookie() ? RATE.raidEvery + 15 : RATE.raidEvery);
+/** Close a defence: credit the kills (veterancy counts at home too) and file the report. */
+function fileReport(r: DemoRaid, won: boolean) {
+  const tl = r.tally ?? { kills: {}, blocked: 0, hits: 0 };
+  const promoted = creditInner(tl.kills);
+  s.report = { h: s.height, won, name: r.name, stance: r.stance, blocked: tl.blocked, hits: tl.hits, seized: r.seized, promoted,
+    kills: Object.entries(tl.kills).map(([id, n]) => { const x = s.structs.find((y) => y.id === id); return { id, type: x?.type ?? 0, n, name: x?.name }; }).sort((a, z) => z.n - a.n) };
+  if (promoted.length) emit('promote', promoted.map((x) => `${x.name ? `「${x.name}」` : STRUCT_TYPE[x.type] ?? TYPES_BY_ID[x.type].type} ${'★'.repeat(x.rank)}`).join(' · '));
+}
 function raidStep() {
   if (!s.raid) {
     if ((s.nextRaid -= ev('pirates') ? 2 : 1) > 0) return;
@@ -968,8 +979,11 @@ function raidStep() {
     // 참호: the shield takes more of the blows. 요격: you meet them in the open, and so do their guns.
     const shieldUp = s.shield > 0 && rnd() < (s.shield / 140) * (1 + 0.3 * lv('shield')) * (r.stance === 'entrench' ? 1.6 : 1);
     const t = mineAlive.filter((x) => x.cat === 'planet').concat(mineAlive)[Math.floor(rnd() * mineAlive.length)];
-    if (shieldUp) { s.shield = Math.max(0, s.shield - 12); attack(a, t, 0, false, true); }
+    const hpBefore = t.hp;
+    r.tally ??= { kills: {}, blocked: 0, hits: 0 };
+    if (shieldUp) { s.shield = Math.max(0, s.shield - 12); attack(a, t, 0, false, true); r.tally.blocked++; }
     else attack(a, t, 1 + (rnd() < (r.stance === 'intercept' ? 0.4 : r.stance === 'entrench' ? 0.15 : 0.3) ? 1 : 0), rnd() < 0.12 + (t.mod === 'evade' ? 0.2 : 0));
+    if (!shieldUp && t.hp < hpBefore) r.tally!.hits++;
   }
   // The best guns fire first: veterans, then defence cannons.
   const shooters = s.structs.filter((x) => x.hp > 0 && x.online && x.building == null && (x.cat === 'fleet' || x.type === 19))
@@ -979,11 +993,14 @@ function raidStep() {
     const left = r.structs.filter((x) => x.hp > 0);
     if (!left.length) break;
     const tgt = left.find((x) => x.type !== 1) ?? left[0];
+    const was = tgt.hp;
     // Veterans (★★ and up) hit harder.
     attack(d, tgt, (d.type === 19 ? 2 : 1) + (vetRank(d.kills) >= 2 ? 1 : 0) + (d.mod === 'guns' ? 1 : 0) + (rnd() < 0.25 * lv('guns') + (inGuild('iron') ? 0.1 : 0) + (r.stance === 'intercept' ? 0.3 : 0) - (r.stance === 'entrench' ? 0.1 : 0) ? 1 : 0), rnd() < 0.15);
+    if (was > 0 && tgt.hp <= 0) { r.tally ??= { kills: {}, blocked: 0, hits: 0 }; r.tally.kills[d.id] = (r.tally.kills[d.id] ?? 0) + 1; }
   }
   const cmdDown = r.structs.find((x) => x.type === 1)!.hp <= 0;
   if (cmdDown || r.structs.every((x) => x.hp <= 0)) {
+    fileReport(r, true);
     s.raid = null; s.raidsRepelled++; s.nextRaid = raidGap(); raceAdd(15); jobRepelled(r.startedAt);
     // A broken raid costs its owner a ship.
     const owner = rivals().find((x) => x.id === r.owner);
@@ -997,6 +1014,7 @@ function raidStep() {
   if (s.height - r.startedAt > RATE.raidEta + 8 || !s.structs.some((x) => x.cat === 'fleet' && x.hp > 0)) {
     // The raiders break through and take every gram of unrefined ore.
     r.seized = Math.floor(s.ore * (1 - 0.25 * lv('bunker')) * (inGuild('blue') ? 0.85 : 1)); s.ore -= r.seized; s.shield = 0;
+    fileReport(r, false);
     s.raid = null; s.raidsLost++; s.nextRaid = raidGap();
     log('raid_status', 'raidSuccessful');
     emit('defeat', `습격 성공 · 광석 ${r.seized} 약탈당함`);
@@ -1226,6 +1244,9 @@ export const demo = {
     return null;
   },
   raidForecast,
+  /** The last defence's report while it's fresh (60 blocks), unless dismissed. */
+  get report() { const p = s.report; return p && s.height - p.h <= 60 ? p : null; },
+  dismissReport() { s.report = null; persist(); for (const f of changeFns) f(); },
   /** The rival open to a counter-raid, and for how long. */
   get revenge() { const v = s.revenge; return v && s.height <= v.until ? { rival: v.rival, left: v.until - s.height, name: rivals().find((x) => x.id === v.rival)?.name ?? v.rival } : null; },
   get black() { const b = s.black; return b && b.offers.length && s.height <= b.until ? { offers: b.offers, left: b.until - s.height, deals: b.deals ?? 0 } : { offers: [] as BlackOffer[], left: 0, next: Math.max(0, (b?.next ?? s.height) - s.height), deals: b?.deals ?? 0 }; },

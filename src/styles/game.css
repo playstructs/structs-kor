@@ -673,3 +673,14 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .refit-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .refit-row .btn { display: grid; gap: 2px; text-align: left; min-height: 52px; padding: 6px 8px; white-space: normal; }
 .refit-row .btn small { font-size: 11px; opacity: .85; }
+
+/* 전투 보고 (after-action report) */
+.aar.won { border-color: var(--cheong); }
+.aar.lost { border-color: var(--jeok-strong); }
+.aar .card-head { align-items: center; gap: 10px; }
+.aar-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.aar-kills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.aar-kill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border: 1px solid var(--line); background: var(--surface); }
+.aar-kill b { color: var(--white); }
+.aar-promo { margin: 10px 0 0; color: var(--hwang); font-weight: 700; }
+@media (max-width: 720px) { .aar-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
