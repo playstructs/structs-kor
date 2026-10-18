@@ -57,7 +57,7 @@ export function demoExchange(root: HTMLElement): () => void {
       <aside class="card game-panel accent ticket">
         <div class="side-tabs" role="tablist"><button role="tab" class="${side === 'sell' ? 'on sell' : ''}" aria-selected="${side === 'sell'}" data-act="side" data-v="sell">판매</button><button role="tab" class="${side === 'buy' ? 'on buy' : ''}" aria-selected="${side === 'buy'}" data-act="side" data-v="buy">구매</button></div>
         <label class="field"><span>${side === 'sell' ? html`전력량 · 여유 <b class="mono c-cheong">${free().toFixed(2)} kW</b> · 시장 수요 <b class="mono">${Math.max(0, RATE.marketDepthKw - demo.soldKw()).toFixed(1)} kW</b> · 계약당 최대 ${RATE.maxDealKw} kW` : '전력량 (kW)'}</span><input class="input" type="number" min="0.1" step="0.1" value="${kw}" aria-label="전력량 (kW)" data-act="kw" data-on="change"></label>
-        <label class="field"><span>기간 (블록)</span><input class="input" type="number" min="5" max="${RATE.maxDealBlocks}" step="5" value="${blocks}" aria-label="기간 (블록)" data-act="blocks" data-on="change"></label>
+        <label class="field"><span>기간 (블록)</span><input class="input" type="number" min="5" max="${RATE.maxTerm}" step="5" value="${blocks}" aria-label="기간 (블록)" data-act="blocks" data-on="change"></label>
         ${side === 'sell' ? html`
         <div class="quote mono">
           <div><span class="dim">매수 호가</span><span>${price.toFixed(4)} α/kW·블록</span></div>
