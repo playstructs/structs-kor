@@ -954,7 +954,7 @@ function raidStep() {
     const fid = `9-${300 + Math.floor(rnd() * 600)}`;
     const R = (i: number, type: number, ambit: Ambit, slot: number): DemoStruct => ({ id: `5-r${s.height}${i}`, type, ambit, slot, cat: 'fleet', online: true, hp: TYPES_BY_ID[type].maxHealth, max: TYPES_BY_ID[type].maxHealth, building: null, buildBlocks: 0, protects: null });
     // The first raids are a lesson, not a beating: one escort each until three have come and gone.
-    const size = rookie() ? 1 : 2 + Math.min(3, Math.floor(Math.max(0, s.raidsRepelled - 3) / 3));
+    const size = rookie() ? 1 : 2 + Math.min(4, Math.floor(Math.max(0, s.raidsRepelled - 3) / 3));
     const pool: [number, Ambit][] = [[3, 'space'], [5, 'air'], [9, 'land'], [12, 'water'], [8, 'land'], [4, 'space']];
     s.raid = { fleetId: fid, owner, name, eta: RATE.raidEta, seized: 0, startedAt: s.height, structs: [R(0, 1, 'space', 0), ...pool.slice(0, size).map(([t, a], i) => R(i + 1, t, a, i % 2))] };
     log('fleet_depart', `${fid} → ${PLANET}`);
