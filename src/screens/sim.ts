@@ -19,7 +19,7 @@ import { career } from '../game/progress';
 import { sfx } from '../game/sfx';
 import { banner, notify, callout } from '../game/fx';
 import { keys } from '../game/keys';
-import { demo } from '../game/demo';
+import { demo, withAllies } from '../game/demo';
 import { MISSIONS, missionUnits, recordClear, unlocked } from '../game/campaign';
 import { DIFFICULTY_KO } from './sim-labels';
 import { rivalFleet, raidSeed } from './galaxy';
@@ -54,7 +54,8 @@ const fromSim = (c: Chain, s: SimStruct): BoardStruct => ({
 const screen: Screen = {
   render(root, params) {
     // Vassals are under your protection: no strikes on them from here.
-    const raidOn = !demo.on ? null : params.get('raid') === 'void' ? demo.boss : demo.rivals().find((r) => r.id === params.get('raid') && r.vassal == null) ?? null;
+    // Not your vassal, not your ally.
+    const raidOn = !demo.on ? null : params.get('raid') === 'void' ? demo.boss : demo.rivals().find((r) => r.id === params.get('raid') && r.vassal == null && r.id !== demo.ally?.id) ?? null;
     const mission = MISSIONS.find((m) => m.id === params.get('mission') && unlocked(m)) ?? null;
     let raidIds: Record<string, string> = {}, loot: { ore: number; alpha?: number } | null = null;
     // The war room's estimate for this strike: wins out of plays, filled in a battle at a time.
@@ -453,7 +454,8 @@ const screen: Screen = {
         // The same fleet scouting showed (src/screens/galaxy.ts).
         seed = raidSeed(raidOn);
         const enemy = rivalFleet(raidOn);
-        units = [...f.units, ...enemy];
+        // An ally's ships fly beside yours, in whatever slots you've left free (they aren't yours to lose).
+        units = [...withAllies(f.units), ...enemy];
         phase = 'deploy';
         newBoard().setStructs(units.map(fromUnit));
         stopOdds?.(); odds = null;

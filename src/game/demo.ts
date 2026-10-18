@@ -9,7 +9,7 @@ import type { AttackDetail, ShotRow } from '../sim/chain';
 import { TYPES_BY_ID, type Ambit } from '../data/catalogue';
 import { rngFor } from '../core/util';
 import { STRUCT_TYPE } from '../i18n/ko';
-import type { Unit } from '../sim/fleets';
+import { fits, unitId, type Unit } from '../sim/fleets';
 
 const KEY = 'structs-kor.demo';
 const BLOCK_MS = 4000;
@@ -109,6 +109,8 @@ interface State {
   era?: number;
   /** Bounties collected, all time (survives new eras). */
   bountiesClaimed?: number;
+  /** An alliance: the rival, and the block it lapses. */
+  ally?: { id: string; until: number } | null;
   /** Outposts: who holds each (DEMO_ID for you), and your garrison level there. */
   outposts?: Record<OutpostId, { owner: string | null; garrison: number }>; nextContest?: number;
   /** Days in a row the commander came back (local dates), and the last one seen. */
@@ -398,6 +400,7 @@ function blockInner() {
   samplePower();
   repsStep();
   loanStep();
+  allyStep();
   if (catching) return;
   // A tab left open across midnight counts the new day too.
   if (s.streak && s.streak.day !== dayKey()) checkStreak();
@@ -529,6 +532,7 @@ function covert(id: string, op: OpId): { ok: boolean; text: string } | string {
   const r = rivals().find((x) => x.id === id);
   if (!r) return '세력을 찾을 수 없습니다';
   if (r.vassal != null) return '속국에는 공작을 하지 않습니다';
+  if (allyId() === id) { s.ally = null; chronicle('jeok', `${r.name}과(와)의 동맹을 깨고 공작을 벌였다`); }
   const o = OPS[op];
   if ((r.opUntil ?? 0) > s.height) return `${r.name}의 경계가 높습니다 · ${r.opUntil! - s.height}블록 뒤에`;
   if (op === 'sabotage' && (r.sabotaged ?? 0) > s.height) return '이미 사보타주가 진행 중입니다';
@@ -604,6 +608,28 @@ function contestStep() {
   o.owner = attacker.id; o.garrison = 0;
   chronicle('jeok', `${attacker.name}에게 ${target.name}을(를) 빼앗겼다`);
   emit('alarm', `${target.name} 함락! ${attacker.name}이(가) 거점을 빼앗았습니다`);
+}
+
+/* ── 동맹 (alliance): pay a rival for a term of friendship. An ally never raids you and sends ships
+ * to fight beside yours when you raid; spying on it ends the deal. 붉은 연합 allies with no one. ── */
+export const ALLY = { cost: 15, term: 200, ships: [[3, 'space'], [5, 'air']] as [number, Ambit][] };
+/** Your fleet plus your ally's ships, in the slots you've left free (for raids and their odds). */
+export function withAllies(mine: Unit[]): Unit[] {
+  if (!allyId()) return mine;
+  const out = [...mine];
+  for (const [type, ambit] of ALLY.ships) {
+    const slot = [0, 1, 2, 3].find((sl) => !out.some((u) => u.side === 'player' && u.ambit === ambit && u.slot === sl && u.type !== 1));
+    if (slot != null && fits(type, ambit)) out.push({ id: unitId('player', type, ambit, slot), side: 'player', type, ambit, slot, protects: null });
+  }
+  return out;
+}
+const allyId = () => (s.ally && s.ally.until > s.height ? s.ally.id : null);
+function allyStep() {
+  if (s.ally && s.height >= s.ally.until) {
+    const r = rivals().find((x) => x.id === s.ally!.id);
+    s.ally = null;
+    emit('cheong', `${r?.name ?? '동맹'}과(와)의 동맹이 만료되었습니다`);
+  }
 }
 
 /* ── 대출 (credit): 청룡 상단 lends against your future. 20% on top, due in 200 blocks, repaid
@@ -793,8 +819,8 @@ function decide(i: number): string | null {
 function raidStep() {
   if (!s.raid) {
     if ((s.nextRaid -= ev('pirates') ? 2 : 1) > 0) return;
-    // Vassals don't raid their overlord; a rebel strikes first.
-    const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height));
+    // Vassals and allies don't raid you; a rebel strikes first.
+    const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height) && x.id !== allyId());
     // Who comes is weighted by temperament (and a calculating rival only when it's the stronger).
     const weight = (x: Rival) => (TEMPER[x.id]?.raid ?? 2) * (x.id === '1-313' && rivalWorth(x) < demo.netWorth() ? 0.3 : 1) * (x.id === '1-87' && s.ore > 50 ? 1.5 : 1);
     const total = free.reduce((a, x) => a + weight(x), 0);
@@ -1037,6 +1063,22 @@ export const demo = {
     return null;
   },
   covert,
+  get ally() { const id = allyId(); return id ? { id, left: s.ally!.until - s.height, name: rivals().find((r) => r.id === id)?.name ?? id } : null; },
+  /** Buy an alliance with a rival for ALLY.term blocks. */
+  formAlliance(id: string): string | null {
+    adoptStored();
+    const r = rivals().find((x) => x.id === id);
+    if (!r) return '세력을 찾을 수 없습니다';
+    if (r.vassal != null) return '속국과는 동맹을 맺지 않습니다 · 이미 당신의 것입니다';
+    if (id === '1-666') return '붉은 연합은 누구와도 손잡지 않습니다';
+    if (allyId()) return '이미 동맹이 있습니다';
+    if (s.raid?.owner === id) return '지금 당신을 습격 중인 세력입니다';
+    if (s.alpha < ALLY.cost) return `동맹 예물 ${ALLY.cost} g 필요`;
+    s.alpha -= ALLY.cost; s.ally = { id, until: s.height + ALLY.term };
+    chronicle('cheong', `${r.name}과(와) 동맹을 맺었다`);
+    persist(); for (const f of changeFns) f();
+    return null;
+  },
   get outposts() {
     const o = outposts(), strongest = Math.max(1, ...rivals().filter((r) => r.vassal == null && !((s.pacts?.[r.id] ?? 0) > s.height)).map((r) => r.fleet));
     // For a site you hold, `odds` is its chance to hold against the strongest free rival's attempt.

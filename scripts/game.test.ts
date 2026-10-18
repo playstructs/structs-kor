@@ -556,3 +556,16 @@ test('outposts: left alone, a neutral site is eventually taken by a rival', () =
   for (let i = 0; i < 3000 && !taken; i++) { if (demo.raid) demo.state.raid = null; demo.step(); taken = !!demo.outposts.find((o) => o.id === 'asteroid')!.owner; }
   assert.ok(taken);
 });
+
+test('alliances: an ally never raids you, adds ships to your raids, and spying ends it', async () => {
+  const { withAllies } = await import('../src/game/demo');
+  demo.reset();
+  demo.state.alpha = 100;
+  assert.match(demo.formAlliance('1-666') ?? '', /손잡지/);
+  assert.equal(demo.formAlliance('1-1004'), null);
+  const mine = demo.fleetUnits().units;
+  assert.equal(withAllies(mine).length, mine.length + 2, 'two allied ships join');
+  for (let i = 0; i < 199; i++) { demo.step(); assert.notEqual(demo.raid?.owner, '1-1004'); if (demo.raid?.eta === 0) demo.state.raid = null; }
+  demo.state.alpha = 100;
+  if (demo.ally) { demo.covert('1-1004', 'heist'); assert.equal(demo.ally, null, 'spying broke it'); }
+});

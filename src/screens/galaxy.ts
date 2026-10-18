@@ -12,7 +12,7 @@ import { pow } from '../pow/engine';
 import { errorCard, loading } from '../ui/gate';
 import { needSession } from '../ui/gate';
 import { setTiles } from '../ui/shell';
-import { demo, DEMO_ID, DOMINION, TEMPER, OPS, OUTPOST, opOdds, type Rival, type OpId, type OutpostId } from '../game/demo';
+import { demo, DEMO_ID, DOMINION, TEMPER, OPS, OUTPOST, opOdds, withAllies, ALLY, type Rival, type OpId, type OutpostId } from '../game/demo';
 import { hegemonyMeter, powerChart } from '../game/meter';
 import { hash32, mulberry } from '../core/util';
 import { layout } from '../sim/fleets';
@@ -136,7 +136,7 @@ const screen: Screen = {
     const oddsCache = new Map<string, { won: number; played: number }>();
     let oddsStop: (() => void) | null = null, oddsKey = '', partial: { key: string; won: number; played: number } | null = null;
     const oddsChip = (r: Rival): Safe => {
-      const mine = demo.fleetUnits().units;
+      const mine = withAllies(demo.fleetUnits().units);
       if (!mine.some((u) => u.type === 1)) return html`<span class="chip jeok mono">지휘함 없음 · 출격 불가</span>`;
       const key = `${raidSeed(r)}|${mine.map((u) => `${u.id}:${u.health}`).join(',')}`;
       if (!oddsCache.has(key) && oddsKey !== key) {
@@ -202,6 +202,8 @@ const screen: Screen = {
         ${sc ? html`<div class="scout"><span class="label c-cheong">정찰 보고 · 다음 교전 함대</span>${fleet.map((u) => html`<div class="scout-u">${pixel(u.type)}<span>${STRUCT_TYPE[u.type]}</span><small class="mono">${AMBIT[u.ambit]}</small></div>`)}</div>
           ${oddsChip(r)}`
           : html`<button class="btn ghost" data-act="scout" style="justify-content:space-between">정찰기 파견 <span class="mono c-hwang">1 g · <kbd>S</kbd></span></button>`}
+        ${demo.ally?.id === r.id ? html`<div class="notice">동맹 · ${demo.ally.left}블록 남음. 이 세력은 당신을 습격하지 않고, 당신의 습격에 함선 ${ALLY.ships.length}척을 보냅니다. 공작을 벌이면 동맹이 깨집니다.</div>`
+          : html`<button class="btn ghost" data-act="ally" ${demo.ally || demo.state.alpha < ALLY.cost || r.id === '1-666' ? 'disabled' : ''} style="justify-content:space-between">${r.id === '1-666' ? '동맹 불가 · 누구와도 손잡지 않음' : `동맹 제안 · ${ALLY.term}블록`} <span class="mono">${ALLY.cost} g</span></button>`}
         <div class="ops"><span class="label dim">공작${(r.sabotaged ?? 0) > demo.state.height ? html` · <span class="c-cheong">사보타주 ${(r.sabotaged ?? 0) - demo.state.height}블록</span>` : ''}</span>
           ${(r.opUntil ?? 0) > demo.state.height ? html`<span class="mono c-warn" style="font-size:12px">경계 태세 · ${(r.opUntil ?? 0) - demo.state.height}블록</span>` : ''}
           ${(Object.keys(OPS) as OpId[]).map((k) => html`<button class="btn ghost op" data-act="op" data-op="${k}" ${demo.state.alpha < OPS[k].cost || (r.opUntil ?? 0) > demo.state.height || (k === 'sabotage' && (r.sabotaged ?? 0) > demo.state.height) ? 'disabled' : ''}><b>${OPS[k].name}</b><small>${OPS[k].what} · 성공 ${Math.round(opOdds(k) * 100)}% · ${OPS[k].cost} g</small></button>`)}
@@ -232,6 +234,15 @@ const screen: Screen = {
       ]);
     };
     const handlers = {
+      ally: () => {
+        const r = demo.rivals().find((x) => x.id === sel);
+        if (!r) return;
+        const e = demo.formAlliance(r.id);
+        if (e) { sfx.play('error'); toast(e); return; }
+        sfx.play('confirm'); banner({ kicker: '동맹', title: r.name, sub: `${ALLY.term}블록 · 습격 중지 · 함선 지원`, tone: 'cheong', ms: 2200 });
+        setTimeout(() => transmit(r.id, 'submit'), 900);
+        paint();
+      },
       claim: (el: HTMLElement) => {
         const res = demo.claimOutpost(el.dataset.id as OutpostId);
         if (typeof res === 'string') { sfx.play('error'); toast(res); return; }

@@ -3,7 +3,7 @@
 import type { Screen } from '../router';
 import { href } from '../router';
 import { html, mount, raw, type Safe } from '../ui/dom';
-import { OUTPOSTS, OUTPOST, DOMINION, HEGEMONY, OC, DOCTRINES, DOCTRINE_SWITCH, BOUNTY, VOID, RACE, LOAN, OPS, REPS, ENGINE, RATE, DECISION, WAR, TEMPER, type OpId } from '../game/demo';
+import { ALLY, OUTPOSTS, OUTPOST, DOMINION, HEGEMONY, OC, DOCTRINES, DOCTRINE_SWITCH, BOUNTY, VOID, RACE, LOAN, OPS, REPS, ENGINE, RATE, DECISION, WAR, TEMPER, type OpId } from '../game/demo';
 import { spriteHtml } from '../game/map/art';
 import { setTiles } from '../ui/shell';
 
@@ -21,6 +21,7 @@ const SECTIONS: [string, string, Entry[]][] = [
   ['세력', '은하의 다른 세력을 꺾고, 부리고, 늦춘다.', [
     { icon: 3, title: '습격', body: html`은하 지도에서 세력을 고르고 출격. 이기면 비축 광석을 약탈하고 그 세력의 함대가 1기 줄어 다음엔 더 쉬워집니다. 정찰(1 g)하면 맞설 함대와 예상 승률을 볼 수 있습니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 1, title: '복속', body: html`${DOMINION.raidsToSubjugate}번 약탈한 세력에게 복속을 요구(${DOMINION.cost} g). 속국은 성장의 ${pct(DOMINION.tribute)}를 공물로 바치고 습격하지 않습니다. 함대가 ${DOMINION.rebelFleet}기가 되면 반란 위험: 함선 해체(${DOMINION.disarmCost} g)로 막으세요.`, go: ['/galaxy', '은하 지도'] },
+    { icon: 4, title: '동맹', body: html`${ALLY.cost} g로 한 세력과 ${ALLY.term}블록 동맹. 동맹은 습격하지 않고, 당신의 습격에 함선 ${ALLY.ships.length}척을 보냅니다. 공작을 벌이면 깨집니다. 붉은 연합은 동맹을 맺지 않습니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 6, title: '공작', body: html`${(Object.keys(OPS) as OpId[]).map((k) => `${OPS[k].name} ${OPS[k].cost} g · 성공 ${pct(OPS[k].odds)}(첩보망 연구로 상승) · ${OPS[k].what}`).join(' / ')}. 발각되면 불가침이 깨지고 보복 함대가 옵니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 2, title: '현상금', body: html`${BOUNTY.every}블록마다 한 세력이 다른 세력에 현상금을 겁니다(지도의 ◆). ${BOUNTY.lasts}블록 안에 그 세력을 습격해 이기면 받습니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 10, title: '거점', body: html`${OUTPOSTS.map((o) => `${o.name}(${o.perk})`).join(' · ')}. 공략 ${OUTPOST.claim} g · 성공률은 내 전함 대 (기본 수비 + 수비대 레벨×2 + 점령 세력 함대의 절반). 요새화 ${OUTPOST.fortify} g(최대 ${OUTPOST.maxGarrison}). ${OUTPOST.contestEvery}블록마다 경쟁 세력이 빼앗으려 하고, 비어 있는 거점은 먼저 차지해 버립니다. 거점마다 세력 +40.`, go: ['/galaxy', '은하 지도'] },
