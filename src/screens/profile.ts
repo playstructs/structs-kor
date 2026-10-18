@@ -54,6 +54,10 @@ const screen: Screen = {
             <p class="note">이름과 초상화는 플레이어 카드, 통신, 길드 명단 어디서나 이것으로 보입니다.</p>
           </section>
           <section class="chain-check">
+            <div class="card-head"><h2 style="font-size:20px">소리</h2><span class="end note">음량 · 효과음마다 켜고 끄기 · 내 소리 파일</span></div>
+            <button class="btn ghost" data-act="sound">소리 설정</button>
+          </section>
+          <section class="chain-check">
             <div class="card-head"><h2 style="font-size:20px">시스템 알림</h2><span class="end note">${!supported() ? '이 환경은 지원하지 않음' : permission() === 'denied' ? '브라우저에서 차단됨' : prefs().on ? '켜짐' : '꺼짐'}</span></div>
             <p class="note">탭이 뒤에 있을 때 운영체제 알림으로 알려줍니다. 채널마다 끌 수 있습니다.</p>
             ${prefs().on ? html`<div class="notify-list">${CHANNELS.map((c) => html`<div class="order-row"><div><b class="c-white">${c.label}</b><br><span class="dim" style="font-size:12px">${c.hint}</span></div><button class="sw" aria-pressed="${prefs().channels[c.id]}" aria-label="${c.label} 알림" data-act="chan" data-id="${c.id}"></button></div>`)}
@@ -100,6 +104,7 @@ const screen: Screen = {
         if (!pid) return;
         void actions.playerPfp(pid, myPfp()).then((h) => toast(`초상화 저장 · ${h.slice(0, 10)}…`)).catch((e) => toast('실패: ' + (e as Error).message, 5000));
       },
+      sound: () => void import('../ui/sound').then((m) => m.openSoundSettings()),
       notifyOn: () => { void enable().then((ok) => { toast(ok ? '알림을 켰습니다.' : '브라우저가 알림을 허용하지 않았습니다.'); paint(); }); },
       notifyOff: () => { setPrefs({ on: false }); paint(); },
       chan: (el: HTMLElement) => { const id = el.dataset.id as Channel; const p = prefs(); setPrefs({ channels: { ...p.channels, [id]: !p.channels[id] } }); paint(); },

@@ -1,7 +1,37 @@
 /* Sound: every cue is synthesised with WebAudio (no files to fetch). Off until the first user
  * gesture (browsers require it); muted state survives reloads. */
 
-type Cue = 'click' | 'hover' | 'confirm' | 'coin' | 'alarm' | 'levelup' | 'hit' | 'boom' | 'error' | 'tick' | 'shot' | 'evade' | 'shield' | 'victory' | 'defeat' | 'build';
+export type Cue = 'click' | 'hover' | 'confirm' | 'coin' | 'alarm' | 'levelup' | 'hit' | 'boom' | 'error' | 'tick' | 'shot' | 'evade' | 'shield' | 'victory' | 'defeat' | 'build';
+/** Every cue with its Korean name, for 소리 설정. */
+export const CUE_NAMES: Record<Cue, string> = {
+  click: '클릭', hover: '가리키기', confirm: '확인', coin: '알파 · 거래', alarm: '경보', levelup: '진급', hit: '피격', boom: '폭발', error: '오류', tick: '알림 · 메시지',
+  shot: '발사', evade: '회피', shield: '방어막', victory: '승리', defeat: '패배', build: '건설',
+};
+
+/* Player settings: master volume, cues switched off, and their own files for any cue (IndexedDB). */
+const SET = 'structs-kor.sfx';
+interface SfxSettings { volume: number; off: Cue[] }
+let settings: SfxSettings = (() => { try { return { volume: 1, off: [], ...JSON.parse(localStorage.getItem(SET) || '{}') }; } catch { return { volume: 1, off: [] }; } })();
+const saveSettings = () => { try { localStorage.setItem(SET, JSON.stringify(settings)); } catch { /* fine */ } };
+const custom = new Map<Cue, AudioBuffer>();
+const db = (): Promise<IDBDatabase | null> => new Promise((res) => {
+  try { const r = indexedDB.open('structs-kor-sfx', 1); r.onupgradeneeded = () => r.result.createObjectStore('cues'); r.onsuccess = () => res(r.result); r.onerror = () => res(null); } catch { res(null); }
+});
+async function idb<T>(mode: IDBTransactionMode, f: (s: IDBObjectStore) => IDBRequest<T>): Promise<T | null> {
+  const d = await db(); if (!d) return null;
+  return new Promise((res) => { try { const q = f(d.transaction('cues', mode).objectStore('cues')); q.onsuccess = () => res(q.result); q.onerror = () => res(null); } catch { res(null); } });
+}
+let customLoaded = false;
+async function loadCustom() {
+  if (customLoaded) return; customLoaded = true;
+  const c = ac(); if (!c) { customLoaded = false; return; }
+  const keys = (await idb<IDBValidKey[]>('readonly', (s) => s.getAllKeys())) ?? [];
+  for (const k of keys) { const buf = await idb<ArrayBuffer>('readonly', (s) => s.get(k)); if (buf) { try { custom.set(k as Cue, await c.decodeAudioData(buf.slice(0))); } catch { /* not audio */ } } }
+}
+function playBuffer(b: AudioBuffer) {
+  const c = ac(); if (!c || !master) return;
+  const src = c.createBufferSource(); src.buffer = b; src.connect(master); src.start();
+}
 
 const KEY = 'structs-kor.muted';
 let ctx: AudioContext | null = null;
@@ -16,7 +46,7 @@ function ac(): AudioContext | null {
     if (!C) return null;
     ctx = new C();
     master = ctx.createGain();
-    master.gain.value = 0.22;
+    master.gain.value = 0.22 * settings.volume;
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') void ctx.resume();
@@ -80,7 +110,28 @@ const CUES: Record<Cue, () => void> = {
 };
 
 export const sfx = {
-  play(cue: Cue) { try { CUES[cue](); } catch { /* audio refused */ } },
+  play(cue: Cue) {
+    if (settings.off.includes(cue)) return;
+    try { const b = custom.get(cue); if (b) playBuffer(b); else CUES[cue](); } catch { /* audio refused */ }
+    if (!customLoaded && ctx) void loadCustom();
+  },
+  /** Play a cue regardless of its switch (the settings' test button). */
+  test(cue: Cue) { try { const b = custom.get(cue); if (b) playBuffer(b); else CUES[cue](); } catch { /* audio refused */ } },
+  get volume() { return settings.volume; },
+  setVolume(v: number) { settings.volume = Math.max(0, Math.min(1.5, v)); saveSettings(); if (master) master.gain.value = 0.22 * settings.volume; },
+  isOff(cue: Cue) { return settings.off.includes(cue); },
+  setOff(cue: Cue, off: boolean) { settings.off = off ? [...new Set([...settings.off, cue])] : settings.off.filter((c) => c !== cue); saveSettings(); },
+  hasCustom(cue: Cue) { return custom.has(cue); },
+  /** Use the player's own file for a cue (null: back to the synthesised one). */
+  async setCustom(cue: Cue, file: File | null): Promise<boolean> {
+    if (!file) { custom.delete(cue); await idb('readwrite', (s) => s.delete(cue)); return true; }
+    const c = ac(); if (!c) return false;
+    const buf = await file.arrayBuffer();
+    try { custom.set(cue, await c.decodeAudioData(buf.slice(0))); } catch { return false; }
+    await idb('readwrite', (s) => s.put(buf, cue));
+    return true;
+  },
+  async ready() { await loadCustom(); },
   get muted() { return muted; },
   toggle() {
     muted = !muted;

@@ -326,3 +326,17 @@ tr.me td { background: var(--cheong-bg); }
 .ledger li.out { border-left-color: var(--jeok-strong); }
 .ledger li.in .mono:nth-child(2) { color: var(--cheong-hi); } .ledger li.out .mono:nth-child(2) { color: var(--jeok-hi); }
 .board-tabrow { display: flex; align-items: flex-end; gap: 2px; }
+
+/* ── Sound settings ── */
+.snd-top { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.snd-top .field { flex: 1 1 240px; }
+.snd-toggles { display: flex; gap: 6px; }
+.snd-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 4px; }
+.snd-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto auto; grid-template-rows: auto auto; align-items: center; gap: 0 6px; padding: 6px 8px; background: var(--sunken); border: 1px solid var(--line); }
+.snd-list li.off { opacity: .55; }
+.snd-list li b { font: 700 13px var(--f-pix); color: #fff; }
+.snd-list li small { grid-row: 2; grid-column: 1; font-size: 10px; }
+.snd-list li > :not(b):not(small) { grid-row: 1 / span 2; }
+.snd-list .hud-btn { width: 30px; height: 30px; }
+.snd-file { position: relative; overflow: hidden; }
+.snd-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }

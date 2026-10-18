@@ -57,9 +57,10 @@ The English desktop client (structs-universe) is the reference; this client matc
 | Game Stats | `/stats` |
 | War: targets, grudges, vetoes, incidents, live raids | `/war` |
 | Map Viewer (watch any planet) | `/o/<planet>` on the battle board, fights animated live from GRASS; watched planets raise the alarm when raided |
+| Sound designer | 소리 설정 (내 정보 or palette `소리`): master volume, each cue on/off, your own file per cue (IndexedDB) |
 | Native notifications per channel | 내 정보 → 시스템 알림 (`src/game/native.ts`) |
 
-What stays desktop-only: GPU hashing, the MCP server for AI agents, the sound designer, and loops that run while the app is closed (here, standing orders run while the tab is open).
+What stays desktop-only: GPU hashing, the MCP server for AI agents, live head-to-head simulator matches and shared proof-of-work (here: asynchronous challenges, `/sim?from=`), and loops that run while the app is closed (here, standing orders run while the tab is open).
 
 Dev: `?mock=1` also brings up a pretend Matrix homeserver (`src/chat/mockserver.ts`) with seeded rooms, guildmates who type and answer, and an invite.
 
