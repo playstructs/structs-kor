@@ -16,6 +16,7 @@ import { Board, type BoardStruct } from '../game/map/board';
 import { TYPES_BY_ID, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
 import { portraitHtml, seededPfp } from '../game/portrait';
 import { setTiles } from '../ui/shell';
+import { serviceRecord, roman, type Ribbon } from '../social/record';
 import { actions } from '../api/actions';
 import { wallet } from '../wallet/wallet';
 
@@ -61,6 +62,7 @@ const screen: Screen = {
     }
     const kind = REF_KINDS[id.split('-')[0]];
     const me = session.playerId;
+    let ribbonsNow: Ribbon[] = [];
     let card: RefCard | null = null, log: ActivityRow[] = [], extra: Safe = html``, board: Board | null = null, timer = 0;
     const signedIn = session.status.state === 'in' || MOCK;
 
@@ -77,6 +79,7 @@ const screen: Screen = {
       </div>`;
     const handlers = {
       share: () => share({ kind: 'object', id }),
+      shareRec: () => { const top = ribbonsNow.filter((r) => r.tier).sort((a, b) => b.tier - a.tier).slice(0, 6); share({ kind: 'situation', s: { t: 'base', title: `${card?.title ?? id}의 복무 기록`, sub: top.length ? `최고 ${top[0].name} ${roman(top[0].tier)}` : undefined, lines: top.map((r) => [`${r.name} ${roman(r.tier)}`, `${n(r.value ?? 0, r.unit === 'g' ? 1 : 0)} ${r.unit}`] as [string, string]), ids: [id], go: `/o/${id}`, tone: 'hwang', at: Date.now() } }); },
       watch: () => { toggleWatch(id); paint(); },
       rename: (el: HTMLElement) => { const name = String(new FormData(el as HTMLFormElement).get('name') || '').trim(); if (name) void actions.planetName(id, name).then((h) => toast(`행성 이름 변경 · ${h.slice(0, 10)}…`)).catch((e) => toast('실패: ' + (e as Error).message, 5000)); },
     };
@@ -108,7 +111,8 @@ const screen: Screen = {
         <div class="obj-structs">${[...here, ...attackers].slice(0, 24).map((s) => html`<a class="obj-struct ${attackers.includes(s) ? 'enemy' : ''}" href="${href(`/o/${s.id}`)}"><b>${STRUCT_TYPE[s.type] ?? s.type}</b><small class="mono">${s.id} · ♥${s.health}</small></a>`)}</div></section>`;
     };
     const loadPlayer = async () => {
-      const [stats, structs] = await Promise.all([guildApi.oreStats(id).catch(() => null), guildApi.structsOf(id).catch(() => [] as StructRow[])]);
+      const [stats, structs, rib] = await Promise.all([guildApi.oreStats(id).catch(() => null), guildApi.structsOf(id).catch(() => [] as StructRow[]), serviceRecord(id).catch(() => [] as Ribbon[])]);
+      ribbonsNow = rib;
       const alive = structs.filter((s) => !s.is_destroyed);
       extra = html`<section class="card game-panel"><h2>전적</h2><div class="stat-grid obj-stats">
         <div class="stat"><small>채굴한 광석</small><strong class="mono">${stats ? n(stats.mined) : '—'}</strong></div>
@@ -116,7 +120,9 @@ const screen: Screen = {
         <div class="stat"><small>빼앗긴 광석</small><strong class="mono">${stats ? n(stats.forfeited) : '—'}</strong></div>
         <div class="stat"><small>구조체</small><strong class="mono">${n(alive.length)}</strong></div>
         <div class="stat"><small>함대 전력</small><strong class="mono">${n(alive.filter((s) => s.type <= 13).length)}</strong></div>
-        <div class="stat"><small>행성 시설</small><strong class="mono">${n(alive.filter((s) => s.type > 13).length)}</strong></div></div></section>`;
+        <div class="stat"><small>행성 시설</small><strong class="mono">${n(alive.filter((s) => s.type > 13).length)}</strong></div></div></section>
+        ${rib.length ? html`<section class="card game-panel"><div class="card-head"><h2>복무 기록</h2><span class="end dim" style="font-size:12px">체인 기록 · 등급 I–VI</span><button class="btn ghost sm" data-act="shareRec">공유</button></div>
+          <div class="ribbons">${rib.map((r) => html`<div class="ribbon t${r.tier} ${r.family === '습격' ? 'raid' : r.family === '방어' ? 'def' : 'ind'}" title="${r.next ? `다음 등급까지 ${n(r.next)} ${r.unit}` : r.tier ? '최고 등급' : ''}"><span class="rb-bar"></span><b>${r.name}</b><strong class="mono">${r.value == null ? '—' : n(r.value, r.unit === 'g' ? 1 : 0)}</strong><small>${r.unit}${r.tier ? ` · ${roman(r.tier)}` : ''}</small></div>`)}</div></section>` : ''}`;
     };
     const loadGuild = async () => {
       const roster = await guildApi.roster(id).catch(() => []);

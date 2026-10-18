@@ -105,3 +105,19 @@ test('messages: links linked, ids chipped, nothing injected', async () => {
   assert.ok(out.includes('&lt;b&gt;'));
   assert.equal(messageText('look https://x.kr/o/2-14', '').trim(), 'look');
 });
+
+test('service record: one leg of each ledger pair, raids won from seized rows, tiers', async () => {
+  const { foldLedger, tierOf, ribbons } = await import('../src/social/record');
+  const c = foldLedger([
+    { action: 'seized', denom: 'ore', amount_p: '40' }, { action: 'seized', denom: 'ore', amount_p: '0' },
+    { action: 'refined', denom: 'ualpha', amount_p: '4000000' }, { action: 'received', denom: 'ualpha', amount_p: '4000000' },
+    { action: 'infused', denom: 'ualpha', amount_p: '4000000' }, { action: 'infused', denom: 'ualpha.infused', amount_p: '4000000' },
+  ]);
+  assert.deepEqual(c, { ore_seized: 40, raids_won: 2, alpha_refined: 4, alpha_infused: 4 });
+  assert.deepEqual(tierOf(null, [1, 5]), { tier: 0, next: null });
+  assert.deepEqual(tierOf(0, [1, 5]), { tier: 0, next: 1 });
+  assert.deepEqual(tierOf(7, [1, 5]), { tier: 2, next: null });
+  const r = ribbons({ raids_won: 20 });
+  assert.equal(r.find((x) => x.key === 'raids_won')!.tier, 3);
+  assert.equal(r.find((x) => x.key === 'ore_mined')!.value, null, 'unknown stays unknown, not zero');
+});

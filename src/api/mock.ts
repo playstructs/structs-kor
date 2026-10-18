@@ -126,6 +126,14 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
     const n = (m.input ?? '').length % 5; return n < 2 ? { player_id: `1-${300 + n}` } : null;
   }],
   [/^resolve$/, () => []],
+  [/^player\/(1-\d+)\/ore\/stats$/, (m) => ({ mined: m[1] === ME ? 6_420 : 18_000, seized: m[1] === '1-9' ? 2_400 : 310, forfeited: 120 })],
+  [/^player\/(1-\d+)\/planet\/completed$/, (m) => ({ count: m[1] === ME ? 2 : 7 })],
+  [/^player\/(1-\d+)\/raid\/launched$/, (m) => ({ count: m[1] === '1-9' ? 64 : 9 })],
+  [/^ledger\/list\/player\/(1-\d+)\/page\/(\d+)$/, (m) => (m[2] !== '1' ? [] : [
+    ...Array.from({ length: 6 }, () => ({ action: 'seized', denom: 'ore', amount_p: '40' })), { action: 'seized', denom: 'ore', amount_p: '0' },
+    { action: 'refined', denom: 'ualpha', amount_p: '142000000' }, { action: 'received', denom: 'ualpha', amount_p: '142000000' },
+    { action: 'infused', denom: 'ualpha', amount_p: '5000000' }, { action: 'infused', denom: 'ualpha.infused', amount_p: '5000000' },
+    { action: 'mined', denom: 'ore', amount_p: '6420' }])],
   // Replicants (planned REQ-REP-1, answered here so the roster can be driven without a wallet).
   [/^player\/(1-\d+)\/replicants$/, () => REPLICANTS],
   [/^guild-bank$/, () => [{ guild_id: '0-5', denom: 'uguild.0-5', collateral: 40e9, supply: 38e9, ratio: 1.05 }, { guild_id: '0-1', denom: 'uguild.0-1', collateral: 9e9, supply: 10e9, ratio: 0.9 }]],
