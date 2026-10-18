@@ -34,7 +34,7 @@ const screen: Screen = {
           ${session.status.state === 'in'
             ? html`<a class="sb wide" href="${href('/console')}"><i class="si icon-arrow"></i><span>바로 플레이 · 함교로</span></a>`
             : html`<a class="sb wide" href="${href('/start')}"><i class="si icon-arrow"></i><span>바로 플레이</span></a>`}
-          <a class="sb wide" href="${href('/login')}"><i class="si icon-key"></i><span>로그인</span></a>
+          ${session.status.state === 'in' ? html`<a class="sb wide" href="${href('/chat')}"><i class="si icon-phone"></i><span>길드 통신</span></a>` : html`<a class="sb wide" href="${href('/login')}"><i class="si icon-key"></i><span>로그인</span></a>`}
           <a class="sb wide" href="${href('/tutorial')}"><i class="si icon-tip"></i><span>훈련소</span></a>
           <a class="sb wide" href="${href('/sim')}"><i class="si icon-raid"></i><span>전투 시뮬레이터</span></a>
         </nav>
