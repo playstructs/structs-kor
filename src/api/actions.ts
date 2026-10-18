@@ -30,7 +30,8 @@ async function lcd<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 let chainIdP: Promise<string> | null = null;
-const chainId = () => (chainIdP ??= lcd<{ default_node_info: { network: string } }>('/cosmos/base/tendermint/v1beta1/node_info').then((r) => r.default_node_info.network));
+// A failed lookup isn't remembered: the next call tries again.
+const chainId = () => (chainIdP ??= lcd<{ default_node_info: { network: string } }>('/cosmos/base/tendermint/v1beta1/node_info').then((r) => r.default_node_info.network).catch((e) => { chainIdP = null; throw e; }));
 
 interface Account { account_number: string; sequence: string }
 const account = (address: string) => viaGuild<Account>('REQ-TX-1',
@@ -92,13 +93,18 @@ async function send(name: string, value: MsgValue, index: number): Promise<strin
 }
 
 /** A dry run: sign the message as the commander would and ask the chain's LCD to simulate it. Nothing is
- * broadcast, no sequence is used, no fee is paid; a pass proves the encoding, the account and the
- * message's own checks against the live chain. Each step's result is reported to `step`. */
+ * broadcast, no sequence is used, no fee is paid. A pass proves the transaction decodes, the account
+ * and sequence line up and the message's own checks pass. Simulation does NOT verify the signature
+ * (the SDK skips that), so only a real broadcast proves signing. Each step is reported to `step`. */
 export async function simulate(name: string, value: MsgValue, step: (what: string, detail: string) => void, index = 0): Promise<{ gasUsed: string }> {
   if (MOCK) throw new Error('모의 모드에서는 체인 점검을 하지 않습니다');
   const key = wallet.key(index);
   const chain = await chainId(); step('체인', chain);
-  const acc = await account(key.address); step('계정', `번호 ${acc.account_number} · 순번 ${acc.sequence}`);
+  const fetched = await account(key.address);
+  // The same sequence a real send would use (a move sent moments ago may not show in the read yet).
+  const local = nextSeq.get(key.address);
+  const acc = { ...fetched, sequence: String(local !== undefined && local > BigInt(fetched.sequence) ? local : BigInt(fetched.sequence)) };
+  step('계정', `번호 ${acc.account_number} · 순번 ${acc.sequence}`);
   const tx = signTx(key, [{ typeUrl: typeUrlOf(name), value: { creator: key.address, ...value } }], chain, acc); step('서명', `${name} · ${tx.length}바이트`);
   const r = await lcd<{ gas_info?: { gas_used: string } }>('/cosmos/tx/v1beta1/simulate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tx_bytes: toB64(tx) }) });
   return { gasUsed: r.gas_info?.gas_used ?? '?' };

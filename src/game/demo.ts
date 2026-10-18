@@ -522,6 +522,8 @@ export const OPS: Record<OpId, { name: string; cost: number; odds: number; what:
   sabotage: { name: '사보타주', cost: 8, odds: 0.7, what: '100블록 동안 성장 절반' },
   heist: { name: '금고 털기', cost: 5, odds: 0.55, what: '비축 광석 15% 탈취' },
 };
+/** A covert operation's real odds now (첩보망 included): shown and rolled from the same number. */
+export const opOdds = (op: OpId) => Math.min(0.95, OPS[op].odds + 0.08 * lv('spy'));
 function covert(id: string, op: OpId): { ok: boolean; text: string } | string {
   adoptStored();
   const r = rivals().find((x) => x.id === id);
@@ -533,7 +535,7 @@ function covert(id: string, op: OpId): { ok: boolean; text: string } | string {
   if (s.alpha < o.cost) return `공작 자금 ${o.cost} g 필요`;
   s.alpha -= o.cost;
   s.ops = (s.ops ?? 0) + 1;
-  const hit = rngFor(`op:${s.height}:${id}:${s.ops}`)() < Math.min(0.95, o.odds + 0.08 * lv('spy'));
+  const hit = rngFor(`op:${s.height}:${id}:${s.ops}`)() < opOdds(op);
   // Either way, the target tightens its guard for a while (longer if it caught you).
   r.opUntil = s.height + (hit ? 30 : 90);
   let text: string;
@@ -573,6 +575,7 @@ function claimOdds(id: OutpostId) {
   const o = outposts()[id], def = OUTPOSTS.find((x) => x.id === id)!;
   const holder = o.owner && o.owner !== DEMO_ID ? rivals().find((r) => r.id === o.owner) : null;
   const guard = def.garrison + o.garrison * 2 + (holder ? holder.fleet / 2 : 0);
+  if (!warships()) return 0; // engineers can't sail without ships
   const mine = warships() + 2 * lv('fort');
   return Math.max(0.05, Math.min(0.95, mine / (mine + guard)));
 }
@@ -1035,7 +1038,7 @@ export const demo = {
   },
   covert,
   get outposts() {
-    const o = outposts(), strongest = Math.max(1, ...rivals().filter((r) => r.vassal == null).map((r) => r.fleet));
+    const o = outposts(), strongest = Math.max(1, ...rivals().filter((r) => r.vassal == null && !((s.pacts?.[r.id] ?? 0) > s.height)).map((r) => r.fleet));
     // For a site you hold, `odds` is its chance to hold against the strongest free rival's attempt.
     return OUTPOSTS.map((d) => { const mine = o[d.id].owner === DEMO_ID, guard = warships() + 2 * lv('fort') + o[d.id].garrison * 2 + d.garrison; return { ...d, ...o[d.id], mine, odds: mine ? guard / (guard + strongest) : claimOdds(d.id) }; });
   },

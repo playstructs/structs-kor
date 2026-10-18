@@ -1,6 +1,6 @@
 /* 참모 (the advisor): reads the demo base and the galaxy and names the three moves that matter
  * most right now, most urgent first, each with a button that goes and does something about it. */
-import { demo, DOMINION, ENGINE, OUTPOST, OPS } from './demo';
+import { demo, DOMINION, ENGINE, OUTPOST, OPS, opOdds } from './demo';
 import type { Dashboard } from '../api/planned';
 import { STRUCT_TYPE } from '../i18n/ko';
 
@@ -41,7 +41,7 @@ export function advise(): Tip[] {
   if (ships < 5 && demo.capacityKw() - demo.structsKw() - demo.soldKw() >= 0.6) tips.push({ pri: 48, tone: 'cheong', text: `함대 ${ships}척 · 여유 전력으로 함대 슬롯에 전함을 건조하면 습격 승률이 오릅니다 (건조는 전력만 듭니다).`, go: '/console', cta: '함교' });
   // The strongest free rival pulling away: slow it down.
   const lead = demo.rivals().filter((x) => x.vassal == null).sort((a, z) => demo.rivalWorth(z) - demo.rivalWorth(a))[0];
-  if (lead && demo.rivalWorth(lead) > demo.netWorth() * 1.3 && !((lead.sabotaged ?? 0) > st.height) && st.alpha >= OPS.sabotage.cost * 2) tips.push({ pri: 42, tone: 'hwang', text: `${lead.name}이(가) 앞서 나갑니다 (세력 ${Math.round(demo.rivalWorth(lead))}). 사보타주로 성장을 절반으로 늦출 수 있습니다 (${OPS.sabotage.cost} g, ${Math.round(OPS.sabotage.odds * 100)}%).`, go: '/galaxy', cta: '공작' });
+  if (lead && demo.rivalWorth(lead) > demo.netWorth() * 1.3 && !((lead.sabotaged ?? 0) > st.height) && st.alpha >= OPS.sabotage.cost * 2) tips.push({ pri: 42, tone: 'hwang', text: `${lead.name}이(가) 앞서 나갑니다 (세력 ${Math.round(demo.rivalWorth(lead))}). 사보타주로 성장을 절반으로 늦출 수 있습니다 (${OPS.sabotage.cost} g, ${Math.round(opOdds('sabotage') * 100)}%).`, go: '/galaxy', cta: '공작' });
   const weak = demo.rivals().filter((x) => x.vassal == null && demo.pactLeft(x.id) === 0).sort((a, b) => a.fleet - b.fleet)[0];
   if (weak && weak.fleet <= 4 && weak.ore > 30) tips.push({ pri: 50, tone: 'cheong', text: `${weak.name} 함대가 ${weak.fleet}기로 약합니다. 광석 ${Math.floor(weak.ore)} · 습격 적기입니다.`, go: `/sim?raid=${weak.id}`, cta: '습격' });
   const eng = demo.engine;

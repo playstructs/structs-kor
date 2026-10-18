@@ -109,12 +109,15 @@ function victory() {
     ${row('결단', `${st.decided ?? 0}회`)}
     <p class="note">${demo.engine.done ? '월드 엔진이 가동 중입니다. 함교에서 새 시대를 열어 더 강한 은하에 도전하세요.' : '이제 월드 엔진을 완공하세요. 완공하면 새 시대를 열 수 있습니다.'}</p>
     <button class="btn gold lg" type="button">계속 지배하기</button></div>`;
-  const close = () => el.remove();
+  const key = (e: KeyboardEvent) => { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); close(); } };
+  const close = () => { el.remove(); document.removeEventListener('keydown', key, true); };
   el.querySelector('button')!.addEventListener('click', () => { sfx.play('confirm'); close(); });
   el.addEventListener('click', (e) => { if (e.target === el) close(); });
   document.body.appendChild(el);
+  document.addEventListener('keydown', key, true);
+  el.querySelector<HTMLButtonElement>('button')!.focus();
   music.setMode('battle'); sfx.play('victory'); shake('lg');
-  setTimeout(() => music.setMode(demo.raid ? 'battle' : 'calm'), 9000);
+  setTimeout(() => music.setMode(demo.raid?.eta === 0 ? 'battle' : 'calm'), 9000);
 }
 
 /* Coming back to the base: what it made, what it lost, while you were gone. */
