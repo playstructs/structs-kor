@@ -436,7 +436,7 @@ const screen: Screen = {
     const paintAll = () => { paintRail(); paintRoom(); paintSide(); paintCompose(); };
     paintAll();
 
-    let first = true;
+    let first = true, lastHeard = '';
     const initialOpen = () => {
       first = false;
       const want = params.get('room'), dm = params.get('dm'), draft = params.get('draft');
@@ -452,6 +452,9 @@ const screen: Screen = {
       if (!root.isConnected) return;
       if (first && matrix.rooms.size) { initialOpen(); return; }
       const r = room();
+      const newest = r?.events.filter((m) => !m.pending && !m.notice).at(-1);
+      if (newest && newest.id !== lastHeard && lastHeard && !newest.mine) sfx.play('tick');
+      lastHeard = newest?.id ?? lastHeard;
       if (r && document.hasFocus() && !document.hidden) { r.unread = 0; r.highlight = 0; const last = r.events.filter((m) => !m.pending && !m.notice).at(-1); if (last && last.sender !== matrix.me) void matrix.read(r.id, last.id); }
       paintRail(); paintRoom(); if (side === 'people') paintSide();
     });
