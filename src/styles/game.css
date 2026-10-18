@@ -717,3 +717,6 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .dl-rules summary { cursor: pointer; color: var(--text-faint); }
 .dl-result { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 14px; background: var(--hwang-bg); border: 2px solid var(--hwang-line); }
 .dl-result strong { font-size: 24px; color: var(--hwang); }
+
+/* Desktop app: a new signed release is ready (src/core/desktop.ts). */
+.app-update { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: calc(100vw - 32px); padding: 10px 14px; background: var(--cheong-bg); border: 2px solid var(--cheong-mid); box-shadow: 0 6px 0 #0E0D1C88; }

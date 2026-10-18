@@ -35,6 +35,22 @@ The build writes `404.html` and `_redirects`, so every screen path (`/console`, 
 
 `.github/workflows/pages.yml` builds and publishes to GitHub Pages on every push to `main` (Settings › Pages › Source: GitHub Actions). Repository variables override the `VITE_*` values; `VITE_BASE` and `VITE_SITE_URL` otherwise follow the Pages site (`/` on a custom domain, `/structs-kor/` on github.io).
 
+## Desktop app
+
+`src-tauri/` wraps the same client in a native window (Tauri 2). Its frontend is the website's build at the root path (`scripts/build-desktop.mjs`). The Rust side adds only what a tab can't do: it answers `structs-kor://` links, updates itself from signed releases, and opens web links in the real browser (`src-tauri/src/main.rs`, `src/core/desktop.ts`).
+
+```bash
+cargo install tauri-cli --version '^2'   # once
+cargo tauri dev                          # the app over pnpm dev
+cargo tauri build                        # a local bundle (set TAURI_SIGNING_PRIVATE_KEY, or turn off createUpdaterArtifacts)
+```
+
+- **Releases.** `.github/workflows/release.yml` runs on a `v*` tag. It creates one draft release and builds macOS (Apple Silicon and Intel), Windows and Linux into it. It signs each, merges `latest.json` for the updater, and publishes only when all four pass. Running it by hand makes a test build with no release. The version comes from the tag (`scripts/sync-version.mjs`).
+- **Signing.** The workflow lists the secrets. macOS uses the same Developer ID and notarization secrets as Structs Desktop. Windows uses Azure Trusted Signing, so SmartScreen doesn't block the installer. Updates are signed with this app's own minisign key; the public half is in `tauri.conf.json`.
+- **Install.** The Windows installer is per-user (no admin prompt), so it works on PC방 machines. It is in Korean.
+- **Guild.** The app's origins are `tauri://localhost` and `http://tauri.localhost`, and the guild must allow them like the website (REQ-AUTH-2). Share links made in the app point at the website (`VITE_WEB_ROOT`).
+- Once the first release is out, set the `VITE_DESKTOP_RELEASES` repository variable to its releases page. The website then offers the app for shared links.
+
 ## Daily challenge and links
 
 - **The daily** (`src/sim/daily.ts`). Every commander gets the same fleets, enemy and chain dice each day; the day turns at midnight KST. Charge is fixed and autopilot is off. A result is just your orders: a daily code (`D…`, about 200 characters for a whole battle) carries the day, a call sign and those orders. Whoever opens `/daily/<day>/<code>` replays them against the same computer, so a score can't be claimed that the orders didn't earn. No server is needed; the guild ladder (REQ-SIM-1) can take the same codes. Your record and friends' results stay in this browser (`src/game/dailysim.ts`).

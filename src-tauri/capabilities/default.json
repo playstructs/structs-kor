@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The game window: core events only. The app's own commands (links, updates, opening a web page) are in src/main.rs; no plugin permission is granted to the page.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

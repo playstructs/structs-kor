@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_LCD_URL?: string;
   readonly VITE_SITE_URL?: string;
   readonly VITE_DESKTOP_RELEASES?: string;
+  /** Desktop builds: the website's root (origin and base path), for share links. */
+  readonly VITE_WEB_ROOT?: string;
 }
 interface ImportMeta { readonly env: ImportMetaEnv }
 

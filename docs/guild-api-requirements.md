@@ -56,7 +56,7 @@ Accept `Authorization: Bearer <token>` on every route that accepts the session t
 
 ### REQ-AUTH-2 · CORS for our origins
 
-Allow, with credentials and an `OPTIONS` preflight answer (the client sends `Content-Type: application/json` and `Authorization`), these origins: `https://xn--2e0b952cv5c.com` (구조체.com, proposed main), `https://xn--2e0b952c.com`, `.net`, `.io`, `.co`, `https://xn--3f5bzt.com`, `.net`, and `http://localhost:5180` for development. Please put this in the repo (it is currently only in the deployment's proxy), so every guild that runs the webapp gets it.
+Allow, with credentials and an `OPTIONS` preflight answer (the client sends `Content-Type: application/json` and `Authorization`), these origins: `https://xn--2e0b952cv5c.com` (구조체.com, proposed main), `https://xn--2e0b952c.com`, `.net`, `.io`, `.co`, `https://xn--3f5bzt.com`, `.net`, `http://localhost:5180` for development, and the desktop app's own origins: `tauri://localhost` (macOS, Linux) and `http://tauri.localhost` (Windows). Please put this in the repo (it is currently only in the deployment's proxy), so every guild that runs the webapp gets it.
 
 ### REQ-PUB-1 · Public summary
 

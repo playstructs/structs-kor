@@ -1,0 +1,183 @@
+# Builds the desktop app (src-tauri) for macOS, Windows and Linux, signs it, and publishes a GitHub
+# release with the updater manifest (latest.json) the installed apps check.
+#
+#   git tag v0.2.0 && git push origin v0.2.0     a release
+#   Actions › Release › Run workflow             a test build (artifacts only, no release)
+#
+# Secrets (Settings › Secrets and variables › Actions). Every group is optional: without it that
+# step is skipped and the build is unsigned for that platform.
+#   Updater (required for auto-update):
+#     TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+#   macOS signing + notarization (the same Developer ID as Structs Desktop):
+#     APPLE_CERTIFICATE (base64 .p12), APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#     APPLE_ID, APPLE_PASSWORD (app-specific password), APPLE_TEAM_ID
+#   Windows signing (Azure Trusted Signing):
+#     AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID
+#     plus variables AZURE_SIGNING_ENDPOINT, AZURE_SIGNING_ACCOUNT, AZURE_SIGNING_PROFILE
+# Variables for the app's frontend: the same VITE_* as pages.yml, and VITE_WEB_ROOT (the website's
+# root, for share links; default https://playstructs.github.io/structs-kor).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # One draft release up front, so the four builds upload into the same release (and the same
+  # latest.json) instead of racing to create it.
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.result }}
+    steps:
+      - id: create
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = process.env.GITHUB_REF_NAME;
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner, repo: context.repo.repo, tag_name: tag,
+              name: `구조체 STRUCTS ${tag}`, body: '구조체 STRUCTS 데스크톱 앱. 설치 파일을 받아 실행하세요. 이미 설치했다면 앱이 알아서 업데이트를 알려 줍니다.',
+              draft: true, prerelease: tag.includes('-'),
+            });
+            return data.id;
+
+  build:
+    needs: create-release
+    # A test build (workflow_dispatch) has no release to wait for.
+    if: ${{ !cancelled() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: macos-latest, target: aarch64-apple-darwin, name: macOS (Apple Silicon) }
+          - { platform: macos-latest, target: x86_64-apple-darwin, name: macOS (Intel) }
+          - { platform: ubuntu-22.04, target: x86_64-unknown-linux-gnu, name: Linux (x64) }
+          - { platform: windows-latest, target: x86_64-pc-windows-msvc, name: Windows (x64) }
+    runs-on: ${{ matrix.platform }}
+    name: Build ${{ matrix.name }}
+    env:
+      # A step's `if` can't read secrets; these say which signing groups are configured.
+      HAS_APPLE: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAS_AZURE: ${{ secrets.AZURE_CLIENT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: node scripts/sync-version.mjs "${GITHUB_REF_NAME}"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.target }}
+
+      - name: Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm test
+
+      - name: Import macOS signing certificate
+        if: runner.os == 'macOS' && env.HAS_APPLE == 'true'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          rm "$CERT_PATH"
+
+      # Windows: every .exe and the installer are signed through Azure Trusted Signing, so
+      # SmartScreen doesn't stop players with "Windows protected your PC".
+      - name: Configure Windows signing
+        id: winsign
+        if: runner.os == 'Windows' && env.HAS_AZURE == 'true'
+        shell: bash
+        run: |
+          cargo install trusted-signing-cli --locked
+          cat > src-tauri/tauri.sign.conf.json <<JSON
+          { "bundle": { "windows": { "signCommand": "trusted-signing-cli -e ${{ vars.AZURE_SIGNING_ENDPOINT }} -a ${{ vars.AZURE_SIGNING_ACCOUNT }} -c ${{ vars.AZURE_SIGNING_PROFILE }} -d \"Structs Korea\" %1" } } }
+          JSON
+          echo "args=--config src-tauri/tauri.sign.conf.json" >> "$GITHUB_OUTPUT"
+
+      - name: Build and bundle
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          # The frontend (scripts/build-desktop.mjs): the same guild as the website.
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+          VITE_WEB_ROOT: ${{ vars.VITE_WEB_ROOT || 'https://playstructs.github.io/structs-kor' }}
+          VITE_GUILD_ID: ${{ vars.VITE_GUILD_ID }}
+          VITE_GUILD_API: ${{ vars.VITE_GUILD_API }}
+          VITE_GRASS_URL: ${{ vars.VITE_GRASS_URL }}
+          VITE_MATRIX_URL: ${{ vars.VITE_MATRIX_URL }}
+          VITE_LCD_URL: ${{ vars.VITE_LCD_URL }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: --target ${{ matrix.target }} ${{ steps.winsign.outputs.args }}
+
+      - name: Keep the test build
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: structs-kor-${{ matrix.target }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+            src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+          if-no-files-found: ignore
+
+  # Published only once all four builds succeed: a half-built release never reaches players.
+  publish-release:
+    needs: [create-release, build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner, repo: context.repo.repo,
+              release_id: ${{ needs.create-release.outputs.release_id }}, draft: false,
+            });

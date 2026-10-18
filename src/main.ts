@@ -14,6 +14,7 @@ import { SITE_URL } from './config';
 import { shell } from './ui/shell';
 import { session } from './api/session';
 import { wallet } from './wallet/wallet';
+import { startDesktop } from './core/desktop';
 
 shell(document.getElementById('app')!);
 onRoute((path) => applySeo(path, SITE_URL, href('')));
@@ -40,4 +41,5 @@ route('/profile', () => import('./screens/profile'));
 route('/404', () => import('./screens/notfound'));
 
 // A device-sealed vault opens itself, then the guild session resumes, then the screen renders.
+startDesktop();
 void wallet.restore().catch(() => null).then(() => session.resume()).finally(startRouter);

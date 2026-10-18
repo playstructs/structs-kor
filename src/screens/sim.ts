@@ -27,6 +27,7 @@ import { music } from '../game/music';
 import { estimateOdds } from '../game/odds';
 import { DAILY_CHARGE, TWIST_KO, dailyNo, encodeDaily, kstDay, nameKo, playDaily, playable, type DailyResult } from '../sim/daily';
 import { dailySim } from '../game/dailysim';
+import { webRoot } from '../core/desktop';
 
 type Phase = 'setup' | 'deploy' | 'battle' | 'debrief';
 interface Side { lost: number; attacks: number; damage: number; evaded: number; blocked: number; counter: number }
@@ -472,7 +473,7 @@ const screen: Screen = {
         <span class="end" style="display:flex;gap:6px">${e.unit && e.unit.type !== COMMAND_SHIP_ID ? html`<button class="btn outline-danger" data-act="remove">제거</button>` : ''}<button class="btn ghost" data-act="closeEdit">닫기</button></span></div>
         <div class="build-grid">${options.map((t) => html`<button class="build-opt ${e.unit?.type === t.id ? 'on' : ''}" data-act="place" data-type="${t.id}" ${cost(t.id) > free ? 'disabled' : ''}>${pixel(t.id, 40)}<b>${STRUCT_TYPE[t.id]}</b><span class="mono faint">${n(cost(t.id))}점 · HP ${t.maxHealth}</span></button>`)}</div></div>`;
     };
-    const replayLink = () => location.origin + href('/sim/') + encodeReplay({ units, seed, start: 1000, charge, txs: orders, title: mission ? mission.title : undefined, winner: winner ?? undefined });
+    const replayLink = () => webRoot() + '/sim/' + encodeReplay({ units, seed, start: 1000, charge, txs: orders, title: mission ? mission.title : undefined, winner: winner ?? undefined });
     const watch = (o: typeof orders) => { replaying = true; replayOrders = o; autopilot = false; start(); };
     const steps = (): Safe => html`<nav aria-label="시뮬레이션 단계" class="tabs steps">${(['setup', 'deploy', 'battle', 'debrief'] as Phase[]).map((p, i) => html`<span class="tab ${phase === p ? 'on' : ''}" aria-current="${phase === p ? 'step' : 'false'}">${i + 1} · ${{ setup: '설정', deploy: '배치', battle: '전투', debrief: '결과' }[p]}</span>`)}</nav>`;
     const paint = () => {

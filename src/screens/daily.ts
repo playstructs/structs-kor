@@ -11,6 +11,7 @@ import { dailySim, type Entry } from '../game/dailysim';
 import { parse, path as linkPath, type Link } from '../core/links';
 import { RELEASES, canHandOff, inKakao, kakaoExternal, openIn, openInApp, setOpenIn } from '../core/handoff';
 import { daily as guildDaily } from '../api/planned';
+import { webRoot } from '../core/desktop';
 import { spriteHtml } from '../game/map/art';
 import { DIFFICULTY_KO } from './sim-labels';
 import { notify } from '../game/fx';
@@ -31,7 +32,7 @@ const screen: Screen = {
     if (link?.day && link.day !== day) toast(link.day > today ? '아직 열리지 않은 작전입니다' : '그날의 작전은 없습니다', 3000);
     const d = dailyScenario(day);
     const twist = TWIST_KO[d.twist.id];
-    const shareUrl = (code: string) => location.origin + href(linkPath({ view: 'daily', day, code }));
+    const shareUrl = (code: string) => webRoot() + linkPath({ view: 'daily', day, code });
 
     // Someone's result: replayed here, so the score shown is the one their orders earn.
     let shared: (DailyResult & { name: string; code: string }) | null = null;

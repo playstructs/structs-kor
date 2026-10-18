@@ -3,7 +3,7 @@
 # One-time setup: Settings › Pages › Source: "GitHub Actions".
 # Optional repository variables (Settings › Secrets and variables › Actions › Variables) override the
 # build's VITE_* values (see .env.example): VITE_SITE_URL, VITE_BASE, VITE_GUILD_ID, VITE_GUILD_API,
-# VITE_GRASS_URL, VITE_MATRIX_URL, VITE_LCD_URL. Left unset, VITE_BASE and VITE_SITE_URL follow the
+# VITE_GRASS_URL, VITE_MATRIX_URL, VITE_LCD_URL, VITE_DESKTOP_RELEASES. Left unset, VITE_BASE and VITE_SITE_URL follow the
 # Pages site (a custom domain serves from /, otherwise /structs-kor/).
 name: Pages
 
@@ -50,6 +50,8 @@ jobs:
           VITE_GRASS_URL: ${{ vars.VITE_GRASS_URL }}
           VITE_MATRIX_URL: ${{ vars.VITE_MATRIX_URL }}
           VITE_LCD_URL: ${{ vars.VITE_LCD_URL }}
+          # Set once the first desktop release is out: shared links then offer the app.
+          VITE_DESKTOP_RELEASES: ${{ vars.VITE_DESKTOP_RELEASES }}
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Structs Korea",
+  "mainBinaryName": "structs-kor",
+  "version": "0.1.0",
+  "identifier": "app.structs.kor",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:5180",
+    "beforeBuildCommand": "node scripts/build-desktop.mjs",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": {
+        "default-src": "'self' ipc: http://ipc.localhost",
+        "connect-src": "'self' ipc: http://ipc.localhost https: wss:",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src": "'self' data: https://fonts.gstatic.com",
+        "img-src": "'self' data: blob: https:",
+        "media-src": "'self' data: blob:",
+        "worker-src": "'self' blob:"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "nsis", "deb", "appimage"],
+    "createUpdaterArtifacts": true,
+    "category": "StrategyGame",
+    "shortDescription": "구조체 STRUCTS",
+    "longDescription": "구조체 STRUCTS — Structs 한국어 클라이언트. 행성을 채굴하고 함대를 지휘하는 우주 전략 게임.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "embedBootstrapper" },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Korean", "English"],
+        "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": { "schemes": ["structs-kor"] }
+    },
+    "updater": {
+      "endpoints": ["https://github.com/playstructs/structs-kor/releases/latest/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYxQkNGNjM3MTZBQkREMkMKUldRczNhc1dOL2E4OGNFb0paVUlKWmtFZ3pQc2dra3htNkcwZi9tSDFscnlwN2lrclYwMXo1cEwK"
+    }
+  }
+}

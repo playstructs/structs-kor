@@ -1,0 +1,33 @@
+[package]
+name = "structs-kor"
+version = "0.1.0"
+description = "구조체 STRUCTS — the Korean Structs client, on the desktop"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-deep-link = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-window-state = "2"
+
+# A structs-kor:// link on Windows/Linux starts a second process; this hands the
+# URL to the running app (through the deep-link plugin) and exits. macOS sends
+# links to the running app itself.
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
