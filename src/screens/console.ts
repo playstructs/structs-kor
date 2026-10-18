@@ -164,7 +164,7 @@ const screen: Screen = {
         ${d.orders.map((o) => html`<div class="mission ${o.ready ? 'ready' : ''} ${o.claimed ? 'claimed' : ''}">
           <div class="mission-top"><b>${o.title}</b><span class="mono c-hwang">${o.claimed ? '완료' : `+${DAILY_XP} XP`}</span></div>
           <div class="meter"><i style="width:${Math.round((o.done / o.target) * 100)}%;background:${o.ready || o.claimed ? 'var(--hwang)' : 'var(--cheong)'}"></i></div>
-          <div class="mission-bot"><span class="dim">${o.done} / ${o.target}</span>${o.ready ? html`<button class="btn gold" style="min-height:32px;padding:0 12px" data-act="daily" data-id="${o.id}">보상 수령</button>` : ''}</div></div>`)}
+          <div class="mission-bot"><span class="dim">${Number.isInteger(o.done) ? o.done : o.done.toFixed(1)} / ${o.target}</span>${o.ready ? html`<button class="btn gold" style="min-height:32px;padding:0 12px" data-act="daily" data-id="${o.id}">보상 수령</button>` : ''}</div></div>`)}
         ${d.bonusReady ? html`<button class="btn gold" data-act="dailyBonus">전부 완료 보너스 +${DAILY_BONUS} XP</button>` : d.bonusClaimed ? html`<p class="note c-hwang">오늘의 임무 완수. 내일 새 임무가 옵니다.</p>` : ''}
       </section>`;
     };
