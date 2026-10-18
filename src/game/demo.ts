@@ -123,7 +123,7 @@ interface State {
   /** Bounties collected, all time (survives new eras). */
   bountiesClaimed?: number;
   /** 의뢰 게시판: offers on the board, when it refreshes, and the job in hand. */
-  jobs?: { offers: Job[]; next: number; active?: Job & { until: number; count: number } | null; done?: number };
+  jobs?: { offers: Job[]; next: number; active?: Job & { until: number; count: number; taken?: number } | null; done?: number };
   /** Commander abilities: the block each is ready again; and total mobilisation's end. */
   cd?: Partial<Record<AbilityId, number>>; rallyUntil?: number;
   /** An alliance: the rival, and the block it lapses. */
@@ -460,7 +460,7 @@ function catchUp(): AwayReport | null {
         r.raids++;
         const fleet = s.structs.filter((x) => x.cat === 'fleet' && x.hp > 0);
         const odds = Math.min(0.85, 0.2 + fleet.length * 0.15 + lv('guns') * 0.05);
-        if (rnd() < odds) { r.repelled++; s.raidsRepelled++; }
+        if (rnd() < odds) { r.repelled++; s.raidsRepelled++; jobRepelled(); }
         else { const take = Math.floor(s.ore * (1 - 0.25 * lv('bunker'))); r.stolen += take; s.ore -= take; s.raidsLost++; s.shield = 0; }
       }
     }
@@ -687,9 +687,11 @@ function jobsStep() {
     return { id: `J${s.height}-${i}`, kind: 'defend', who, need: 2, reward: 20 + Math.floor(r() * 3) * 5 };
   });
 }
-function jobRepelled() {
+/** A raid beaten: counts for a defence contract if it fell within the term and began after taking it. */
+function jobRepelled(startedAt?: number) {
   const a = s.jobs?.active;
-  if (!a || a.kind !== 'defend') return;
+  if (!a || a.kind !== 'defend' || s.height > a.until) return;
+  if (startedAt != null && startedAt < (a.taken ?? 0)) return;
   if (++a.count >= a.need) { s.alpha += a.reward; s.jobs!.done = (s.jobs!.done ?? 0) + 1; chronicle('cheong', `방어 의뢰 완수 · +${a.reward} α`); emit('bounty', `${rivals().find((x) => x.id === a.who)?.name ?? '의뢰인'} 방어 의뢰 보수 ${a.reward} α`); s.jobs!.active = null; }
 }
 
@@ -932,7 +934,7 @@ function raidStep() {
   }
   const cmdDown = r.structs.find((x) => x.type === 1)!.hp <= 0;
   if (cmdDown || r.structs.every((x) => x.hp <= 0)) {
-    s.raid = null; s.nextRaid = RATE.raidEvery; s.raidsRepelled++; raceAdd(15); jobRepelled();
+    s.raid = null; s.nextRaid = RATE.raidEvery; s.raidsRepelled++; raceAdd(15); jobRepelled(r.startedAt);
     // A broken raid costs its owner a ship.
     const owner = rivals().find((x) => x.id === r.owner);
     if (owner) owner.fleet = Math.max(2, owner.fleet - 1);
@@ -1144,7 +1146,8 @@ export const demo = {
       chronicle('cheong', `납품 의뢰 · 광석 ${o.need} → +${o.reward} α`);
     } else {
       if (j.active) return '이미 진행 중인 방어 의뢰가 있습니다';
-      j.active = { ...o, until: s.height + JOBS.defendFor, count: 0 };
+      // Only raids that start after you sign count (no signing for a fight already won).
+      j.active = { ...o, until: s.height + JOBS.defendFor, count: 0, taken: s.height + 1 };
     }
     j.offers = j.offers.filter((x) => x.id !== id);
     persist(); for (const f of changeFns) f();
@@ -1170,7 +1173,7 @@ export const demo = {
       if (!s.raid) return '다가오는 습격이 없습니다';
       if (s.shield >= 100) return '방어막이 이미 가득합니다';
       s.shield = Math.min(100, s.shield + 40);
-    } else { if (!s.raid) return '습격이 없습니다'; s.rallyUntil = s.height + 20; }
+    } else { if (!s.raid || s.raid.eta > 0) return '습격 함대가 도착한 뒤에 쓰세요'; s.rallyUntil = s.height + 20; }
     s.cd = { ...s.cd, [id]: s.height + a.cooldown };
     log('event', `능력 · ${a.name}`);
     persist(); for (const f of changeFns) f();
@@ -1359,7 +1362,7 @@ export const demo = {
     if (s.raid) return '습격을 막아 낸 뒤에 새 시대를 열 수 있습니다';
     if (s.loan) return '청룡 상단 대출을 먼저 갚아야 새 시대를 열 수 있습니다';
     // Running totals survive too (daily orders and medals count from them).
-    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done } : undefined, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
+    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done, active: s.jobs.active } : undefined, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
     s = fresh();
     Object.assign(s, keep);
     log('event', `제${keep.era + 1}시대 개막`);

@@ -152,8 +152,8 @@ const screen: Screen = {
       if (!isDemo) return html``;
       const rank = career.rank.i, rally = demo.rallying;
       return html`<section class="card game-panel abilities"><div class="card-head"><h2>지휘관 능력</h2>${rally ? html`<span class="end chip jeok mono">총동원 ${rally}블록</span>` : ''}</div>
-        <div class="ab-row">${ABILITIES.map((a) => { const left = demo.abilityLeft(a.id), locked = rank < a.rank, idle = a.id !== 'surge' && !demo.raid; return html`<button class="ab ${left || locked || idle ? '' : 'ready'}" data-act="ability" data-id="${a.id}" ${left || locked || idle ? 'disabled' : ''} title="${a.what}">
-          <b>${a.name} <kbd>${a.key}</kbd></b><small>${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : idle ? '습격 때 사용' : a.what}</small>
+        <div class="ab-row">${ABILITIES.map((a) => { const left = demo.abilityLeft(a.id), locked = rank < a.rank, idle = (a.id === 'overshield' && !demo.raid) || (a.id === 'rally' && demo.raid?.eta !== 0); return html`<button class="ab ${left || locked || idle ? '' : 'ready'}" data-act="ability" data-id="${a.id}" ${left || locked || idle ? 'disabled' : ''} title="${a.what}">
+          <b>${a.name} <kbd>${a.key}</kbd></b><small>${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : idle ? (a.id === 'rally' ? '습격 함대 도착 후' : '습격 때 사용') : a.what}</small>
           ${left && !locked ? html`<i class="ab-cd" style="width:${Math.round((left / a.cooldown) * 100)}%"></i>` : ''}</button>`; })}</div></section>`;
     };
     const daily = (): Safe => {
@@ -496,10 +496,11 @@ const screen: Screen = {
     // Mid-typing a ship's name, repaints wait (they'd wipe the field and break Korean input) and run as
     // soon as the field lets go of focus.
     let pending = false;
-    const typing = () => { const a = document.activeElement; return a instanceof HTMLInputElement && !!a.closest('.ship-name') && root.contains(a); };
+    const typing = () => { const a = document.activeElement; return a instanceof HTMLElement && !!a.closest('.ship-name') && root.contains(a); };
     const repaint = () => { if (typing()) { pending = true; return; } pending = false; paint(); };
     const refresh = () => { if (isDemo) { d = demo.dashboard(); repaint(); } };
-    root.addEventListener('focusout', () => { if (pending) setTimeout(() => { if (pending && !typing()) { pending = false; paint(); } }, 0); });
+    // Focus moving within the name form (to its button) isn't leaving it: the click must land first.
+    root.addEventListener('focusout', (e) => { const to = (e as FocusEvent).relatedTarget as Element | null; if (to?.closest?.('.ship-name')) return; if (pending) setTimeout(() => { if (pending && !typing()) { pending = false; paint(); } }, 0); });
     const load = async () => {
       try {
         d = isDemo ? demo.dashboard() : await dashboard(pid);

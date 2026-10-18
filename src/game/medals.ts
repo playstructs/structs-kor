@@ -1,7 +1,7 @@
 /* Medals: earned from career stats and the demo base, announced the moment they're won, listed in
  * the service record. Which ones were already announced is kept per career in this browser. */
 import { career } from './progress';
-import { demo } from './demo';
+import { demo, vetRank } from './demo';
 import { banner } from './fx';
 import { sfx } from './sfx';
 import { tutorialDone } from './progress';
@@ -21,6 +21,9 @@ export const MEDALS: Medal[] = [
   { id: 'emperor', icon: 1, name: '은하 황제', how: '패권 지수 70% 돌파', earned: () => demo.on && demo.hegemonyTier >= 4 },
   { id: 'tributary', icon: 17, name: '조공의 주인', how: '누적 공물 100 α', earned: () => demo.on && demo.tributeTotal >= 100 },
   { id: 'voidbane', icon: 2, name: '공허 사냥꾼', how: '공허 함대 격파', earned: () => demo.on && (demo.state.voidKills ?? 0) >= 1 },
+  { id: 'veteran', icon: 3, name: '역전의 용사', how: '★★★ 베테랑 함선', earned: () => demo.on && demo.state.structs.some((x) => vetRank(x.kills) >= 3) },
+  { id: 'contractor', icon: 18, name: '해결사', how: '의뢰 5회 완수', earned: () => demo.on && (demo.jobs?.done ?? 0) >= 5 },
+  { id: 'warlord', icon: 10, name: '거점 군주', how: '거점 3곳 모두 장악', earned: () => demo.on && demo.outposts.every((o) => o.mine) },
   { id: 'era2', icon: 20, name: '새 시대', how: '제2시대 개막', earned: () => demo.on && demo.era >= 1 },
   { id: 'creed', icon: 15, name: '신념', how: '교리 채택', earned: () => demo.on && !!demo.doctrine },
   { id: 'cadet', icon: 16, name: '훈련 수료', how: '전투 훈련 이수', earned: () => tutorialDone() },

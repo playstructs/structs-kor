@@ -645,6 +645,8 @@ test('commander abilities: rank-gated, effective, then on cooldown', () => {
   demo.state.shield = 10;
   assert.equal(demo.useAbility('overshield', 17), null);
   assert.equal(demo.state.shield, 50);
+  assert.match(demo.useAbility('rally', 17) ?? '', /도착/, 'not while the raid is still approaching');
+  demo.state.raid!.eta = 0;
   assert.equal(demo.useAbility('rally', 17), null);
   assert.equal(demo.rallying, 20);
 });

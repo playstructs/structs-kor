@@ -234,11 +234,14 @@ const screen: Screen = {
               }
             }
             // The target's own counter and its death blast can destroy the attacker too: a kill for the target.
-            const targetKilled = shot.targetCounterDestroyedAttacker || shot.postDestructionDamageDestroyedAttacker;
-            if (targetKilled) {
+            // (A blocker's death blast is the blocker's kill, not the struct it shielded.)
+            const credit = (sid: string | undefined, dmg: number) => {
+              if (!sid) return;
               stats[who].lost++;
-              if (them === 'player' && !replaying) { const a = (ace[shot.targetStructId] ??= { type: chain.get(shot.targetStructId)?.typeId ?? 0, dmg: 0, kills: 0, id: shot.targetStructId }); a.kills++; a.dmg += (shot.targetCounteredDamage ?? 0) + (shot.postDestructionDamage ?? 0); }
-            }
+              if (them === 'player' && !replaying) { const a = (ace[sid] ??= { type: chain!.get(sid)?.typeId ?? 0, dmg: 0, kills: 0, id: sid }); a.kills++; a.dmg += dmg; }
+            };
+            if (shot.targetCounterDestroyedAttacker) credit(shot.targetStructId, shot.targetCounteredDamage ?? 0);
+            else if (shot.postDestructionDamageDestroyedAttacker) credit(shot.blocked ? shot.blockedByStructId : shot.targetStructId, shot.postDestructionDamage ?? 0);
             for (const c of shot.eventAttackDefenderCounterDetail || []) {
               stats[them].counter += c.counterDamage || 0;
               // A guard's counter that kills the attacker is a kill for the guard (MVP and veterancy too).
