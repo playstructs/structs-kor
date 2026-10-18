@@ -569,3 +569,27 @@ test('alliances: an ally never raids you, adds ships to your raids, and spying e
   demo.state.alpha = 100;
   if (demo.ally) { demo.covert('1-1004', 'heist'); assert.equal(demo.ally, null, 'spying broke it'); }
 });
+
+test('chaos: 3000 blocks of random player actions never throw or produce NaN, and the save stays small', () => {
+  demo.reset();
+  let seed = 7;
+  const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const finite = (o: unknown): boolean => typeof o === 'number' ? Number.isFinite(o) : o && typeof o === 'object' ? Object.values(o).every(finite) : true;
+  for (let b = 0; b < 3000; b++) {
+    if (b % 7 === 0) {
+      const riv = demo.rivals()[Math.floor(r() * 4)], k = Math.floor(r() * 9);
+      if (k === 0) demo.borrow(r() < .5 ? 20 : 50);
+      if (k === 1) demo.repay();
+      if (k === 2) demo.covert(riv.id, r() < .5 ? 'heist' : 'sabotage');
+      if (k === 3) demo.claimOutpost((['asteroid', 'relay', 'bastion'] as const)[Math.floor(r() * 3)]);
+      if (k === 4) demo.formAlliance(riv.id);
+      if (k === 5) demo.settleRaid(riv.id, r() < .5, {});
+      if (k === 6) demo.subjugate(riv.id);
+      if (k === 7 && demo.decision) demo.decide(Math.floor(r() * 2));
+      if (k === 8) demo.hire((['warden', 'mechanic', 'trader'] as const)[Math.floor(r() * 3)]);
+    }
+    demo.step();
+  }
+  assert.ok(finite(demo.state), 'no NaN or Infinity anywhere in the base');
+  assert.ok(JSON.stringify(demo.state).length < 60_000, 'the save stays small');
+});
