@@ -33,7 +33,7 @@ export function advise(rank = 99): Tip[] {
   else if (raid && raid.eta === 0 && ready('rally')) tips.push({ pri: 95, tone: 'hwang', text: `교전 중 · 총동원[9]으로 모든 함포를 사격시키세요.`, go: '/console', cta: '함교' });
   if (raid?.partner && raid.eta > 0) tips.push({ pri: 99, tone: 'jeok', text: `연합 전선 · ${raid.name} 함대 ${raid.structs.length}기. 평소보다 ${COALITION.extra}척 많습니다 · 방어막 과충전과 총동원을 아끼지 마세요.`, go: '/console', cta: '함교' });
   const rv = demo.revenge;
-  if (rv && !raid) tips.push({ pri: 90, tone: 'hwang', text: `${rv.name} 함대가 방금 무너졌습니다 · ${rv.left}블록 안에 보복 출격하면 노획 +${Math.round((REVENGE.bonus - 1) * 100)}%.`, go: `/sim?raid=${rv.rival}`, cta: '보복' });
+  if (rv && !raid && demo.ally?.id !== rv.rival) tips.push({ pri: 90, tone: 'hwang', text: `${rv.name} 함대가 방금 무너졌습니다 · ${rv.left}블록 안에 보복 출격하면 노획 +${Math.round((REVENGE.bonus - 1) * 100)}%.`, go: `/sim?raid=${rv.rival}`, cta: '보복' });
   const bm = demo.black;
   if (bm.offers.length) {
     const can = bm.offers.filter((o) => !demo.blackBlocked(o.id));

@@ -125,12 +125,15 @@ interface State {
   era?: number;
   /** Bounties collected, all time (survives new eras). */
   bountiesClaimed?: number;
-  /** 의뢰 게시판: offers on the board, when it refreshes, and the job in hand. */
   /** 보복: the rival whose raid you just broke is exposed until `until`. */
   revenge?: { rival: string; until: number } | null;
+  /** 전투 보고: the last defence of the base. */
   report?: RaidReport | null;
+  /** 연합 전선: coalition raids drawn so far. */
   coalitions?: number;
+  /** 암시장: the smuggler's next visit, its stay and deals, and deals made all time. */
   black?: { next: number; until: number; offers: BlackOffer[]; deals?: number };
+  /** 의뢰 게시판: offers on the board, when it refreshes, and the job in hand. */
   jobs?: { offers: Job[]; next: number; active?: Job & { until: number; count: number; taken?: number } | null; done?: number };
   /** Commander abilities: the block each is ready again; and total mobilisation's end. */
   cd?: Partial<Record<AbilityId, number>>; rallyUntil?: number;
@@ -708,14 +711,15 @@ export const REFITS: Record<RefitId, { name: string; what: string; cost: number 
   evade: { name: '회피 추진기', what: '피격 회피 확률 +20%p', cost: 8 },
 };
 
+/** 연합 전선: past this hegemony, some raids come under two banners with two more escorts. */
+export const COALITION = { at: 0.55, chance: 0.35, extra: 2 };
+/** 보복 출격: hit back at a raider you just broke, within the window, for more of its ore. */
+export const REVENGE = { window: 40, bonus: 1.5 };
+
 /* ── 암시장 (black market): a smuggler docks now and then for a few blocks with three one-off deals.
  * Prices are rolled per visit; each deal sells once. Nothing here undercuts the contract board. ── */
 export type BlackId = 'shield' | 'bribe' | 'scrap' | 'cool' | 'patch';
 export interface BlackOffer { id: BlackId; price: number }
-/** 보복 출격: hit back at a raider you just broke, within the window, for more of its ore. */
-/** 연합 전선: past this hegemony, some raids come under two banners with two more escorts. */
-export const COALITION = { at: 0.55, chance: 0.35, extra: 2 };
-export const REVENGE = { window: 40, bonus: 1.5 };
 export const BLACK = { every: 180, stays: 30, scrapRate: 0.9, scrapMax: 40, bribe: 60 };
 export const BLACK_DEALS: Record<BlackId, { name: string; what: string }> = {
   shield: { name: '방어막 충전기', what: '방어막 즉시 100%' },
