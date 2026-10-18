@@ -327,7 +327,9 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
   .stage-name { display: none; }
   .ops { top: 60px; }
   .ops:not(.open) .ops-sec:not(.obj), .ops:not(.open) .op { display: none; }
-  .bd-stage .bd-zoom { bottom: auto; top: 64px; }
+  /* The zoom button leaves the bottom corner, where the dock covers it, for the top right under
+   * the HUD (board.css loads later, hence the longer selector). */
+  .stage-bridge .bd-stage .bd-zoom { bottom: auto; top: 100px; right: 8px; }
   .msgs { display: none; }
 }
 @media (max-width: 560px) {
@@ -344,5 +346,17 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
   .ab-btns .sb small { display: none; }
   .ops { width: calc(100vw - 16px); }
   .bd-stage .bd-scroll { padding: 56px 0 280px; }
+  /* Below the full-width objectives strip. */
+  .stage-bridge .bd-stage .bd-zoom { top: 144px; }
+  /* Resources fit beside the three buttons: smaller figures, the per-block unit left to the tour. */
+  .tile { padding: 2px 5px; }
+  .tile strong { font-size: 13px; }
+  .tile-v { gap: 3px; }
+  .tile-v em { font-size: 10px; }
+  .tile-u { display: none; }
 }
 @media (max-width: 900px) { .hud-tc { top: 58px; } .demo-bar > span, .demo-bar > a.ev-chip { display: none; } .ops { top: 100px; } }
+/* Touch screens have no keys: no key badges on buttons, no key hints. */
+@media (pointer: coarse) {
+  .sb kbd, .ab-switch kbd, .btn kbd, .title-keys { display: none; }
+}

@@ -87,6 +87,10 @@ export class Board {
   private ro: ResizeObserver;
   private disposed = false;
   private framed = false;
+  /** Where the camera last was while the board was on screen. */
+  private cam = { l: 0, t: 0 };
+  /** The camera has been pointed at the planet's built structs once. */
+  private homed = false;
   speed: number;
   /** 'full' fits the whole field; 'close' fills the width and scrolls. */
   zoom: 'full' | 'close' = 'full';
@@ -110,6 +114,8 @@ export class Board {
       if (e.relatedTarget || (this.el.isConnected && document.activeElement !== document.body)) this.wantFocus = false;
     });
     if (opts.stage) { this.el.classList.add('bd-stage'); this.pan(); }
+    const sc = this.el.querySelector<HTMLElement>('.bd-scroll')!;
+    sc.addEventListener('scroll', () => { if (this.el.isConnected) this.cam = { l: sc.scrollLeft, t: sc.scrollTop }; }, { passive: true });
     this.ro = new ResizeObserver(() => this.fit());
     addEventListener('resize', this.onResize);
     this.ro.observe(this.el);
@@ -191,8 +197,9 @@ export class Board {
   /** Put the board into a freshly rendered host, keeping keyboard focus if it had it. */
   attach(host: Element) {
     if (this.el.parentElement !== host) {
-      // Moving the board resets its scroll box: keep the camera where the player left it.
-      const sc = this.el.querySelector<HTMLElement>('.bd-scroll')!, l = sc.scrollLeft, t = sc.scrollTop;
+      // Moving the board resets its scroll box: keep the camera where the player left it. A re-render
+      // has usually detached it already (its scroll then reads 0), so the camera is the last one seen.
+      const sc = this.el.querySelector<HTMLElement>('.bd-scroll')!, { l, t } = this.cam;
       host.appendChild(this.el);
       sc.scrollLeft = l; sc.scrollTop = t;
     }
@@ -217,8 +224,12 @@ export class Board {
       this.el.querySelector('.bd-zoom')!.innerHTML = this.zoom === 'full' ? '<i class="si icon-add"></i>' : '<i class="si icon-subtract"></i>';
       this.map.style.setProperty('zoom', String(z));
       this.el.style.setProperty('--bd-zoom', String(z));
-      // The camera opens on the middle of the field (air/land), not the edge of space.
-      if (!this.framed && scroll.scrollHeight > scroll.clientHeight) { this.framed = true; scroll.scrollTop = (scroll.scrollHeight - scroll.clientHeight) * 0.4; }
+      // The camera opens on the middle of the field (air/land), not the edge of space; on a screen
+      // narrower than the field, on the planet rather than the empty fleet lanes.
+      if (!this.framed && (scroll.scrollHeight > scroll.clientHeight || scroll.scrollWidth > scroll.clientWidth)) {
+        this.framed = true;
+        if (!this.home()) { scroll.scrollTop = (scroll.scrollHeight - scroll.clientHeight) * 0.4; this.cam = { l: scroll.scrollLeft, t: scroll.scrollTop }; }
+      }
       return;
     }
     if (this.zoom === 'close' && maxH) { z = Math.min(2, z); scroll.style.maxHeight = `${Math.max(240, maxH)}px`; scroll.style.overflowY = 'auto'; }
@@ -245,6 +256,30 @@ export class Board {
     addEventListener('pointerup', () => { from = null; document.body.classList.remove('is-map-panning'); });
     // The click that ends a drag is not a tile pick.
     sc.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+  }
+
+  /** On a screen narrower than the field, point the stage camera at the planet: its built structs, or
+   * its slots while it has none. False when the field fits across and the camera was left alone. */
+  home(smooth = false): boolean {
+    const sc = this.el.querySelector<HTMLElement>('.bd-scroll');
+    if (!sc || !this.opts.stage || sc.scrollWidth <= sc.clientWidth) return false;
+    const built = [...this.structs.values()].filter((s) => s.side === 'defender' && s.category === 'planet' && !s.isCommand && s.health > 0).map((s) => this.anchors.get(this.keyFor(s))).filter((c): c is HTMLElement => !!c);
+    const cells = built.length ? built : [...this.anchors].filter(([k]) => k.startsWith('plan|')).map(([, c]) => c);
+    if (!cells.length) return false;
+    if (built.length) this.homed = true;
+    // The view is the scroll box less its padding (the HUD bars lie over that).
+    const cs = getComputedStyle(sc), pt = parseFloat(cs.paddingTop), pb = parseFloat(cs.paddingBottom);
+    const r = sc.getBoundingClientRect(), rs = cells.map((c) => c.getBoundingClientRect()), viewH = sc.clientHeight - pt - pb;
+    const left = Math.min(...rs.map((b) => b.left)), right = Math.max(...rs.map((b) => b.right));
+    const top = Math.min(...rs.map((b) => b.top)), bottom = Math.max(...rs.map((b) => b.bottom));
+    // Centred when it fits. Wider than the screen, it shows from its left edge, the side it is built
+    // from; taller, the camera goes where most of it is rather than the empty sky between ambits.
+    const x = right - left <= sc.clientWidth ? (left + right) / 2 - r.left - sc.clientWidth / 2 : left - r.left - 8;
+    const midY = bottom - top <= viewH ? (top + bottom) / 2 : rs.reduce((a, b) => a + b.top + b.height / 2, 0) / rs.length;
+    const y = midY - r.top - pt - viewH / 2;
+    sc.scrollTo({ left: sc.scrollLeft + x, top: sc.scrollTop + y, behavior: smooth ? 'smooth' : 'auto' });
+    if (!smooth) this.cam = { l: sc.scrollLeft, t: sc.scrollTop };
+    return true;
   }
 
   toggleZoom() { this.zoom = this.zoom === 'full' ? 'close' : 'full'; this.fit(); }
@@ -278,6 +313,7 @@ export class Board {
     }
     this.structs = next;
     for (const s of list) this.paint(s.id);
+    if (this.framed && !this.homed) this.home();
   }
   get(id: string) { return this.structs.get(id); }
 

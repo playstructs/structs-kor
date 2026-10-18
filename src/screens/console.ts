@@ -679,6 +679,10 @@ const screen: Screen = {
     }
     offs.push(career.onChange(() => repaint()));
     offs.push(() => removeEventListener('pointerup', onPointerUp));
+    // The tour's spotlight scrolls the field about; on a narrow screen it ends back on the planet.
+    const onTourEnd = (e: Event) => { if ((e as CustomEvent).detail === 'bridge') board?.home(true); };
+    addEventListener('structs:tour-end', onTourEnd);
+    offs.push(() => removeEventListener('structs:tour-end', onTourEnd));
     // The proof card follows every hash; the advisor's proof tips follow at most every few seconds.
     let advisedAt = 0;
     const repaintAdvisor = () => { const el = root.querySelector('.ops'); if (el && d && Date.now() - advisedAt > 3000) { advisedAt = Date.now(); el.outerHTML = ops().s; } };
