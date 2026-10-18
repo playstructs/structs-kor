@@ -229,3 +229,6 @@ tr.me td { background: var(--cheong-bg); }
 .spark { display: flex; align-items: flex-end; gap: 3px; height: 48px; padding: 4px; background: var(--sunken); border: 1px solid var(--line); }
 .spark i { flex: 1 1 0; background: var(--cheong-mid); min-height: 2px; }
 @media (max-width: 640px) { .lb li { grid-template-columns: 24px auto minmax(0, 1fr) auto; } .lb-bar { display: none; } }
+.intel-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.inf-panel { display: flex; flex-direction: column; gap: 8px; }
+.inf-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }

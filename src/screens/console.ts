@@ -3,6 +3,8 @@
  * read (REQ-AGG-1) refreshed by GRASS events; the demo base (src/game/demo.ts) feeds the same view
  * block by block, raids included. */
 import type { Screen } from '../router';
+import { share } from '../social/share';
+import { baseSituation } from '../social/situations';
 import { href, go } from '../router';
 import { html, mount, n, watts, micro, raw, esc, toast, type Safe } from '../ui/dom';
 import { needSession, errorCard, loading } from '../ui/gate';
@@ -329,6 +331,7 @@ const screen: Screen = {
             ${sbtn({ act: 'nav', label: '전력망', key: 'G', icon: 'unpowered', tone: use > 0.9 ? 'warn' : '', sub: `${Math.round(use * 100)}%`, data: { to: '/energy' } })}
             ${sbtn({ act: 'nav', label: '거래', key: 'T', icon: 'transfers', sub: '시장', data: { to: '/market' } })}
             ${sbtn({ act: 'nav', label: '전투', key: 'B', icon: 'raid', sub: '모의전', data: { to: '/sim' } })}
+            ${sbtn({ act: 'shareBase', label: d.active_raid ? '지원 요청' : '공유', icon: d.active_raid ? 'alert' : 'link-out', tone: d.active_raid ? 'warn' : '', sub: d.active_raid ? '습격 중' : '현황' })}
           </div>
         </div>`;
     };
@@ -504,6 +507,7 @@ const screen: Screen = {
     };
 
     const handlers = {
+      shareBase: () => { void baseSituation(pid).then((st) => { if (st) share({ kind: 'situation', s: st }); }); },
       claim: (el: HTMLElement) => { career.claim(el.dataset.id!); paint(); },
       daily: (el: HTMLElement) => { claimDaily(el.dataset.id!); paint(); },
       decide: (el: HTMLElement) => {

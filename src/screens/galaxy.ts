@@ -26,6 +26,8 @@ import { transmit } from '../game/comms';
 import { estimateOdds } from '../game/odds';
 import { runTour, tourSeen, GALAXY_TOUR } from '../game/tour';
 import { keys } from '../game/keys';
+import { share } from '../social/share';
+import { raidSituation } from '../social/situations';
 
 const R = 130, REF = 1400, ARMS = 4;
 /** structs-xyz planetPosition, flattened to the galactic plane. */
@@ -379,12 +381,15 @@ async function realGalaxy(root: HTMLElement, pid: string): Promise<() => void> {
           <p class="note">${p.guild_name || p.guild_id} · 함대가 도착하면 습격이 시작되고, 습격 증명은 함교의 작업 증명 카드가 계산합니다.</p>
           ${fleet ? html`<button class="btn danger lg" data-act="launch" data-to="${p.planet_id}" ${wallet.state === 'unlocked' && fleet.location_id !== p.planet_id ? '' : 'disabled'}>${fleet.location_id === p.planet_id ? '함대 주둔 중' : `함대 ${fleet.id} 출격 → ${p.planet_id}`}</button>` : ''}
           ${wallet.state === 'unlocked' ? '' : html`<p class="note">출격하려면 지갑 잠금을 해제하세요.</p>`}
-          <a class="btn ghost" href="${href('/sim')}">시뮬레이터로 먼저 대비</a></section>`
+          <a class="btn ghost" href="${href(`/sim?vs=${p.id}`)}">시뮬레이터로 먼저 대비</a>
+          <div class="intel-acts"><a class="btn ghost sm" href="${href(`/o/${p.planet_id}`)}">행성 관전</a><a class="btn ghost sm" href="${href(`/o/${p.id}`)}">카드</a><button class="btn ghost sm" data-ref="message" data-id="${p.id}">메시지</button><button class="btn ghost sm" data-ref="share" data-id="${p.planet_id}">공유</button></div></section>`
         : html`<section class="card game-panel"><h2>정보</h2><p class="note">행성을 눌러 사령관을 살펴보세요. 크기는 알파 보유량입니다.${raid ? ' 붉은 점선은 내 행성을 습격 중인 함대입니다.' : ''}</p>
+          ${raid && me.planet_id ? html`<div class="notice err">내 행성이 습격받고 있습니다!<button class="btn danger sm" style="margin-left:auto" data-act="sos">지원 요청</button></div>` : ''}
           ${fleet && fleet.status !== 'onStation' ? html`<div class="notice">함대 ${fleet.id} 원정 중 · ${fleet.location_id}<button class="btn ghost" style="min-height:32px;margin-left:auto" data-act="recall" ${wallet.state === 'unlocked' ? '' : 'disabled'}>귀환</button></div>` : ''}
           <div class="g2" style="gap:8px"><div class="stat"><small>내 알파</small><strong class="c-hwang">${micro(me.alpha)} g</strong></div><div class="stat"><small>알파 순위</small><strong>${rank >= 0 ? `#${rank + 1}` : '순위권 밖'}</strong></div></div></section>`}</aside></div>`;
   };
   const handlers = {
+    sos: () => { if (raid && me.planet_id) share({ kind: 'situation', s: raidSituation({ planetId: me.planet_id, attacker: raid.fleet_owner, fleetId: raid.fleet_id, shield: null, defenders: 0, raiders: 0, by: me.username }) }); },
     launch: (el: HTMLElement) => {
       if (!fleet) return;
       const to = el.dataset.to!;

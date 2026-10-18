@@ -38,7 +38,20 @@ function demoEnergy(): { p: PlayerRow; e: Energy; structs: StructRow[] } {
   };
 }
 
-function view(p: PlayerRow, e: Energy, structs: StructRow[], dropKw: number, cut: Set<string>, offline: boolean, isDemo: boolean): Safe {
+interface Inf { reactor: string; amount: string; busy: boolean }
+function infusionPanel(e: Energy, inf: Inf, canSign: boolean): Safe {
+  return html`<div class="inf-panel">
+    ${e.infusions.length ? html`<ul class="coins">${e.infusions.map((i) => html`<li><span class="coin-ico"></span><div><b><a href="${href(`/o/${i.destination_id}`)}">${entityOf(i.destination_id)} ${i.destination_id}</a></b><small class="mono">주입 ${micro(i.fuel_p ?? i.fuel, 2)} g · 회수 중 ${micro(i.defusing, 2)} g · 수수료 ${n(Number(i.commission))}%</small></div><strong class="mono c-hwang">${watts(Number(i.power_p ?? i.power ?? 0))}</strong>
+      <button class="btn ghost sm" data-act="defuse" data-id="${i.destination_id}" data-fuel="${String(i.fuel_p ?? i.fuel)}" ${canSign && Number(i.fuel) > 0 ? '' : 'disabled'}>회수</button></li>`)}</ul>` : html`<p class="note">아직 주입한 알파가 없습니다. 1 g당 약 1 kW 용량이 생깁니다.</p>`}
+    <form class="inf-form" data-act="infuseReal" data-on="submit">
+      <label class="field"><span>리액터</span><input class="input mono" name="reactor" value="${inf.reactor}" placeholder="3-…" data-act="infReactor" required></label>
+      <label class="field"><span>알파 (g)</span><input class="input mono" name="amount" value="${inf.amount}" inputmode="decimal" placeholder="1" data-act="infAmount" required></label>
+      <button class="btn gold" ${canSign && !inf.busy ? '' : 'disabled'}>${inf.busy ? '서명 중…' : '주입'}</button>
+    </form>
+    <p class="note">MsgReactorInfuse — 알파는 리액터 검증인에게 위임되어 용량이 되고, 회수(디퓨즈)는 체인의 해제 기간이 지나야 돌아옵니다.</p></div>`;
+}
+
+function view(p: PlayerRow, e: Energy, structs: StructRow[], dropKw: number, cut: Set<string>, offline: boolean, isDemo: boolean, inf: Inf = { reactor: '', amount: '', busy: false }): Safe {
   const pw = e.power;
   const cap = Number(pw?.capacity ?? p.capacity), sec = Number(pw?.connection_capacity ?? p.connection_capacity);
   const load = Number(pw?.load ?? p.load), sl = Number(pw?.structs_load ?? p.structs_load);
@@ -84,7 +97,7 @@ function view(p: PlayerRow, e: Energy, structs: StructRow[], dropKw: number, cut
         <span class="label dim">권장 대응</span>
         ${isDemo ? html`
           <button class="btn gold" data-act="infuse" data-g="1" style="justify-content:space-between">알파 1 g 주입 <span class="mono">+1 kW · <kbd>I</kbd></span></button>
-          <button class="btn ghost" data-act="infuse" data-g="5" style="justify-content:space-between" ${demo.state.alpha < 5 ? 'disabled' : ''}>알파 5 g 주입 <span class="mono">+5 kW</span></button>` : html`<p class="note">리액터에 알파를 주입하면 1 g당 1 kW 용량이 생깁니다 (MsgReactorInfuse).</p>`}
+          <button class="btn ghost" data-act="infuse" data-g="5" style="justify-content:space-between" ${demo.state.alpha < 5 ? 'disabled' : ''}>알파 5 g 주입 <span class="mono">+5 kW</span></button>` : infusionPanel(e, inf, canSign)}
         <a class="btn ghost" href="${href('/market')}" style="justify-content:space-between">여유 ${watts(spare)} 판매 <span class="mono c-cheong">거래소 →</span></a>
       </div>
       <p class="note">부하가 용량을 넘으면 체인이 외부 할당을 생성 순서대로 삭제하고, 손실은 하위로 연쇄됩니다 (GridCascade).</p>
@@ -116,6 +129,8 @@ const screen: Screen = {
     let p: PlayerRow, e: Energy, structs: StructRow[] = [];
     let dropKw = 0;
     let cut = new Set<string>(), offline = false;
+    const inf: Inf = { reactor: '', amount: '1', busy: false };
+    const validatorOf = async (reactorId: string) => String(((await guildApi.objects([reactorId])).find((o) => o.id === reactorId)?.object as Record<string, unknown> | undefined)?.validator ?? '');
     const tiles = () => {
       const pw = e.power;
       const use = pw ? Number(pw.total_load) / Math.max(1, Number(pw.total_capacity)) : 0;
@@ -125,7 +140,7 @@ const screen: Screen = {
         { label: '여유 전력', value: pw ? watts(Math.max(0, Number(pw.total_capacity) - Number(pw.total_load))) : '—', tone: 'var(--cheong-hi)' },
       ]);
     };
-    const paint = () => { if (root.isConnected) { mount(root, view(p, e, structs, dropKw, cut, offline, isDemo), handlers); tiles(); } };
+    const paint = () => { if (root.isConnected) { mount(root, view(p, e, structs, dropKw, cut, offline, isDemo, inf), handlers); tiles(); } };
     const recompute = () => { const local = whatIfLocal(e, dropKw * 1e6); cut = new Set(local.cut); offline = local.offline; };
     const handlers = {
       drop: (el: HTMLElement) => {
@@ -145,6 +160,34 @@ const screen: Screen = {
           .catch((err) => { sfx.play('error'); toast('실패: ' + (err as Error).message, 5000); })
           .finally(() => { (el as HTMLButtonElement).disabled = false; });
       },
+      infReactor: (el: HTMLElement) => { inf.reactor = (el as HTMLInputElement).value.trim(); },
+      infAmount: (el: HTMLElement) => { inf.amount = (el as HTMLInputElement).value; },
+      infuseReal: async () => {
+        const g = Number(inf.amount);
+        if (!(g > 0) || !inf.reactor) { toast('리액터와 알파 양을 입력하세요.'); return; }
+        inf.busy = true; paint();
+        try {
+          const v = await validatorOf(inf.reactor);
+          if (!v) throw new Error(`${inf.reactor}의 검증인을 찾지 못했습니다`);
+          const h = await actions.reactorInfuse(v, Math.round(g * 1e6));
+          sfx.play('coin'); notify('리액터 주입', `알파 ${g} g → ${inf.reactor} · ${h.slice(0, 10)}…`, 'hwang', null);
+          setTimeout(() => void load(), 6000);
+        } catch (err) { sfx.play('error'); toast('주입 실패: ' + (err as Error).message, 5000); }
+        inf.busy = false; paint();
+      },
+      defuse: async (el: HTMLElement) => {
+        const id = el.dataset.id!, fuel = Number(el.dataset.fuel) / 1e6;
+        const ans = prompt(`${id}에서 회수할 알파 (g, 최대 ${fuel.toFixed(2)})`, fuel.toFixed(2));
+        const g = Number(ans);
+        if (!(g > 0)) return;
+        try {
+          const v = await validatorOf(id);
+          if (!v) throw new Error('검증인을 찾지 못했습니다');
+          const h = await actions.reactorDefuse(v, Math.round(Math.min(g, fuel) * 1e6));
+          sfx.play('confirm'); toast(`회수 시작 · ${h.slice(0, 10)}…`);
+          setTimeout(() => void load(), 6000);
+        } catch (err) { toast('회수 실패: ' + (err as Error).message, 5000); }
+      },
       infuse: (el: HTMLElement) => {
         const g = Number(el.dataset.g ?? 1);
         const m = demo.infuse(g);
@@ -161,6 +204,7 @@ const screen: Screen = {
         else {
           p = await guildApi.player(pid);
           [e, structs] = await Promise.all([energy(p), guildApi.structsOf(pid).catch(() => [])]);
+          if (!inf.reactor) inf.reactor = e.infusions[0]?.destination_id ?? (await guildApi.guild(p.guild_id).catch(() => null))?.primary_reactor_id ?? '';
         }
         recompute();
         paint();

@@ -5,6 +5,7 @@
  * The daily engagement and its ladder come from the guild (REQ-SIM-1); until then the daily is
  * seeded from today's date. */
 import type { Screen } from '../router';
+import { share } from '../social/share';
 import { href, go, current } from '../router';
 import { html, mount, n, raw, toast, type Safe } from '../ui/dom';
 import { Chain, type Msg, type AttackDetail, type SimStruct } from '../sim/chain';
@@ -452,7 +453,7 @@ const screen: Screen = {
             ${raidOn && loot ? html`<span class="chip ${loot.ore || loot.alpha ? 'hwang' : 'jeok'} mono" style="font-size:16px">${loot.alpha ? `전리품 +${n(loot.alpha)} α` : loot.ore ? `노획 광석 +${n(loot.ore)}` : '노획 없음'}</span><a class="btn gold" href="${href('/console')}">함교로 귀환</a>` : ''}
             ${run?.offers ? html`<div class="offers"><span class="label c-hwang">증원 선택 · 1기</span>${run.offers.map((o, i) => html`<button class="offer" data-act="reinforce" data-i="${i}">${pixel(o.type, 56)}<b>${STRUCT_TYPE[o.type]}</b><span class="mono faint">${AMBIT[o.ambit]} ${o.slot + 1} · HP ${TYPES_BY_ID[o.type].maxHealth}</span></button>`)}</div>` : ''}
             ${run?.over ? html`<span class="chip ${run.won ? 'hwang' : 'jeok'}">${run.won ? '연전 제패!' : `연전 종료 · ${run.round}라운드`}</span>` : ''}
-            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">${run && !run.over ? '' : html`<button class="btn primary" data-act="again">${run ? '새 연전' : '재도전'} <kbd>Enter</kbd></button>`}<button class="btn ghost" data-act="toSetup">설정으로</button><a class="btn gold" href="${href('/chat')}">채팅에 도전 공유</a></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">${run && !run.over ? '' : html`<button class="btn primary" data-act="again">${run ? '새 연전' : '재도전'} <kbd>Enter</kbd></button>`}<button class="btn ghost" data-act="toSetup">설정으로</button><button class="btn gold" data-act="shareBattle">통신에 전투 공유</button></div>
           </section>
           <section class="card grow game-panel"><h2>전투 통계</h2>
             <div class="scroll-x"><table class="t" style="min-width:420px"><thead><tr><th>항목</th><th class="r c-cheong">나</th><th class="r c-jeok">컴퓨터</th></tr></thead><tbody>
@@ -527,6 +528,15 @@ const screen: Screen = {
       toSetup: () => { running = false; chain = null; board?.dispose(); board = null; phase = 'setup'; paint(); },
       toDeploy,
       replay: () => watch(orders.slice()),
+      shareBattle: () => {
+        const p = stats.player, c = stats.computer;
+        const code = replayLink().split('/sim/')[1] ?? '';
+        share({ kind: 'situation', s: {
+          t: 'replay', title: `${mission ? mission.title + ' · ' : ''}${winner === 'player' ? '승리' : winner === 'computer' ? '패배' : '무승부'} ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`, sub: '내 전투를 이길 수 있을까요? 열어서 다시 보기.',
+          lines: [['전투 시간', `${blocks}블록`], ['격파', String(c.lost)], ['손실', String(p.lost)], ['가한 피해', String(p.damage)], ['회피', String(p.evaded)], ['차단', String(p.blocked)]],
+          go: code.length < 1800 ? `/sim/${code}` : '/sim', tone: winner === 'player' ? 'cheong' : 'jeok', at: Date.now(),
+        } });
+      },
       copyReplay: () => { void navigator.clipboard?.writeText(replayLink()).then(() => { sfx.play('confirm'); notify('복사됨', '리플레이 링크를 붙여넣어 공유하세요', 'cheong', null); }).catch(() => toast('복사하지 못했습니다')); },
       again: () => { if (mission) { start(); return; } if (raidOn) { go('/console'); return; } if (run?.over) { run = null; seed = 'KR-' + Math.random().toString(36).slice(2, 7).toUpperCase(); toDeploy(); } else start(); },
       reinforce: (el: HTMLElement) => {
