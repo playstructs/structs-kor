@@ -20,11 +20,13 @@ import { startDesktop } from './core/desktop';
 import { installRefActions } from './social/actions';
 import { startBackgroundComms } from './chat/background';
 import { startOrders } from './game/orders';
+import { installPalette } from './ui/palette';
 
 shell(document.getElementById('app')!);
 installRefActions();
 startBackgroundComms();
 startOrders();
+installPalette();
 onRoute((path) => applySeo(path, SITE_URL, href('')));
 retireDemo();
 
@@ -45,6 +47,7 @@ route('/chat', () => import('./screens/chat'));
 route('/tutorial', () => import('./screens/tutorial'));
 route('/codex', () => import('./screens/codex'));
 route('/profile', () => import('./screens/profile'));
+route('/stats', () => import('./screens/stats'));
 route('/o', () => import('./screens/object'), { nested: true });
 route('/s', () => import('./screens/object'), { nested: true });
 route('/404', () => import('./screens/notfound'));

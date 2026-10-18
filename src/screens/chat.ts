@@ -427,6 +427,8 @@ const screen: Screen = {
       else open(byAlias?.id ?? tabs.find((t) => matrix.rooms.has(t)) ?? sorted().find(isPinnedRoom)?.id ?? sorted()[0]?.id ?? null);
       if (draft && !dm) { input.value = draft; autosize(); }
       if (want && !byAlias) void joinAlias(want);
+      const term = params.get('search');
+      if (term) { searchTerm = term; searchAll = true; side = 'search'; paintHead(); paintSide(); void runSearch(); }
     };
     const off = matrix.onChange(() => {
       if (!root.isConnected) return;

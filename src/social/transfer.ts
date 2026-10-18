@@ -32,7 +32,8 @@ export async function openTransfer(o: PayOpts = {}) {
   let step: 'form' | 'review' | 'sent' = 'form', busy = false, err = '', hash = '';
   let toQuery = o.to ?? '', to: PlayerRow | null = null, toAddr = '', amountText = o.amount ? String(o.amount) : '', denom = o.denom ?? 'ualpha', from = o.from ?? 0;
   let tokens: BankRow[] = [], fromRow: PlayerRow | null = null;
-  const accounts = wallet.accounts;
+  const accounts = wallet.accounts.length ? wallet.accounts : [{ index: 0, address: '', label: '사령관', playerId: me ?? undefined }];
+  const selfAddr = () => accounts.find((a) => a.index === from)?.address ?? '';
 
   const lookup = async () => {
     err = ''; to = null; toAddr = '';
@@ -50,14 +51,14 @@ export async function openTransfer(o: PayOpts = {}) {
   const grams = () => parseGrams(amountText);
   const unit = () => (denom === 'ualpha' ? 'g' : '토큰');
   const balance = () => (denom === 'ualpha' ? Number(fromRow?.alpha ?? NaN) / 1e6 : NaN);
-  const valid = () => !!toAddr && !!grams() && (!Number.isFinite(balance()) || grams()! <= balance() + 1e-9) && toAddr !== wallet.key(from).address;
+  const valid = () => !!toAddr && !!grams() && (!Number.isFinite(balance()) || grams()! <= balance() + 1e-9) && toAddr !== selfAddr();
 
   const face = (p: PlayerRow | null, addr: string, label: string) => html`<div class="pay-party">${raw(portraitHtml(p?.pfp || seededPfp(p?.id || addr), 44))}<div><b>${p?.username || p?.id || '주소'}</b><small class="mono">${p ? `PID #${p.id}` : ''} ${addr ? addr.slice(0, 14) + '…' + addr.slice(-6) : ''}</small></div><span class="label">${label}</span></div>`;
 
   const view = (): Safe => {
     if (step === 'sent') return html`<div class="pay-done"><i class="si icon-success"></i><h3>보냈습니다</h3><p class="mono">${n(grams() ?? 0, 6)} ${unit()} → ${to?.username || toAddr.slice(0, 16)}</p><p class="mono faint">tx ${hash.slice(0, 16)}…</p><div class="sheet-actions"><button class="btn ghost" data-act="again">한 번 더</button><button class="btn primary" data-act="close" autofocus>닫기</button></div></div>`;
     if (step === 'review') return html`
-      ${face(fromRow, wallet.key(from).address, '보내는 사람')}
+      ${face(fromRow, selfAddr(), '보내는 사람')}
       <div class="pay-arrow">▼ <b class="mono c-hwang">${n(grams() ?? 0, 6)} ${denom === 'ualpha' ? 'g 알파' : denom}</b></div>
       ${face(to, toAddr, '받는 사람')}
       ${o.memo ? html`<p class="note">${o.memo}</p>` : ''}
@@ -75,7 +76,7 @@ export async function openTransfer(o: PayOpts = {}) {
       </div>
       ${Number.isFinite(bal) ? html`<p class="note">보유 ${n(bal, 4)} g · <button class="linkish" data-act="all">전부 보내기</button></p>` : ''}
       ${err ? html`<div class="notice err">${err}</div>` : ''}
-      ${toAddr && toAddr === wallet.key(from).address ? html`<div class="notice err">자기 자신에게는 보낼 수 없습니다.</div>` : ''}
+      ${toAddr && toAddr === selfAddr() ? html`<div class="notice err">자기 자신에게는 보낼 수 없습니다.</div>` : ''}
       ${wallet.state !== 'unlocked' ? html`<div class="notice">서명하려면 지갑 잠금을 해제하세요.</div>` : ''}
       <div class="sheet-actions"><button class="btn ghost" data-act="close">취소</button><button class="btn primary" data-act="review" ${!valid() || wallet.state !== 'unlocked' ? 'disabled' : ''}>검토</button></div>`;
   };
