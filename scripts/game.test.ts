@@ -754,13 +754,14 @@ test('after-action report: a home defence credits kills and files a report', () 
   demo.reset();
   const s = demo.state;
   s.nextRaid = 1; demo.step();
-  s.raid!.eta = 0;
+  s.raid!.eta = 1; // lands on the next block, as raids do
   for (let i = 0; i < 40 && s.raid; i++) demo.step();
   const p = demo.report!;
   assert.ok(p, 'filed');
   const credited = s.structs.reduce((a, x) => a + (x.kills ?? 0), 0);
   assert.equal(credited, p.kills.reduce((a, k) => a + k.n, 0), 'kills credited to the ships that scored them');
   assert.ok(p.blocked >= 0 && p.hits >= 0);
+  assert.ok(p.odds != null && p.odds >= 0 && p.odds <= 1, 'the forecast as it landed is on the report');
   demo.dismissReport();
   assert.equal(demo.report, null);
 });
