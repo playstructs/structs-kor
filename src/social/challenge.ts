@@ -32,7 +32,7 @@ export async function hydrateChallenges(root: ParentNode) {
       const verdict = r.winner === 'player' ? '승리' : r.winner === 'computer' ? '패배' : r.winner ? '무승부' : '전투 기록';
       el.outerHTML = `<article class="chal ${r.winner === 'player' ? 'win' : r.winner === 'computer' ? 'loss' : ''}"><header><span class="sit-kind"><i class="si icon-combat-log"></i>전투 기록</span><b>${esc(r.title || '시뮬레이터 전투')}</b><span class="chip ${r.winner === 'player' ? 'cheong' : 'jeok'}">${verdict}</span></header>
         <div class="chal-vs"><span class="chal-side">${mini(mine)}</span><b class="mono">VS</b><span class="chal-side foe">${mini(theirs)}</span></div>
-        <div class="chal-acts"><a class="btn primary sm" href="${base}/sim/${esc(el.dataset.code ?? '')}">▶ 다시 보기</a><a class="btn ghost sm" href="${base}/sim">같은 조건으로 도전</a></div></article>`;
+        <div class="chal-acts"><a class="btn primary sm" href="${base}/sim/${esc(el.dataset.code ?? '')}">▶ 다시 보기</a><a class="btn ghost sm" href="${base}/sim?from=${esc(el.dataset.code ?? '')}">같은 조건으로 도전</a></div></article>`;
     } else {
       const day = el.dataset.day ?? '', code = el.dataset.code ?? '';
       const c = code ? daily.decodeDaily(code) : null;

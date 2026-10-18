@@ -169,3 +169,7 @@
 .cm-img { align-self: flex-start; width: min(320px, 100%); max-height: 320px; padding: 0; background: var(--sunken); border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; cursor: zoom-in; }
 .cm-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .cm-img.big { width: min(720px, 100%); max-height: 70vh; cursor: zoom-out; }
+.chal-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px; background: var(--sunken); border: 2px solid var(--line); width: 100%; }
+.chal-compare.win { border-color: var(--hwang); } .chal-compare .label { grid-column: 1 / -1; }
+.chal-compare div { display: flex; flex-direction: column; } .chal-compare span { color: var(--text-faint); font-size: 12px; }
+.chal-compare strong { grid-column: 1 / -1; font-size: 18px; color: #fff; }
