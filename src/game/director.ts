@@ -20,7 +20,12 @@ demo.onEvent((kind, text) => {
   if (kind === 'alarm') {
     // Rivals speak: a rebel declares itself, a new raid comes with a taunt.
     if (text.includes('반란') && demo.state.rebel) setTimeout(() => transmit(demo.state.rebel!, 'rebel'), 900);
-    else if (demo.raid && demo.raid.eta > 0 && demo.raid.owner !== raider) { raider = demo.raid.owner; const who = raider; setTimeout(() => transmit(who, 'raid'), 900); }
+    else if (demo.raid && demo.raid.eta > 0 && demo.raid.owner !== raider) {
+      raider = demo.raid.owner; const who = raider, second = demo.raid.partner;
+      setTimeout(() => transmit(who, 'raid'), 900);
+      // A coalition: the second house speaks up too.
+      if (second) setTimeout(() => transmit(second, 'raid'), 4200);
+    }
     if (demo.raid?.eta === 0) music.setMode('battle');
     sfx.play('alarm'); flash();
     notify('경보', text + (away ? ' · C로 함교 복귀' : ''), 'jeok', null);
