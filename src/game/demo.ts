@@ -131,6 +131,8 @@ interface State {
   report?: RaidReport | null;
   /** 연합 전선: coalition raids drawn so far. */
   coalitions?: number;
+  /** Running totals: counter-raids won, refits fitted. */
+  revengeWins?: number; refits?: number;
   /** 암시장: the smuggler's next visit, its stay and deals, and deals made all time. */
   black?: { next: number; until: number; offers: BlackOffer[]; deals?: number };
   /** 의뢰 게시판: offers on the board, when it refreshes, and the job in hand. */
@@ -1355,6 +1357,7 @@ export const demo = {
     if (x.mod === 'armor') { x.max -= 2; x.hp = Math.min(x.hp, x.max); }
     x.mod = mod;
     if (mod === 'armor') { x.max += 2; x.hp += 2; }
+    s.refits = (s.refits ?? 0) + 1;
     log('event', `개장 · ${TYPES_BY_ID[x.type].type} · ${REFITS[mod].name}`);
     persist(); for (const f of changeFns) f();
     return null;
@@ -1542,7 +1545,7 @@ export const demo = {
     if (s.raid) return '습격을 막아 낸 뒤에 새 시대를 열 수 있습니다';
     if (s.loan) return '청룡 상단 대출을 먼저 갚아야 새 시대를 열 수 있습니다';
     // Running totals survive too (daily orders and medals count from them).
-    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done, active: s.jobs.active } : undefined, black: s.black ? { next: s.black.next, until: 0, offers: [], deals: s.black.deals } : undefined, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
+    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done, active: s.jobs.active } : undefined, black: s.black ? { next: s.black.next, until: 0, offers: [], deals: s.black.deals } : undefined, revengeWins: s.revengeWins, refits: s.refits, coalitions: s.coalitions, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
     s = fresh();
     Object.assign(s, keep);
     log('event', `제${keep.era + 1}시대 개막`);
@@ -1685,7 +1688,7 @@ export const demo = {
     if (rev) s.revenge = null;
     if (won && r) {
       loot = { ore: Math.min(Math.floor(r.ore), Math.floor(r.ore * 0.6 * (inGuild('iron') ? 1.25 : 1) * (doc('war') ? 1.3 : 1) * (rev ? REVENGE.bonus : 1))), alpha: 0 };
-      if (rev) chronicle('cheong', `보복 성공 · ${r.name} 약탈 ${loot.ore}`);
+      if (rev) { chronicle('cheong', `보복 성공 · ${r.name} 약탈 ${loot.ore}`); s.revengeWins = (s.revengeWins ?? 0) + 1; }
       r.ore -= loot.ore; r.fleet = Math.max(2, r.fleet - 1); r.raided++;
       s.ore += loot.ore;
       log('raid_status', `${r.name} 약탈 +${loot.ore}`);
