@@ -43,6 +43,7 @@ const VERBS: Verb[] = [
   { word: '보드', aliases: ['board', 'terminal', 'workspace', 'dashboard', '터미널', '대시보드'], label: '작전 보드 (내 카드 콘솔)', hint: '보드', icon: 'icon-computer', arg: 'none', run: () => go('/board') },
   { word: '가입', aliases: ['join', 'apply', 'requests', '신청'], label: '길드 가입 신청 · 초대', hint: '가입', icon: 'icon-member', arg: 'none', run: () => go('/guild?tab=apps') },
   { word: '검색', aliases: ['find', 'search'], label: '통신 메시지 검색', hint: '검색 습격', icon: 'icon-detected', arg: 'text', run: (a) => go(`/chat?search=${encodeURIComponent(a)}`) },
+  { word: '진단', aliases: ['diag', 'debug', 'health', 'status', '상태', '디버그'], label: '시스템 진단 (연결 · 엔진)', hint: '진단', icon: 'icon-computer', arg: 'none', run: () => go('/diag') },
   { word: '도움말', aliases: ['help', '?', 'commands', '명령어'], label: '명령어 목록', hint: '도움말', icon: 'icon-tip', arg: 'none', run: () => undefined },
 ];
 

@@ -302,3 +302,7 @@ tr.me td { background: var(--cheong-bg); }
 .bc-hit { fill: transparent; }
 .bc-bar:hover .bc-fill { fill: var(--cheong-hi); }
 .bc-x { fill: var(--text-dim); font: 15px var(--f-mono); text-anchor: middle; }
+.diag-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.diag-list li { display: grid; grid-template-columns: 12px auto minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 6px 8px; background: var(--sunken); border: 1px solid var(--line); }
+.diag-list li > small:last-child:not(:nth-child(3)) { grid-column: 2 / -1; }
+.diag-list li .planned { justify-self: start; }

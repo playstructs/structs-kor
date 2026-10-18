@@ -85,7 +85,7 @@ export function shell(root: HTMLElement) {
       <div class="menu-in">
         <div class="menu-head"><span class="label c-cheong">구조체 · 지휘 메뉴</span><button class="hud-btn" type="button" data-close aria-label="메뉴 닫기"><i class="si icon-close"></i></button></div>
         <div class="menu-grid">${NAV.map((n) => `<a href="${href(n.path)}" data-path="${n.path}">${n.icon}<span>${n.label}</span><kbd class="rail-key">${keyOf(n.path)}</kbd></a>`).join('')}</div>
-        <div class="menu-tools"><button class="btn ghost" id="kbd" type="button">단축키 <kbd>?</kbd></button><a class="btn ghost" href="${href('/profile')}">내 정보</a><a class="btn ghost" href="${href('/')}">타이틀 화면</a></div>
+        <div class="menu-tools"><button class="btn ghost" id="kbd" type="button">단축키 <kbd>?</kbd></button><a class="btn ghost" href="${href('/profile')}">내 정보</a><a class="btn ghost" href="${href('/diag')}">시스템 진단</a><a class="btn ghost" href="${href('/')}">타이틀 화면</a></div>
         <footer id="foot" class="foot"></footer>
       </div>
     </nav>
@@ -113,7 +113,7 @@ export function shell(root: HTMLElement) {
     document.documentElement.dataset.route = p.slice(1) || 'home';
     document.documentElement.dataset.mode = mode;
     setMenu(false);
-    winTitle.textContent = NAV.find((n) => n.path === p)?.label ?? NAV_KEYS.find((n) => n.path === p)?.label ?? ({ '/record': '전적', '/profile': '내 정보' } as Record<string, string>)[p] ?? (p.startsWith('/o') ? '객체 카드' : p.startsWith('/s/') ? '공유된 상황' : '');
+    winTitle.textContent = NAV.find((n) => n.path === p)?.label ?? NAV_KEYS.find((n) => n.path === p)?.label ?? ({ '/record': '전적', '/profile': '내 정보', '/diag': '시스템 진단' } as Record<string, string>)[p] ?? (p.startsWith('/o') ? '객체 카드' : p.startsWith('/s/') ? '공유된 상황' : '');
     for (const a of rail.querySelectorAll<HTMLAnchorElement>('a[data-path]')) a.classList.toggle('on', a.dataset.path === p);
   });
 
