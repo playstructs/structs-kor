@@ -813,6 +813,29 @@ test('next raider: a rebel is certain; an ally is never named; nothing while a r
   assert.equal(demo.nextRaider(), null);
 });
 
+test('investing: a stake pays from the house, counts as your worth, and robbing it costs you', () => {
+  demo.reset();
+  const s = demo.state;
+  s.alpha = 100;
+  assert.match(demo.invest('1-666', 10) ?? '', /외부 자본/);
+  const worth = demo.netWorth();
+  assert.equal(demo.invest('1-87', 50), null);
+  assert.ok(Math.abs(demo.netWorth() - worth) < 1e-9, 'moving alpha into a stake keeps your worth');
+  const r = demo.rivals().find((x) => x.id === '1-87')!;
+  s.nextRaid = 999;
+  const a0 = s.alpha;
+  for (let i = 0; i < 10; i++) demo.step();
+  assert.ok(s.alpha - a0 > 0.4, 'dividends came in');
+  assert.ok(demo.dividends > 0.4);
+  r.ore = 50;
+  demo.settleRaid('1-87', true, {});
+  assert.equal(demo.stake('1-87').g, 37.5, 'a quarter lost to robbing your own investment');
+  const a1 = s.alpha;
+  assert.equal(demo.divest('1-87'), null);
+  assert.ok(Math.abs(s.alpha - a1 - 33.75) < 1e-9, 'sold at 90%');
+  assert.match(demo.invest('1-87', 250) ?? '', /최대|필요/);
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);

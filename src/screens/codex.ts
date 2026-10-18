@@ -3,7 +3,7 @@
 import type { Screen } from '../router';
 import { href } from '../router';
 import { html, mount, raw, type Safe } from '../ui/dom';
-import { GRUDGE, COALITION, REVENGE, REFITS, BLACK, BLACK_DEALS, JOBS, ABILITIES, EVENTS, ALLY, OUTPOSTS, OUTPOST, DOMINION, HEGEMONY, OC, DOCTRINES, DOCTRINE_SWITCH, BOUNTY, VOID, RACE, LOAN, OPS, REPS, ENGINE, RATE, DECISION, WAR, TEMPER, type OpId } from '../game/demo';
+import { INVEST, GRUDGE, COALITION, REVENGE, REFITS, BLACK, BLACK_DEALS, JOBS, ABILITIES, EVENTS, ALLY, OUTPOSTS, OUTPOST, DOMINION, HEGEMONY, OC, DOCTRINES, DOCTRINE_SWITCH, BOUNTY, VOID, RACE, LOAN, OPS, REPS, ENGINE, RATE, DECISION, WAR, TEMPER, type OpId } from '../game/demo';
 import { spriteHtml } from '../game/map/art';
 import { setTiles } from '../ui/shell';
 
@@ -18,6 +18,7 @@ const SECTIONS: [string, string, Entry[]][] = [
     { icon: 15, title: '과부하 운전', body: html`추출기·정제소 생산 ×${OC.out}, 전력 ×${OC.power}. 발전기는 발전 ×${OC.gen}. 블록마다 ${pct(OC.wear)} 확률로 손상. 구조체를 고르고 <kbd>V</kbd>.`, go: ['/console', '함교'] },
     { icon: 18, title: '의뢰 게시판', body: html`${JOBS.every}블록마다 세력들이 의뢰를 올립니다. 납품: 광석을 정제가보다 10–25% 비싸게 즉시 사 줍니다 (습격 전에 광석을 비우기 좋습니다). 방어: ${JOBS.defendFor}블록 안에 습격을 2번 막으면 보수.`, go: ['/market', '거래소'] },
     { icon: 16, title: '암시장', body: html`약 ${BLACK.every}블록마다 밀수선이 ${BLACK.stays}블록 동안 들어와 세 가지 거래를 한 번씩만 엽니다. 값은 매번 다릅니다: ${Object.values(BLACK_DEALS).map((d) => `${d.name}(${d.what})`).join(' · ')}.`, go: ['/market', '거래소'] },
+    { icon: 17, title: '투자', body: html`은하 지도에서 세력에 알파를 맡기면(최대 ${INVEST.max} g) 그 세력 금고에서 블록마다 지분의 ${(INVEST.rate * 100).toFixed(1)}%를 배당받습니다(사보타주 중엔 절반). 지분은 내 세력으로 칩니다. 그 세력을 약탈하면 지분 ${Math.round(INVEST.raidHit * 100)}%를 잃고, 매각하면 ${Math.round(INVEST.fee * 100)}%를 떼입니다. 붉은 연합은 받지 않습니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 17, title: '대출', body: html`청룡 상단에서 최대 ${LOAN.max} g. ${LOAN.term}블록 뒤 ${pct(LOAN.rate)}를 더해 갚습니다. 불이행하면 광석을 두 배로 압류하고 함대를 보내며, 한동안 다시 빌릴 수 없습니다.`, go: ['/market', '거래소'] },
   ]],
   ['세력', '은하의 다른 세력을 꺾고, 부리고, 늦춘다.', [

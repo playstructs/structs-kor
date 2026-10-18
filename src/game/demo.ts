@@ -128,6 +128,8 @@ interface State {
   era?: number;
   /** Bounties collected, all time (survives new eras). */
   bountiesClaimed?: number;
+  /** 투자: alpha staked in each house, paying dividends from its treasury. */
+  stakes?: Record<string, number>; dividends?: number;
   /** 보복: the rival whose raid you just broke is exposed until `until`. */
   revenge?: { rival: string; until: number } | null;
   /** 전투 보고: the last defence of the base. */
@@ -427,6 +429,8 @@ function blockInner() {
     r.alpha += gain; r.ore += r.growth * 0.6;
     if (s.height % 150 === 0 && r.fleet < 10) r.fleet++;
     if (r.grudge && s.height % GRUDGE.fade === 0) r.grudge--;
+    const stake = s.stakes?.[r.id] ?? 0;
+    if (stake > 0) { const d = Math.min(Math.max(0, r.alpha), stake * INVEST.rate * ((r.sabotaged ?? 0) > s.height ? 0.5 : 1)); r.alpha -= d; s.alpha += d; s.dividends = (s.dividends ?? 0) + d; }
     if (r.vassal == null) continue;
     // A vassal's tribute comes out of its own growth, every block.
     const t = gain * DOMINION.tribute * (doc('trade') ? 1.25 : 1) * (1 + 0.15 * lv('diplo')) * (ev('summit') ? 1.5 : 1);
@@ -719,6 +723,9 @@ export const REFITS: Record<RefitId, { name: string; what: string; cost: number 
   evade: { name: '회피 추진기', what: '기지 방어 피격 회피 +20%p', cost: 8 },
 };
 
+/** 투자: a stake in a house pays `rate` of itself a block out of that house's treasury (half while
+ * sabotaged); robbing a house you hold costs `raidHit` of the stake; selling returns all but `fee`. */
+export const INVEST = { rate: 0.001, raidHit: 0.25, fee: 0.1, max: 200 };
 /** 연합 전선: past this hegemony, some raids come under two banners with two more escorts. */
 export const COALITION = { at: 0.55, chance: 0.35, extra: 2 };
 /** 보복 출격: hit back at a raider you just broke, within the window, for more of its ore. */
@@ -1270,6 +1277,32 @@ export const demo = {
     persist(); for (const f of changeFns) f();
     return null;
   },
+  /** Your stake in a house, and what it pays a block now. */
+  stake(id: string) { const r = rivals().find((x) => x.id === id); const g = s.stakes?.[id] ?? 0; return { g, perBlock: r ? g * INVEST.rate * ((r.sabotaged ?? 0) > s.height ? 0.5 : 1) : 0 }; },
+  get dividends() { return s.dividends ?? 0; },
+  invest(id: string, g: number): string | null {
+    adoptStored();
+    const r = rivals().find((x) => x.id === id);
+    if (!r) return '없는 세력입니다';
+    if (id === '1-666') return '붉은 연합은 외부 자본을 받지 않습니다';
+    if (g <= 0 || s.alpha < g) return `알파 ${g} g 필요`;
+    const have = s.stakes?.[id] ?? 0;
+    if (have + g > INVEST.max) return `한 세력에 최대 ${INVEST.max} g`;
+    s.alpha -= g; s.stakes = { ...s.stakes, [id]: have + g };
+    log('event', `투자 · ${r.name} +${g} g`);
+    persist(); for (const f of changeFns) f();
+    return null;
+  },
+  divest(id: string): string | null {
+    adoptStored();
+    const g = s.stakes?.[id] ?? 0;
+    if (g <= 0) return '지분이 없습니다';
+    const back = Math.round(g * (1 - INVEST.fee) * 100) / 100;
+    s.alpha += back; delete s.stakes![id];
+    log('event', `지분 매각 · +${back} g`);
+    persist(); for (const f of changeFns) f();
+    return null;
+  },
   raidForecast,
   /** The likeliest next raider while none is on its way (null otherwise): name, chance, blocks to go. */
   nextRaider() {
@@ -1573,7 +1606,7 @@ export const demo = {
     if (s.raid) return '습격을 막아 낸 뒤에 새 시대를 열 수 있습니다';
     if (s.loan) return '청룡 상단 대출을 먼저 갚아야 새 시대를 열 수 있습니다';
     // Running totals survive too (daily orders and medals count from them).
-    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done, active: s.jobs.active } : undefined, black: s.black ? { next: s.black.next, until: 0, offers: [], deals: s.black.deals } : undefined, revengeWins: s.revengeWins, refits: s.refits, coalitions: s.coalitions, coalitionWins: s.coalitionWins, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
+    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done, active: s.jobs.active } : undefined, black: s.black ? { next: s.black.next, until: 0, offers: [], deals: s.black.deals } : undefined, revengeWins: s.revengeWins, refits: s.refits, coalitions: s.coalitions, coalitionWins: s.coalitionWins, stakes: s.stakes, dividends: s.dividends, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
     s = fresh();
     Object.assign(s, keep);
     log('event', `제${keep.era + 1}시대 개막`);
@@ -1624,7 +1657,7 @@ export const demo = {
     const tech = Object.values(s.tech ?? {}).reduce((a, l) => a + (l ?? 0) * 6, 0);
     const dominion = rivals().filter((r) => r.vassal != null).reduce((a, r) => a + rivalWorth(r) * 0.25, 0);
     const sites = OUTPOSTS.filter((d) => holds(d.id)).length * 40;
-    return s.alpha + s.ore * 0.6 + structs + tech + dominion + sites + (s.engine?.paid ?? 0) + (engineStage() >= 3 ? 1000 : 0);
+    return s.alpha + Object.values(s.stakes ?? {}).reduce((a, g) => a + g, 0) + s.ore * 0.6 + structs + tech + dominion + sites + (s.engine?.paid ?? 0) + (engineStage() >= 3 ? 1000 : 0);
   },
   /** Alpha a block from vassals, now (their average growth × the tribute share). */
   vassalCap,
@@ -1718,6 +1751,7 @@ export const demo = {
       loot = { ore: Math.min(Math.floor(r.ore), Math.floor(r.ore * 0.6 * (inGuild('iron') ? 1.25 : 1) * (doc('war') ? 1.3 : 1) * (rev ? REVENGE.bonus : 1))), alpha: 0 };
       if (rev) { chronicle('cheong', `보복 성공 · ${r.name} 약탈 ${loot.ore}`); s.revengeWins = (s.revengeWins ?? 0) + 1; }
       r.ore -= loot.ore; r.fleet = Math.max(2, r.fleet - 1); r.raided++; r.grudge = Math.min(GRUDGE.max, (r.grudge ?? 0) + 1);
+      if (s.stakes?.[r.id]) { const lost = s.stakes[r.id] * INVEST.raidHit; s.stakes[r.id] -= lost; log('raid_status', `${r.name} 지분 −${lost.toFixed(1)} g`); }
       // A house pushed far enough says so, on the wire.
       if (r.grudge === 3 || r.grudge === GRUDGE.max) { const text = r.grudge === GRUDGE.max ? `${r.name}, 한빛 IV를 숙적으로 선포 · 함대가 당신을 노립니다` : `${r.name}이(가) 복수를 다짐했습니다`; s.news = [{ h: s.height, text }, ...(s.news ?? [])].slice(0, 8); emit('news', text); }
       s.ore += loot.ore;

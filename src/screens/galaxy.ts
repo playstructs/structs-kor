@@ -12,7 +12,7 @@ import { pow } from '../pow/engine';
 import { errorCard, loading } from '../ui/gate';
 import { needSession } from '../ui/gate';
 import { setTiles } from '../ui/shell';
-import { demo, DEMO_ID, DOMINION, TEMPER, OPS, OUTPOST, opOdds, withAllies, ALLY, type Rival, type OpId, type OutpostId, REVENGE, GRUDGE } from '../game/demo';
+import { demo, DEMO_ID, DOMINION, TEMPER, OPS, OUTPOST, opOdds, withAllies, ALLY, type Rival, type OpId, type OutpostId, REVENGE, GRUDGE, INVEST } from '../game/demo';
 import { hegemonyMeter, powerChart } from '../game/meter';
 import { hash32, mulberry } from '../core/util';
 import { layout } from '../sim/fleets';
@@ -218,13 +218,16 @@ const screen: Screen = {
           : html`<button class="btn ghost" data-act="scout" style="justify-content:space-between">정찰기 파견 <span class="mono c-hwang">1 g · <kbd>S</kbd></span></button>`}
         ${demo.ally?.id === r.id ? html`<div class="notice">동맹 · ${demo.ally.left}블록 남음. 이 세력은 당신을 습격하지 않고, 당신의 습격에 빈 슬롯만큼 함선을 최대 ${ALLY.ships.length}척 보냅니다. 공작을 벌이면 동맹이 깨집니다.</div>`
           : html`<button class="btn ghost" data-act="ally" ${demo.ally || demo.state.alpha < ALLY.cost || r.id === '1-666' ? 'disabled' : ''} style="justify-content:space-between">${r.id === '1-666' ? '동맹 불가 · 누구와도 손잡지 않음' : `동맹 제안 · ${ALLY.term}블록`} <span class="mono">${ALLY.cost} g</span></button>`}
+        ${r.id !== '1-666' ? (() => { const st = demo.stake(r.id); return html`<div class="invest"><span class="label dim">투자${st.g ? html` · <span class="c-hwang mono">지분 ${n(st.g, 1)} g · +${st.perBlock.toFixed(3)} α/블록</span>` : ''}</span>
+          <div class="invest-row"><button class="btn ghost" data-act="invest" data-g="5" ${demo.state.alpha < 5 || st.g + 5 > INVEST.max ? 'disabled' : ''}>+5 g</button><button class="btn ghost" data-act="invest" data-g="20" ${demo.state.alpha < 20 || st.g + 20 > INVEST.max ? 'disabled' : ''}>+20 g</button><button class="btn ghost" data-act="divest" ${st.g ? '' : 'disabled'}>매각 ${st.g ? `+${n(st.g * (1 - INVEST.fee), 1)} g` : ''}</button></div>
+          <small class="dim">이 세력의 금고에서 블록마다 지분의 ${(INVEST.rate * 100).toFixed(1)}%가 배당됩니다. 이 세력을 약탈하면 지분 ${Math.round(INVEST.raidHit * 100)}%가 날아갑니다.</small></div>`; })() : ''}
         <div class="ops"><span class="label dim">공작${(r.sabotaged ?? 0) > demo.state.height ? html` · <span class="c-cheong">사보타주 ${(r.sabotaged ?? 0) - demo.state.height}블록</span>` : ''}</span>
           ${(r.opUntil ?? 0) > demo.state.height ? html`<span class="mono c-warn" style="font-size:12px">경계 태세 · ${(r.opUntil ?? 0) - demo.state.height}블록</span>` : ''}
           ${(Object.keys(OPS) as OpId[]).map((k) => html`<button class="btn ghost op" data-act="op" data-op="${k}" ${demo.state.alpha < OPS[k].cost || (r.opUntil ?? 0) > demo.state.height || (k === 'sabotage' && (r.sabotaged ?? 0) > demo.state.height) ? 'disabled' : ''}><b>${OPS[k].name}</b><small>${OPS[k].what} · 성공 ${Math.round(opOdds(k) * 100)}% · ${OPS[k].cost} g</small></button>`)}
           <small class="dim">발각되면 불가침이 깨지고 보복 함대가 옵니다.</small></div>
         <div class="loyal"><span class="label dim">복속까지 약탈 ${Math.min(r.raided, DOMINION.raidsToSubjugate)} / ${DOMINION.raidsToSubjugate}</span><div class="bar"><i style="width:${Math.min(100, (r.raided / DOMINION.raidsToSubjugate) * 100)}%;background:var(--hwang)"></i></div></div>
         ${r.raided >= DOMINION.raidsToSubjugate ? html`<button class="btn gold lg" data-act="subjugate" style="justify-content:space-between">♛ 복속 요구 <span class="mono">주둔군 ${DOMINION.cost} g · 함대 4기로</span></button>` : ''}
-        ${demo.ally?.id === r.id ? html`<p class="note">동맹은 습격할 수 없습니다.</p>` : html`<a class="btn danger lg" href="${href('/sim?raid=' + r.id)}">${demo.revenge?.rival === r.id ? `보복 출격 (${demo.revenge.left}블록) · 예상 노획 ${n(Math.floor(Math.min(r.ore, r.ore * 0.6 * REVENGE.bonus)))}` : `습격 출격 · 예상 노획 ${n(Math.floor(r.ore * 0.6))}`}${demo.bounty?.target === r.id ? ` + 현상금 ${demo.bountyPayout()} α` : ''}${demo.pactLeft(r.id) ? ' · 불가침 파기' : ''}</a>`}
+        ${demo.ally?.id === r.id ? html`<p class="note">동맹은 습격할 수 없습니다.</p>` : html`<a class="btn danger lg" href="${href('/sim?raid=' + r.id)}">${demo.revenge?.rival === r.id ? `보복 출격 (${demo.revenge.left}블록) · 예상 노획 ${n(Math.floor(Math.min(r.ore, r.ore * 0.6 * REVENGE.bonus)))}` : `습격 출격 · 예상 노획 ${n(Math.floor(r.ore * 0.6))}`}${demo.bounty?.target === r.id ? ` + 현상금 ${demo.bountyPayout()} α` : ''}${demo.pactLeft(r.id) ? ' · 불가침 파기' : ''}${demo.stake(r.id).g ? ` · 지분 −${n(demo.stake(r.id).g * INVEST.raidHit, 1)} g` : ''}</a>`}
         <p class="note">약탈 성공 시 이 세력의 함대가 1기 줄고, 다음 함대 구성이 바뀝니다.</p></section>`;
     };
 
@@ -248,6 +251,20 @@ const screen: Screen = {
       ]);
     };
     const handlers = {
+      invest: (el: HTMLElement) => {
+        const r = demo.rivals().find((x) => x.id === sel);
+        if (!r) return;
+        const e = demo.invest(r.id, Number(el.dataset.g));
+        if (e) { sfx.play('error'); toast(e); return; }
+        sfx.play('coin'); notify('투자', `${r.name} 지분 +${el.dataset.g} g`, 'hwang', null); paint();
+      },
+      divest: () => {
+        const r = demo.rivals().find((x) => x.id === sel);
+        if (!r) return;
+        const e = demo.divest(r.id);
+        if (e) { sfx.play('error'); toast(e); return; }
+        sfx.play('coin'); paint();
+      },
       ally: () => {
         const r = demo.rivals().find((x) => x.id === sel);
         if (!r) return;
