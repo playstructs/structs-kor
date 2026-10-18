@@ -1,0 +1,80 @@
+# Playtest harness (playtest/README.md).
+#   Pull requests and main: the headless simulation gates (crashes, invariants, perf) and all ten
+#   browser personas against a local build of this commit.
+#   Nightly and on demand: the same against the live site, plus the Claude playtesters when the
+#   ANTHROPIC_API_KEY secret is set.
+# Every run uploads its report folder (report.html, JSON, screenshots) as an artifact.
+name: Playtest
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 18 * * *' # 03:17 KST
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Site to playtest
+        default: https://xn--2e0b952cv5c.com/
+      personas:
+        description: all, or a comma list (newcomer,industrialist,…)
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  build-check:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      PLAYTEST_RUN: ci-${{ github.run_id }}
+      PLAYTEST_BROWSER: bundled
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - name: Simulation gates
+        run: pnpm playtest:sim --seeds 4 --blocks 3000
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Browser personas against this build
+        run: |
+          pnpm preview --port 4173 --strictPort &
+          npx --yes wait-on@8.0.3 http://localhost:4173/
+          pnpm playtest:browser --target http://localhost:4173/ --fresh
+      - if: always()
+        run: pnpm playtest:report --out playtest/reports/ci-${{ github.run_id }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playtest-${{ github.run_id }}
+          path: playtest/reports/ci-${{ github.run_id }}
+          retention-days: 14
+
+  live:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      PLAYTEST_RUN: live-${{ github.run_id }}
+      PLAYTEST_BROWSER: bundled
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: All layers against the live site
+        run: pnpm playtest --target "${{ inputs.target || 'https://xn--2e0b952cv5c.com/' }}" --personas "${{ inputs.personas || 'all' }}" --fresh --parallel 2
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playtest-live-${{ github.run_id }}
+          path: playtest/reports/live-${{ github.run_id }}
+          retention-days: 30
