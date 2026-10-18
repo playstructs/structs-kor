@@ -150,3 +150,49 @@ input[type=range] { width: 100%; accent-color: var(--cheong); }
 tr.me td { background: var(--cheong-bg); }
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .stat-grid .stat strong { font-size: 17px; }
+
+/* ── Replicants ── */
+.rep-console { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px 18px; align-items: center; }
+.rep-big { grid-row: span 3; min-height: 120px; background: var(--p-body); color: var(--cheong); border: 3px solid var(--cheong); box-shadow: 6px 6px 0 var(--cheong-bg), inset 0 0 0 3px #0E0D1C; font: 400 34px var(--f-display); letter-spacing: 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.rep-big small { font: 400 13px var(--f-mono); letter-spacing: 0; color: var(--cheong-hi); }
+.rep-big:hover:not(:disabled) { background: var(--cheong-bg); }
+.rep-big:disabled { opacity: .5; cursor: not-allowed; }
+.rep-console-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rep-console-row .input { width: auto; min-height: 36px; }
+.rep-count { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); }
+.rep-count .input { width: 64px; }
+.rep-auto { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+.rep-figures { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.rep-figures div { display: flex; flex-direction: column; padding: 6px 10px; background: var(--sunken); border: 1px solid var(--line); }
+.rep-figures b { font-size: 18px; color: var(--white); }
+.rep-figures small { color: var(--text-faint); font-size: 11px; }
+.rep-bar, .rep-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rep-bar .input, .rep-filters .input { width: auto; min-height: 36px; font-size: 13px; }
+.rep-filters .input[name=q] { flex: 1 1 200px; }
+.rep-bar .end { margin-left: auto; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); }
+.rep-roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.rep-cardx { display: flex; flex-direction: column; background: var(--bg-raised); border: 2px solid var(--c2); box-shadow: 3px 3px 0 #0E0D1C; }
+.rep-cardx.sel { outline: 2px solid var(--cheong); outline-offset: 2px; }
+.rep-cardx.warn { border-color: var(--hwang); }
+.rep-cardx header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--hd); }
+.rep-cardx header > div { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.rep-cardx header b { color: #fff; font: 700 14px var(--f-pix); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rep-cardx header small { color: var(--text-dim); font-size: 11px; }
+.rep-role { padding: 1px 6px; border: 1px solid var(--c1); color: var(--c1); font: 700 11px var(--f-pix); }
+.rep-mid { display: flex; align-items: center; gap: 12px; padding: 10px; }
+.rep-mid .pfp { border: 2px solid var(--c1); }
+.rep-reads { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: auto; font-size: 14px; }
+.rep-cardx footer { display: flex; align-items: center; gap: 4px; padding: 6px 10px 10px; flex-wrap: wrap; }
+.rep-cardx footer .hud-btn { width: 32px; height: 32px; }
+.rep-rolesel { width: auto; min-height: 32px; font-size: 12px; margin-left: auto; }
+.battery { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); }
+.battery i { width: 6px; height: 12px; background: var(--sunken); }
+.battery i.on { background: var(--cheong); }
+.battery.low i.on { background: var(--jeok-strong); }
+.squad { border-top: 4px solid var(--c1) !important; }
+.squad-faces { display: flex; flex-wrap: wrap; gap: 4px; }
+.order-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.order-pre { margin: 0; padding: 12px; background: var(--sunken); border: 1px solid var(--line); font: 12px/1.7 var(--f-mono); white-space: pre-wrap; }
+.duty li.hwang { color: var(--hwang); } .duty li.jeok { color: var(--jeok-hi); } .duty li.cheong { color: var(--cheong-hi); }
+@media (max-width: 700px) { .rep-console { grid-template-columns: 1fr; } .rep-big { grid-row: auto; min-height: 80px; } }

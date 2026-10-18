@@ -73,6 +73,9 @@ const GUILDS: Record<string, ReturnType<typeof guild>> = {
   '0-9': guild('0-9', '흑룡단', 'BLK', '1-21', '밤에 움직이는 습격 전문 길드.'),
 };
 
+const CALL = ['Vesper', 'Kestrel', 'Orrin', 'Lumen', 'Tamsin', 'Corvid', 'Halcyon', 'Sable', 'Wren', 'Juno'];
+const REPLICANTS = CALL.slice(0, 9).map((c, i) => ({ player_id: `1-${301 + i}`, address: `structs1mockrep${i + 1}`, hd_index: i + 1, username: `${c}-${i + 1}`, alpha: [2.4, 0, 0.8, 5.1, 0, 1.2, 0.3, 0, 3.3][i] * 1e6, ore: [12, 39, 0, 163, 225, 40, 61, 8, 0][i], planet_id: i === 7 ? '' : `2-${401 + i}`, capacity: 6e6, load: [2, 6.4, 3, 5.9, 1, 4, 2.5, 0, 6][i] * 1e6 }));
+
 const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] = [
   [/^block$/, () => ({ height: 2_955_801, tip_height: 2_955_801, lag_blocks: 0, status: 'ok', updated_at: now })],
   [/^player\/(1-\d+)$/, (m) => PLAYERS[m[1]] ?? (byId(m[1]) ? { ...player(m[1], byId(m[1])!.name, '2-' + m[1].split('-')[1], 5, 0), alpha: 5e6 } : null)],
@@ -115,6 +118,8 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
     const n = (m.input ?? '').length % 5; return n < 2 ? { player_id: `1-${300 + n}` } : null;
   }],
   [/^resolve$/, () => []],
+  // Replicants (planned REQ-REP-1, answered here so the roster can be driven without a wallet).
+  [/^player\/(1-\d+)\/replicants$/, () => REPLICANTS],
   [/^guild-bank$/, () => [{ guild_id: '0-5', denom: 'uguild.0-5', collateral: 40e9, supply: 38e9, ratio: 1.05 }, { guild_id: '0-1', denom: 'uguild.0-1', collateral: 9e9, supply: 10e9, ratio: 0.9 }]],
 ];
 

@@ -19,10 +19,12 @@ import { wallet } from './wallet/wallet';
 import { startDesktop } from './core/desktop';
 import { installRefActions } from './social/actions';
 import { startBackgroundComms } from './chat/background';
+import { startOrders } from './game/orders';
 
 shell(document.getElementById('app')!);
 installRefActions();
 startBackgroundComms();
+startOrders();
 onRoute((path) => applySeo(path, SITE_URL, href('')));
 retireDemo();
 
