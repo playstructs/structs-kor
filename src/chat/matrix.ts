@@ -32,12 +32,15 @@ export class Matrix {
     const ts = (await guildApi.timestamp()).unix_timestamp;
     const s = wallet.signMessage(0, `LOGIN_GUILD${GUILD_ID}ADDRESS${k.address}DATETIME${ts}`);
     const g = await guildApi.matrixLogin({ address: k.address, pubkey: s.pubkey, signature: s.signature, guild_id: GUILD_ID, unix_timestamp: ts, device_id: deviceId() });
+    // The guild answers "nothing" as 200 + null: that is a refusal, not a session.
+    if (!g?.access_token || !g.user_id) throw new Error('채팅 서버가 로그인 정보를 보내지 않았습니다.');
     this.grant = { access_token: g.access_token, user_id: g.user_id, device_id: g.device_id };
     try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify(this.grant)); } catch { /* fine */ }
   }
 
   private async req<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const r = await fetch(endpoints.matrix + '/_matrix/client' + path, { ...init, headers: { authorization: 'Bearer ' + this.grant!.access_token, 'content-type': 'application/json', ...(init.headers || {}) } });
+    if (!this.grant) throw new Error('채팅에 로그인하지 않았습니다.');
+    const r = await fetch(endpoints.matrix + '/_matrix/client' + path, { ...init, headers: { authorization: 'Bearer ' + this.grant.access_token, 'content-type': 'application/json', ...(init.headers || {}) } });
     if (r.status === 401) { try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* fine */ } throw new Error('채팅 세션이 만료되었습니다.'); }
     if (!r.ok) throw new Error(`Matrix ${r.status}`);
     return r.json() as Promise<T>;

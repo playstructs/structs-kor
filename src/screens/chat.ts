@@ -3,6 +3,7 @@
  * Object ids in messages (2-14, 1-42) become references; a message that looks like a recovery
  * phrase is stopped before it is sent, with Cancel as the default. */
 import type { Screen } from '../router';
+import { ApiError } from '../api/http';
 import { href } from '../router';
 import { html, mount, raw, esc, toast, type Safe } from '../ui/dom';
 import { needSession } from '../ui/gate';
@@ -80,7 +81,7 @@ const screen: Screen = {
       return html`
       <div style="display:flex;flex-wrap:wrap;border:2px solid var(--line);min-height:70vh;margin:-4px">
         <nav aria-label="대화방 목록" style="flex:1 1 260px;max-width:300px;background:var(--bg-raised);border-right:1px solid var(--line);overflow-y:auto">
-          <div class="mono c-cheong" style="padding:12px 14px;font-size:12px;border-bottom:1px solid var(--line)">● ${matrix.grant?.user_id ?? '연결 중…'}</div>
+          <div class="mono c-cheong" style="padding:12px 14px;font-size:12px;border-bottom:1px solid var(--line)">● ${matrix.grant?.user_id ?? (err ? '연결 안 됨' : '연결 중…')}</div>
           ${sections().map(([title, rooms]) => html`<div class="label faint" style="padding:14px 14px 6px;font-size:11px">${title}</div>
             ${rooms.length ? rooms.map((r) => html`<button data-act="open" data-id="${r.id}" style="display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:8px 14px;border:0;background:${r.id === active ? 'var(--cheong-bg)' : 'transparent'};box-shadow:${r.id === active ? 'inset 3px 0 0 var(--cheong)' : 'none'};color:${r.id === active ? '#fff' : 'var(--text)'};font-size:14px;text-align:left;cursor:pointer">
               <span class="faint">${r.direct ? '@' : '#'}</span><span style="flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name.replace(/^#/, '')}</span>${r.unread ? html`<span style="min-width:20px;padding:1px 6px;background:var(--jeok-strong);color:#fff;font:11px var(--f-mono);text-align:center">${r.unread > 99 ? '99+' : r.unread}</span>` : ''}</button>`) : html`<p class="faint" style="padding:0 14px;font-size:12px;margin:4px 0">없음</p>`}`)}
@@ -143,7 +144,11 @@ const screen: Screen = {
     };
     paint();
     const off = matrix.onChange(() => { if (!active) active = sorted()[0]?.id ?? null; paint(); });
-    try { await matrix.signIn(); matrix.start(); } catch (e) { err = '채팅 로그인 실패: ' + (e as Error).message; paint(); }
+    try { await matrix.signIn(); matrix.start(); } catch (e) {
+      // A guild without the Matrix route answers 404: say so plainly rather than echo the API.
+      err = e instanceof ApiError && e.code === 'missing' ? '이 길드는 아직 통신(채팅)을 열지 않았습니다.' : '채팅 로그인 실패: ' + (e as Error).message;
+      paint();
+    }
     return () => { off(); matrix.stop(); };
   },
 };
