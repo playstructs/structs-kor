@@ -32,6 +32,7 @@ export function advise(): Tip[] {
   // An outpost within reach.
   const site = demo.outposts.filter((o) => !o.mine).sort((a, z) => z.odds - a.odds)[0];
   if (site && site.odds >= 0.5 && st.alpha >= OUTPOST.claim) tips.push({ pri: 47, tone: 'cheong', text: `${site.name} 공략 성공률 ${Math.round(site.odds * 100)}% · 장악하면 ${site.perk}.`, go: '/galaxy', cta: '거점' });
+  if (demo.event?.id === 'meteor' && st.shield < 50) tips.push({ pri: 84, tone: 'jeok', text: `유성우 · 방어막 ${Math.round(st.shield)}%. 50% 아래에선 구조체가 부서집니다 · 방어막 발생기를 켜고 버티세요.`, go: '/console', cta: '함교' });
   const v = demo.boss;
   if (v) tips.push({ pri: 86, tone: 'jeok', text: `공허 함대 출현 · ${v.left}블록 뒤 누군가를 덮칩니다. 요격하면 ${v.reward} α.`, go: '/sim?raid=void', cta: '요격' });
   const b = demo.bounty, bt = b && demo.rivals().find((x) => x.id === b.target);

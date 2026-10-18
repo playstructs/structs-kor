@@ -2,7 +2,7 @@
  * and the attack-animation plan. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { demo, TECH } from '../src/game/demo';
+import { demo, TECH, EVENTS } from '../src/game/demo';
 import { advise } from '../src/game/advisor';
 import { MISSIONS, missionUnits } from '../src/game/campaign';
 import { validate, chainSetup, YOU, CPU } from '../src/sim/fleets';
@@ -105,7 +105,7 @@ test('demo soak: every event type happens, and the economy grows without running
     demo.step();
     if (s.event) seen.add(s.event.id);
   }
-  assert.equal(seen.size, 5, `events seen: ${[...seen].join(',')}`);
+  assert.equal(seen.size, Object.keys(EVENTS).length, `events seen: ${[...seen].join(',')}`);
   assert.ok(s.alpha < 4000, `alpha ran away: ${s.alpha.toFixed(0)}`);
   assert.ok(demo.soldKw() <= 10 + 1e-9, 'market depth holds');
 });

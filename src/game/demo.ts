@@ -22,13 +22,15 @@ export interface DemoRaid { fleetId: string; owner: string; name: string; eta: n
 interface Contract { id: string; kw: number; rate: number; left: number; buyer: string; dir?: 'buy' | 'sell' }
 
 /* ── Galactic events: the weather of the economy. One at a time, a few dozen blocks each. ── */
-export type EventId = 'flare' | 'boom' | 'crash' | 'shortage' | 'pirates';
+export type EventId = 'flare' | 'boom' | 'crash' | 'shortage' | 'pirates' | 'meteor' | 'summit';
 export const EVENTS: Record<EventId, { name: string; text: string; tone: 'jeok' | 'hwang' | 'cheong' }> = {
   flare: { name: '태양 플레어', text: '발전 용량 −25% · 전력을 사두거나 판매량을 줄이세요', tone: 'jeok' },
   boom: { name: '광맥 노출', text: '채굴 속도 ×2 · 정제소를 풀가동하세요', tone: 'cheong' },
   crash: { name: '전력 시장 붕괴', text: '전력 가격 급락 · 사기에 좋은 때', tone: 'hwang' },
   shortage: { name: '전력 품귀', text: '전력 가격 급등 · 팔기에 좋은 때', tone: 'hwang' },
   pirates: { name: '해적 창궐', text: '습격이 더 잦고 빨라집니다 · 함대를 갖추세요', tone: 'jeok' },
+  meteor: { name: '유성우', text: '방어막이 50% 아래면 행성 구조체가 손상됩니다 · 방어막을 채우세요', tone: 'jeok' },
+  summit: { name: '은하 정상회담', text: '공물 +50% · 감시 강화로 공작 성공률 −20%p', tone: 'cheong' },
 };
 /* ── Research: alpha buys permanent edges; the deeper ones wait for rank. ── */
 export interface Tech { id: TechId; name: string; desc: (lv: number) => string; max: number; cost: number[]; rank: number; icon: number }
@@ -62,7 +64,7 @@ export const DOMINION = { raidsToSubjugate: 3, cost: 10, tribute: 0.3, disarmCos
 /** How many vassals a commander can hold: one, plus one per hegemony title. */
 const vassalCap = () => 1 + (s.hegemonyTier ?? 0);
 /** A vassal's expected tribute a block: its average growth (era included) × the share. */
-const tributeOf = (r: Rival) => r.growth * 0.7 * (1 + 0.2 * (s.era ?? 0)) * DOMINION.tribute * (doc('trade') ? 1.25 : 1) * (1 + 0.15 * lv('diplo'));
+const tributeOf = (r: Rival) => r.growth * 0.7 * (1 + 0.2 * (s.era ?? 0)) * DOMINION.tribute * (doc('trade') ? 1.25 : 1) * (1 + 0.15 * lv('diplo')) * (s.event?.id === 'summit' ? 1.5 : 1);
 const RIVALS = (): Rival[] => [
   { id: '1-666', name: '붉은 연합', tag: 'RED', alpha: 18, ore: 40, fleet: 4, growth: 0.32, raided: 0 },
   { id: '1-313', name: '검은 별 길드', tag: 'BLK', alpha: 34, ore: 25, fleet: 6, growth: 0.45, raided: 0 },
@@ -368,6 +370,15 @@ function blockInner() {
   const target = RATE.price * (ev('crash') ? 0.45 : ev('shortage') ? 1.7 : 1) * (1 - 0.04 * soldKw());
   const pull = (target - last) * (s.event ? 0.18 : 0.08);
   // The weather changes.
+  // A meteor shower: anything on the planet takes a hit now and then unless the shield holds.
+  if (ev('meteor') && s.shield < 50) {
+    const r = rngFor(`meteor:${s.height}`);
+    if (r() < 0.12) {
+      const pool = s.structs.filter((x) => x.cat === 'planet' && x.hp > 0 && x.building == null);
+      const hit = pool[Math.floor(r() * pool.length)];
+      if (hit) { hit.hp = Math.max(0, hit.hp - 1); if (hit.hp <= 0) { hit.online = false; hit.oc = false; } emit('jeok', `유성 충돌 · ${STRUCT_TYPE[hit.type] ?? '구조체'} 내구도 ${hit.hp}/${hit.max}`); }
+    }
+  }
   if (s.event) { if (--s.event.left <= 0) { emit('cheong', `${EVENTS[s.event.id].name} 종료`); s.event = null; } }
   else if (s.height % 7 === 0 && rnd() < 0.09) {
     const ids = Object.keys(EVENTS) as EventId[];
@@ -384,7 +395,7 @@ function blockInner() {
     if (s.height % 150 === 0 && r.fleet < 10) r.fleet++;
     if (r.vassal == null) continue;
     // A vassal's tribute comes out of its own growth, every block.
-    const t = gain * DOMINION.tribute * (doc('trade') ? 1.25 : 1) * (1 + 0.15 * lv('diplo'));
+    const t = gain * DOMINION.tribute * (doc('trade') ? 1.25 : 1) * (1 + 0.15 * lv('diplo')) * (ev('summit') ? 1.5 : 1);
     r.alpha -= t; s.alpha += t; s.tribute = (s.tribute ?? 0) + t;
     // A rearmed vassal remembers it was beaten by force.
     // Its own random stream: whether a vassal exists mustn't shift the economy's draws.
@@ -526,7 +537,7 @@ export const OPS: Record<OpId, { name: string; cost: number; odds: number; what:
   heist: { name: '금고 털기', cost: 5, odds: 0.55, what: '비축 광석 15% 탈취' },
 };
 /** A covert operation's real odds now (첩보망 included): shown and rolled from the same number. */
-export const opOdds = (op: OpId) => Math.min(0.95, OPS[op].odds + 0.08 * lv('spy'));
+export const opOdds = (op: OpId) => Math.max(0.05, Math.min(0.95, OPS[op].odds + 0.08 * lv('spy') - (s.event?.id === 'summit' ? 0.2 : 0)));
 function covert(id: string, op: OpId): { ok: boolean; text: string } | string {
   adoptStored();
   const r = rivals().find((x) => x.id === id);
