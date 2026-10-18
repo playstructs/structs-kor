@@ -12,7 +12,7 @@ import type { Screen } from '../router';
 import { go, href } from '../router';
 import { html, mount, toast, type Safe } from '../ui/dom';
 import { wallet } from '../wallet/wallet';
-import { session } from '../api/session';
+import { session, CookieBlockedError, cookieHelp } from '../api/session';
 import { enlist, type EnlistStep } from '../api/enlist';
 
 type Mode = 'start' | 'choose' | 'import' | 'unlock';
@@ -29,7 +29,7 @@ const screen: Screen = {
     const starting = location.pathname.endsWith('/start') || params.get('new') === '1';
     let mode: Mode = starting ? 'start' : wallet.state === 'locked' && !wallet.deviceSealed ? 'unlock' : 'choose';
     let step: EnlistStep = 'key';
-    let err = '', busy = false;
+    let err = '', busy = false, errHelp: string[] = [];
     const signal = { stopped: false };
 
     const box = (title: string, body: Safe) => html`
@@ -37,7 +37,7 @@ const screen: Screen = {
         <section class="card" style="width:100%;max-width:560px;box-shadow:10px 10px 0 var(--sunken)">
           <div class="label c-cheong" style="margin:-18px -18px 0;padding:12px 18px;background:var(--cheong-bg)">SN.CORP · 사원 인증</div>
           <h1 style="font-size:36px">${title}</h1>
-          ${err ? html`<div class="notice err" role="alert">${err}</div>` : ''}
+          ${err ? html`<div class="notice err" role="alert">${err}${errHelp.length ? html`<ul class="cookie-help">${errHelp.map((h) => html`<li>${h}</li>`)}</ul>` : ''}</div>` : ''}
           ${body}
         </section>
       </div>`;
@@ -80,7 +80,7 @@ const screen: Screen = {
     };
 
     const paint = () => { if (root.isConnected) mount(root, views[mode](), handlers); };
-    const fail = (e: unknown) => { busy = false; err = (e as Error).message || String(e); paint(); };
+    const fail = (e: unknown) => { busy = false; err = (e as Error).message || String(e); errHelp = e instanceof CookieBlockedError ? cookieHelp() : []; paint(); };
     const signIn = async () => { await session.signIn(); toast('로그인했습니다.'); go('/console'); };
     const run = () => {
       mode = 'start'; err = ''; paint();

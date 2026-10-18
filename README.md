@@ -28,7 +28,7 @@ Dev only: open any page with `?mock=1` to sign in as a fixture commander against
 | Chain LCD (fallback only) | `/relay/lcd` | `VITE_LCD_URL` |
 
 - **Dev relay.** The relay is the Vite dev server's proxy (`vite.config.ts`). Every call is same-origin, and the guild's session cookie is rewritten to stick on localhost, so members-only routes work with no CORS entry and no third-party cookies.
-- **Production.** The page talks to the guild directly. The guild must allow this origin with credentials (REQ-AUTH-2), and cross-site sign-in needs a token (REQ-AUTH-1).
+- **Production.** The page talks to the guild directly. The guild must allow this origin with credentials (REQ-AUTH-2), and cross-site sign-in needs a token (REQ-AUTH-1). Until the guild has token login, Safari (all of iOS), Firefox strict and Brave refuse the guild's session cookie from 구조체.com: the client says so with per-device steps, and `scripts/guild-proxy/worker.js` is a same-site relay (api.구조체.com) that makes the cookie first-party for every browser — deploy it and set `VITE_GUILD_API` to it.
 - **Overrides.** `VITE_TRANSPORT=relay|direct` overrides the default; see `.env.example`.
 
 The build writes `404.html` and `_redirects`, so every screen path (`/console`, `/energy`…) serves the app shell on GitHub Pages, Netlify and Cloudflare Pages.

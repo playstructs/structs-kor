@@ -149,3 +149,30 @@ test('sending alpha encodes: MsgPlayerSend takes a list of coins', async () => {
   const value = { creator: 'structs1abc', from_address: 'structs1abc', to_address: 'structs1def', amount: [{ denom: 'ualpha', amount: '5000000' }] };
   assert.deepEqual(validateMsg({ typeUrl: typeUrlOf('MsgPlayerSend'), value }), []);
 });
+
+test('sign-in holds other guild requests, lets its own through, and waits for the wire to go quiet', async () => {
+  const order: string[] = [];
+  let release: () => void = () => undefined;
+  const slow = new Promise<void>((r) => { release = r; });
+  (globalThis as { fetch: unknown }).fetch = async (url: string) => {
+    const path = String(url).split('/').pop()!;
+    order.push('send ' + path);
+    if (path === 'slow') await slow;
+    return new Response(JSON.stringify({ success: true, errors: [], data: path }), { headers: { 'content-type': 'application/json' } });
+  };
+  const { call, holdRequestsUntil, signinInit, quiet } = await import('../src/api/http');
+  const inFlight = call('slow');
+  let quietDone = false;
+  const q = quiet(2000).then(() => { quietDone = true; });
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(quietDone, false, 'a request on the wire keeps it from being quiet');
+  release(); await inFlight; await q;
+  assert.equal(quietDone, true);
+  let finish: () => void = () => undefined;
+  const signin = holdRequestsUntil(new Promise<void>((r) => { finish = r; }));
+  const held = call('player').then(() => order.push('done player'));
+  await call('timestamp', signinInit()).then(() => order.push('done timestamp'));
+  assert.ok(!order.includes('send player'), 'held while signing in');
+  finish(); await signin; await held;
+  assert.deepEqual(order.slice(-3), ['done timestamp', 'send player', 'done player']);
+});

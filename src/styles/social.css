@@ -340,3 +340,4 @@ tr.me td { background: var(--cheong-bg); }
 .snd-list .hud-btn { width: 30px; height: 30px; }
 .snd-file { position: relative; overflow: hidden; }
 .snd-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.cookie-help { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; color: var(--text); font-size: 13px; line-height: 1.6; }
