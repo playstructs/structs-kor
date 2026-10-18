@@ -9,14 +9,14 @@ pnpm build      # dist/ — upload anywhere static
 pnpm test       # game-layer tests (economy, campaign, animation plan, proof hashing, chain messages, replays)
 pnpm balance 40 # campaign win rates with the hard AI flying your side
 pnpm soak 6000  # demo economy over 6000 blocks with a scripted player
-pnpm playtest   # ten player profiles: headless sim, real-browser journeys, Claude playtesters → report.html
+pnpm playtest   # twenty player profiles: headless sim, real-browser journeys, Claude Sonnet deep dive → report.html
 ```
 
 Dev only: open any page with `?mock=1` to sign in as a fixture commander against a pretend Guild API (`src/api/mock.ts`; planned routes 404 so the fallbacks run). `?mock=0` turns it off. Production builds never include it.
 
 ## Playtesting
 
-`playtest/` is the playtest harness: ten player profiles (first-timer, optimizer, raider, trader, turtle, diplomat, completionist, speedrunner, low-vision keyboard player, fuzzer). Each one plays the demo headless for balance and stability, drives the real client in its own browser profile on its own device and network, and can be handed to a Claude playtester that writes a review. CI runs the simulation gates and the browser personas on every pull request. See [playtest/README.md](playtest/README.md).
+`playtest/` is the playtest harness. It has twenty player profiles: ten player types (first-timer, optimizer, raider, trader, turtle, diplomat, completionist, speedrunner, low-vision keyboard player, fuzzer) and ten feature specialists that together cover the 70 features in `playtest/features.ts`. The player types play the demo headless for balance and stability. Every profile drives the real client in its own browser profile, and can be handed to a Claude Sonnet playtester for a deep dive with a coverage report. CI runs the simulation gates and the browser personas on every pull request. See [playtest/README.md](playtest/README.md).
 
 ## Environments
 

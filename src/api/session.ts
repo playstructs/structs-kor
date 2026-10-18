@@ -28,8 +28,8 @@ export const session = {
 
   /** Resume a session this browser already holds (token or cookie). */
   async resume() {
-    // Dev mock: signed in as the fixture commander.
-    if (MOCK) { set({ state: 'in', playerId: '1-42', why: '' }); return; }
+    // Dev mock: signed in as this browser's commander if it enlisted against the mock, else the fixture.
+    if (MOCK) { set({ state: 'in', playerId: wallet.commander?.playerId ?? '1-42', why: '' }); return; }
     const pid = wallet.commander?.playerId;
     if (!pid) return;
     try {

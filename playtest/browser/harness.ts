@@ -30,10 +30,35 @@ export interface StepResult {
   step: string; status: 'ok' | 'skip' | 'fail'; note: string; ms: number; url: string;
   screenshot?: string; blocks?: number;
 }
+/** What this run lets an agent do. Enlisting is limited to the mock Guild API on the local dev
+ * server (src/api/mock.ts): no real account is created and nothing reaches a chain. */
+export interface Allow {
+  /** Answer the Guild API from src/api/mock.ts (?mock=1; dev server only) and enlist against it. */
+  mock: boolean;
+}
+export const GUEST: Allow = { mock: false };
+/** A commander a profile enlisted against the mock (or reused). Public facts only, never the phrase. */
+export interface Account { persona: string; playerId: string | null; address: string | null; callsign: string | null; created: boolean; at: string }
+export interface DialogSeen { step: string; type: string; message: string; answer: 'accepted' | 'dismissed'; why: string }
+
 export interface Finding { kind: string; severity: 'blocker' | 'major' | 'minor' | 'info'; step: string; message: string; detail?: unknown }
 export interface Perf { lcp?: number; cls?: number; longTasks?: number; longTaskMs?: number; heapMB?: number; domNodes?: number; ttfb?: number; load?: number }
 
 /** Injected before any page script: collects what the probes read back. */
+/** Guard rails injected into every page: the recovery phrase is never revealed, imported or typed,
+ * and the account is never wiped, locked or signed out by an agent. Blocked attempts are counted. */
+const GUARD = `(() => {
+  const blockedActs = ['reveal', 'doImport', 'doUnlock', 'forget', 'signout', 'lock'];
+  const stop = (e, what) => { e.preventDefault(); e.stopImmediatePropagation(); (window.__ptBlocked = window.__ptBlocked || []).push(what); };
+  document.addEventListener('submit', (e) => { const f = e.target.closest && e.target.closest('[data-act]'); if (f && blockedActs.includes(f.dataset.act)) stop(e, f.dataset.act); }, true);
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest && e.target.closest('[data-act], button');
+    if (!el) return;
+    const act = el.dataset.act || (el.form && el.form.dataset.act);
+    if (act && blockedActs.includes(act)) stop(e, act);
+  }, true);
+})();`;
+
 const PROBE = `(() => {
   // tsx/esbuild wraps named functions in __name(); functions sent to page.evaluate need it defined.
   window.__name = window.__name || ((f) => f);
@@ -49,6 +74,10 @@ const PROBE = `(() => {
 
 export class Harness {
   readonly findings: Finding[] = [];
+  readonly dialogs: DialogSeen[] = [];
+  account: Account | null = null;
+  /** Feature id → what this profile found (see features.ts). */
+  readonly coverage = new Map<string, { status: 'touched' | 'passed' | 'failed' | 'blocked' | 'guarded'; note: string; by: string }>();
   readonly steps: StepResult[] = [];
   readonly console: { type: string; text: string; step: string }[] = [];
   readonly requests = { total: 0, failed: [] as { url: string; status: number | string; step: string }[], blocked: [] as string[] };
@@ -56,9 +85,9 @@ export class Harness {
   step = 'boot';
   private shot = 0;
   private cdp?: CDPSession;
-  private constructor(readonly p: Profile, readonly ctx: BrowserContext, public page: Page, readonly target: URL, readonly dir: string) {}
+  private constructor(readonly p: Profile, readonly ctx: BrowserContext, public page: Page, readonly target: URL, readonly dir: string, readonly allow: Allow) {}
 
-  static async open(p: Profile, target: string, outDir: string, opts: { headed?: boolean; fresh?: boolean } = {}) {
+  static async open(p: Profile, target: string, outDir: string, opts: { headed?: boolean; fresh?: boolean; allow?: Allow } = {}) {
     const dir = resolve(outDir, p.id);
     mkdirSync(dir, { recursive: true });
     const userDataDir = resolve('playtest/.profiles', p.id);
@@ -82,8 +111,13 @@ export class Harness {
     });
     const page = ctx.pages()[0] ?? (await ctx.newPage());
     const t = new URL(target);
-    const h = new Harness(p, ctx, page, t, dir);
+    const allow = opts.allow ?? GUEST;
+    if (allow.mock && !['localhost', '127.0.0.1', '[::1]'].includes(t.hostname)) throw new Error('--mock needs the local dev server (the mock is never in a production build)');
+    const h = new Harness(p, ctx, page, t, dir, allow);
     await ctx.addInitScript(PROBE);
+    await ctx.addInitScript(GUARD);
+    // The mock signs the browser in, which hides the demo base: only account profiles get it.
+    await ctx.addInitScript(`try { localStorage.setItem('structs-kor.mock', '${allow.mock && p.account ? 1 : 0}'); } catch {}`);
     await ctx.route('**/*', (route) => {
       const r = route.request();
       if (r.method() !== 'GET' && r.method() !== 'HEAD' && r.method() !== 'OPTIONS' && new URL(r.url()).origin !== t.origin) { h.requests.blocked.push(`${r.method()} ${r.url()}`); return route.abort('blockedbyclient'); }
@@ -105,9 +139,14 @@ export class Harness {
     page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') this.console.push({ type: m.type(), text: m.text().slice(0, 400), step: this.step }); });
     page.on('pageerror', (e) => this.find('pageerror', 'blocker', e.message, e.stack?.split('\n').slice(0, 5).join('\n')));
     page.on('dialog', (d) => {
-      if (d.message().includes('pt-xss')) this.find('security.xss', 'blocker', `typed markup ran as script on ${new URL(page.url()).pathname}`);
-      else this.find('ui.native-dialog', 'minor', `a native browser ${d.type()} interrupted play: "${d.message().slice(0, 80)}"`);
-      void d.dismiss().catch(() => {});
+      const msg = d.message();
+      if (msg.includes('pt-xss')) { this.find('security.xss', 'blocker', `typed markup ran as script on ${new URL(page.url()).pathname}`); void d.dismiss().catch(() => {}); return; }
+      // Anything that would sign a chain transaction, change a contract or wipe the wallet is declined.
+      const refuse = /체인에 서명|계약을 해지|지갑을 지울|지갑을 삭제/.test(msg);
+      const accept = d.type() === 'confirm' && !refuse;
+      this.dialogs.push({ step: this.step, type: d.type(), message: msg.slice(0, 160), answer: accept ? 'accepted' : 'dismissed', why: refuse ? 'chain, contract or wallet action: always declined' : 'game confirmation' });
+      if (d.type() === 'alert') this.find('ui.native-dialog', 'minor', `a native browser alert interrupted play: "${msg.slice(0, 80)}"`);
+      void (accept ? d.accept() : d.dismiss()).catch(() => {});
     });
     page.on('request', () => this.requests.total++);
     page.on('requestfailed', (r) => { const f = r.failure()?.errorText ?? 'failed'; if (f !== 'net::ERR_BLOCKED_BY_CLIENT' && f !== 'net::ERR_ABORTED') this.requests.failed.push({ url: r.url(), status: f, step: this.step }); });
@@ -229,6 +268,54 @@ export class Harness {
     if (r.english.length) this.find('i18n.english', 'minor', `English text in the Korean UI: ${r.english.slice(0, 3).join(' · ')}`, r.english.slice(0, 15));
     for (const e of r.errors) this.find('js.error', 'blocker', e);
     return r;
+  }
+
+  /** The commander this browser profile holds, from the vault's public part (address, player id). */
+  async vaultCommander(): Promise<{ address: string; playerId: string | null } | null> {
+    return this.page.evaluate(() => {
+      try { const v = JSON.parse(localStorage.getItem('structs.vault.v1') || 'null'); const a = v?.accounts?.find((x: { index: number }) => x.index === 0); return a ? { address: a.address, playerId: a.playerId ?? null } : null; } catch { return null; }
+    }).catch(() => null);
+  }
+  /** Is the page signed in (the HUD offers no 로그인 control)? */
+  async signedIn() { return (await this.page.getByRole('link', { name: /^로그인$/ }).count().catch(() => 1)) === 0 && (await this.page.getByRole('button', { name: /^로그인$/ }).count().catch(() => 1)) === 0; }
+  /** Enlist through the app's own /start flow against the mock Guild API, or sign back in with the
+   * commander this profile already holds. One account per profile directory, so reruns reuse it. */
+  async enlist(budget: { left: number }): Promise<Account> {
+    if (!this.allow.mock || !this.p.account) throw new Error('enlisting runs only for account profiles against the mock Guild API (--mock, local dev server)');
+    await this.go('/');
+    const had = await this.vaultCommander();
+    let created = false;
+    if (had?.playerId) {
+      if (!(await this.signedIn())) { await this.go('/login'); await this.click('[data-act="resume"]'); await this.waitFor(async () => this.signedIn(), 30_000); }
+    } else {
+      if (budget.left <= 0) throw new Error('account cap reached for this run (one per profile)');
+      budget.left--;
+      created = true;
+      await this.go('/start');
+      const ok = await this.waitFor(async () => {
+        if (await this.page.getByText('입대가 멈췄습니다').count()) throw new Error(`enlist stopped: ${(await this.page.locator('.notice.err').first().innerText().catch(() => '')).slice(0, 160)}`);
+        const c = await this.vaultCommander();
+        return !!c?.playerId && !new URL(this.page.url()).pathname.endsWith('/start');
+      }, 60_000);
+      if (!ok) throw new Error('enlist did not finish within 60 s');
+    }
+    const c = await this.vaultCommander();
+    const callsign = await this.page.evaluate((a) => { try { return (JSON.parse(localStorage.getItem('structs-kor.mock.accounts') || '{}') as Record<string, { name: string }>)[a ?? '']?.name ?? null; } catch { return null; } }, c?.address ?? null);
+    this.account = { persona: this.p.id, playerId: c?.playerId ?? null, address: c?.address ?? null, callsign, created, at: new Date().toISOString() };
+    return this.account;
+  }
+  /** Poll `cond` while game and wall time pass (enlist polls the guild every 3 s). */
+  async waitFor(cond: () => Promise<boolean>, ms: number) {
+    const until = Date.now() + ms;
+    while (Date.now() < until) { if (await cond()) return true; await this.page.clock.runFor(1000).catch(() => {}); await this.page.waitForTimeout(250); }
+    return cond();
+  }
+  /** Attempts the guard rails stopped on this page. */
+  async blocked(): Promise<string[]> { return this.page.evaluate(() => (window as unknown as { __ptBlocked?: string[] }).__ptBlocked ?? []).catch(() => []); }
+  mark(id: string, status: 'touched' | 'passed' | 'failed' | 'blocked' | 'guarded', note: string) {
+    const rank = { touched: 0, guarded: 1, blocked: 2, passed: 3, failed: 4 } as const;
+    const cur = this.coverage.get(id);
+    if (!cur || rank[status] >= rank[cur.status]) this.coverage.set(id, { status, note, by: this.p.id });
   }
 
   async close() { await this.ctx.close().catch(() => {}); }

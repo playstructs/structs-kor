@@ -1,9 +1,9 @@
-/* `pnpm playtest:browser [--target URL] [--personas all|a,b] [--steps a,b] [--parallel 3] [--headed] [--fresh] [--out dir]`
+/* `pnpm playtest:browser [--target URL] [--mock] [--personas all|a,b] [--steps a,b] [--parallel 3] [--headed] [--fresh] [--out dir]`
  * Walks each persona's journey through the real client in its own browser profile, then writes
  * <out>/browser.json plus screenshots under <out>/<persona>/. Exits 1 on any blocker finding. */
 import { pick, type Profile } from '../profiles';
-import { Harness, RateLimited, type Finding, type StepResult } from './harness';
-import { STEPS } from './journeys';
+import { Harness, RateLimited, GUEST, type Allow, type Account, type DialogSeen, type Finding, type StepResult } from './harness';
+import { STEPS, accountBudget } from './journeys';
 import { args, reportDir, writeJson } from '../lib/util';
 
 export const DEFAULT_TARGET = 'https://xn--2e0b952cv5c.com/';
@@ -13,9 +13,10 @@ export interface BrowserResult {
   steps: StepResult[]; findings: Finding[];
   console: Harness['console']; requests: Harness['requests'];
   perf: Record<string, unknown> | null; ms: number; blocks: number;
+  account?: Account | null; coverage?: Record<string, { status: string; note: string; by: string }>; dialogs?: DialogSeen[];
 }
 
-export async function playBrowser(p: Profile, target: string, out: string, opts: { headed?: boolean; fresh?: boolean; steps?: string[] } = {}): Promise<BrowserResult> {
+export async function playBrowser(p: Profile, target: string, out: string, opts: { headed?: boolean; fresh?: boolean; steps?: string[]; allow?: Allow } = {}): Promise<BrowserResult> {
   const t0 = Date.now();
   const h = await Harness.open(p, target, out, opts);
   let perf: Record<string, unknown> | null = null;
@@ -47,16 +48,17 @@ export async function playBrowser(p: Profile, target: string, out: string, opts:
     // Same-origin files that 404 are missing assets; API 404s are the planned-route fallbacks
     // (src/api/planned.ts) working as designed.
     const origin = new URL(target).origin;
-    const missing = [...new Set(h.requests.failed.filter((r) => r.status === 404 && r.url.startsWith(origin)).map((r) => new URL(r.url).pathname))];
+    const isApi = (u: string) => /\/(api|relay)\//.test(new URL(u).pathname);
+    const missing = [...new Set(h.requests.failed.filter((r) => r.status === 404 && r.url.startsWith(origin) && !isApi(r.url)).map((r) => new URL(r.url).pathname))];
     for (const m of missing) h.find('asset.missing', 'major', `missing file: ${m}`);
-    const planned = [...new Set(h.requests.failed.filter((r) => r.status === 404 && !r.url.startsWith(origin) && /\/api\//.test(r.url)).map((r) => new URL(r.url).pathname))];
+    const planned = [...new Set(h.requests.failed.filter((r) => r.status === 404 && (isApi(r.url) || (!r.url.startsWith(origin) && /\/api\//.test(r.url)))).map((r) => new URL(r.url).pathname))];
     if (planned.length) h.find('api.planned', 'info', `${planned.length} planned Guild API route(s) answered 404 and fell back: ${planned.slice(0, 4).join(', ')}`);
     const bad = h.requests.failed.filter((r) => typeof r.status === 'string' || r.status >= 500);
     if (bad.length) h.find('network', 'minor', `${bad.length} failed request(s); first: ${bad[0].url} (${bad[0].status})`);
   } finally {
     await h.close();
   }
-  return { persona: p.id, target, device: p.device, viewport: null, steps: h.steps, findings: h.findings, console: h.console.slice(0, 50), requests: { ...h.requests, failed: h.requests.failed.slice(0, 50) }, perf, ms: Date.now() - t0, blocks: h.blocks };
+  return { persona: p.id, target, device: p.device, viewport: null, account: h.account, coverage: Object.fromEntries(h.coverage), dialogs: h.dialogs, steps: h.steps, findings: h.findings, console: h.console.slice(0, 50), requests: { ...h.requests, failed: h.requests.failed.slice(0, 50) }, perf, ms: Date.now() - t0, blocks: h.blocks };
 }
 
 /** Replay a persona after the host throttles us: wait, then start its journey again. */
@@ -76,15 +78,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const target = a.target ?? process.env.PLAYTEST_TARGET ?? DEFAULT_TARGET;
   const out = reportDir(a);
   const personas = pick(a.personas);
+  const allow: Allow = a.mock === 'true' ? { mock: true } : GUEST;
+  accountBudget.left = personas.length; // at most one account per profile
   const results: BrowserResult[] = [];
   console.log(`playtest:browser · ${personas.length} personas → ${target}`);
   // Gentle on a live host: GitHub Pages throttles at roughly 10k requests in a burst.
   const par = Math.max(1, Number(a.parallel ?? (target.includes('localhost') || target.includes('127.0.0.1') ? 4 : 2)));
   for (let i = 0; i < personas.length; i += par) {
-    const batch = await Promise.all(personas.slice(i, i + par).map((p) => withBackoff(p, target, out, { headed: a.headed === 'true', fresh: a.fresh === 'true', steps: a.steps?.split(',') }).catch((e) => ({ persona: p.id, target, device: p.device, viewport: null, steps: [], findings: [e instanceof RateLimited ? { kind: 'infra.rate-limit', severity: 'info' as const, step: 'boot', message: `not played: ${e.message}` } : { kind: 'harness', severity: 'blocker' as const, step: 'boot', message: (e as Error).message }], console: [], requests: { total: 0, failed: [], blocked: [] }, perf: null, ms: 0, blocks: 0 }))));
+    const batch = await Promise.all(personas.slice(i, i + par).map((p) => withBackoff(p, target, out, { headed: a.headed === 'true', fresh: a.fresh === 'true', steps: a.steps?.split(','), allow }).catch((e) => ({ persona: p.id, target, device: p.device, viewport: null, steps: [], findings: [e instanceof RateLimited ? { kind: 'infra.rate-limit', severity: 'info' as const, step: 'boot', message: `not played: ${e.message}` } : { kind: 'harness', severity: 'blocker' as const, step: 'boot', message: (e as Error).message }], console: [], requests: { total: 0, failed: [], blocked: [] }, perf: null, ms: 0, blocks: 0 }))));
     results.push(...batch);
   }
-  writeJson(`${out}/browser.json`, { at: new Date().toISOString(), target, results });
+  const accounts = results.map((r) => r.account).filter(Boolean);
+  writeJson(`${out}/browser.json`, { at: new Date().toISOString(), target, mock: allow.mock, accounts, results });
+  if (accounts.length) console.log(`accounts: ${accounts.map((x) => `${x!.persona}=${x!.callsign}(${x!.playerId})${x!.created ? '' : ' reused'}`).join(', ')}`);
   const blockers = results.flatMap((r) => r.findings.filter((f) => f.severity === 'blocker').map((f) => `${r.persona}: ${f.message}`));
   const majors = results.reduce((a, r) => a + r.findings.filter((f) => f.severity === 'major').length, 0);
   console.log(`\n${blockers.length} blocker(s), ${majors} major finding(s) · ${out}/browser.json`);

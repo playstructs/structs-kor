@@ -129,7 +129,8 @@ const round1 = (x: number) => Math.round(x * 10) / 10, round3 = (x: number) => M
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const a = args();
-  const personas = pick(a.personas);
+  // Feature specialists reuse an existing policy, so the simulation plays only the ten player types.
+  const personas = pick(a.personas).filter((p) => p.sim !== false);
   const seeds = Number(a.seeds ?? 8), blocks = Number(a.blocks ?? 6000);
   const out = reportDir(a);
   const all: PersonaSummary[] = [];

@@ -38,7 +38,7 @@ export const MOCK = import.meta.env.DEV && (() => {
 
 export async function call<T>(path: string, init: RequestInit = {}): Promise<Envelope<T>> {
   if (MOCK) {
-    const hit = (await import('./mock')).mock<T>(path);
+    const hit = (await import('./mock')).mock<T>(path, init);
     if (hit) return hit;
     throw new ApiError('아직 없는 API입니다.', 'missing', 404, path);
   }
