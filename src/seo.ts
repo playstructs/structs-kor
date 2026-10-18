@@ -44,6 +44,7 @@ export const PAGES: Record<string, PageSeo> = {
   '/chat': { title: '통신', description: '길드 채널과 교신 기록. Matrix 기반 실시간 길드 채팅.', priority: 0.5, changefreq: 'daily' },
   '/record': { title: '전적', description: '사령관 계급과 경력, 훈장, 작전 목표.', priority: 0.5, changefreq: 'weekly' },
   '/profile': { title: '사령관 프로필', description: '사령관 프로필.', hidden: true },
+  '/board': { title: '작전 보드', description: '내 방식대로 배치하는 실시간 카드 콘솔. 프리셋과 보드 공유.', hidden: true },
   '/war': { title: '작전 상황실', description: '표적 보드, 원한과 공격 금지 목록, 내 행성 사건 기록, 진행 중인 습격.', hidden: true },
   '/stats': { title: '은하 통계 · 랭킹', description: '사령관, 행성, 구조체 수와 체인 상태, 최고의 사령관과 길드 순위.', priority: 0.6, changefreq: 'daily' },
   '/o': { title: '객체 카드', description: '플레이어, 행성, 구조체, 함대, 길드, 공급자 — 구조체의 모든 객체를 실시간 카드로.', hidden: true },

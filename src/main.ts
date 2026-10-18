@@ -49,6 +49,7 @@ route('/codex', () => import('./screens/codex'));
 route('/profile', () => import('./screens/profile'));
 route('/stats', () => import('./screens/stats'));
 route('/war', () => import('./screens/war'));
+route('/board', () => import('./screens/board'));
 route('/o', () => import('./screens/object'), { nested: true });
 route('/s', () => import('./screens/object'), { nested: true });
 route('/404', () => import('./screens/notfound'));
