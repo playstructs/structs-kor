@@ -142,7 +142,7 @@ const screen: Screen = {
     };
     const advisor = (): Safe => {
       const tasks = [...pow.tasks.values()];
-      const tips = isDemo ? advise() : d ? adviseReal(d, { ready: tasks.filter((t) => t.status === 'ready').length, stuck: tasks.filter((t) => t.status === 'failed' && (t.tries ?? 0) >= 3).length, hashing: pow.running, unlocked: wallet.state === 'unlocked' }) : [];
+      const tips = isDemo ? advise(career.rank.i) : d ? adviseReal(d, { ready: tasks.filter((t) => t.status === 'ready').length, stuck: tasks.filter((t) => t.status === 'failed' && (t.tries ?? 0) >= 3).length, hashing: pow.running, unlocked: wallet.state === 'unlocked' }) : [];
       if (!tips.length) return html``;
       return html`<section class="card game-panel advisor"><div class="card-head"><h2>참모 보고</h2><span class="end label c-cheong">ADVISOR</span></div>
         <ol class="tips">${tips.map((t) => html`<li class="tip ${t.tone}"><p>${t.text}</p>${t.go === '/console' ? '' : html`<a class="btn ghost" href="${href(t.go)}">${t.cta}</a>`}</li>`)}</ol></section>`;

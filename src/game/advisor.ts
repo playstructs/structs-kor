@@ -1,14 +1,21 @@
 /* 참모 (the advisor): reads the demo base and the galaxy and names the three moves that matter
  * most right now, most urgent first, each with a button that goes and does something about it. */
-import { demo, DOMINION, ENGINE, OUTPOST, OPS, opOdds } from './demo';
+import { demo, DOMINION, ENGINE, OUTPOST, OPS, opOdds, ABILITIES } from './demo';
 import type { Dashboard } from '../api/planned';
 import { STRUCT_TYPE } from '../i18n/ko';
 
 export interface Tip { pri: number; tone: 'jeok' | 'hwang' | 'cheong'; text: string; go: string; cta: string }
 
-export function advise(): Tip[] {
+/** `rank` is the commander's rank index (abilities are offered only once unlocked). */
+export function advise(rank = 99): Tip[] {
   const st = demo.state, tips: Tip[] = [];
   const raid = demo.raid, r = demo.rates();
+  const ready = (id: 'surge' | 'overshield' | 'rally') => rank >= ABILITIES.find((a) => a.id === id)!.rank && !demo.abilityLeft(id);
+  const refining = st.structs.some((x) => x.type === 15 && x.online && x.building == null && x.hp > 0);
+  // Abilities, when they'd turn a raid.
+  if (raid && raid.eta > 0 && st.ore >= 20 && refining && ready('surge')) tips.push({ pri: 101, tone: 'hwang', text: `습격 전에 긴급 정제 [7]: 광석을 지금 알파로 바꿔 약탈을 피하세요.`, go: '/console', cta: '함교' });
+  if (raid && raid.eta <= 2 && st.shield < 60 && ready('overshield')) tips.push({ pri: 99, tone: 'hwang', text: `방어막 ${Math.round(st.shield)}% · 방어막 과충전 [8]로 +40% 하고 맞으세요.`, go: '/console', cta: '함교' });
+  if (raid && raid.eta === 0 && ready('rally')) tips.push({ pri: 98, tone: 'hwang', text: `교전 중 · 총동원 [9]으로 모든 함포를 사격시키세요.`, go: '/console', cta: '함교' });
   if (raid && raid.eta > 0 && st.ore >= 20) tips.push({ pri: 100, tone: 'jeok', text: `${raid.name} 함대 ${raid.eta}블록 후 도착 · 정제되지 않은 광석 ${Math.floor(st.ore)} 단위가 노출되어 있습니다. 정제하거나 팔아 지키세요.`, go: '/market', cta: '거래소' });
   const hurt = st.structs.filter((x) => x.hp > 0 && x.hp < x.max * 0.5).length, dead = st.structs.filter((x) => x.hp <= 0).length;
   if (dead + hurt) tips.push({ pri: raid ? 85 : 60, tone: 'jeok', text: `구조체 ${dead ? `${dead}기 파괴` : ''}${dead && hurt ? ' · ' : ''}${hurt ? `${hurt}기 중파` : ''}. 다음 습격 전에 수리하세요.`, go: '/console', cta: '함교' });
