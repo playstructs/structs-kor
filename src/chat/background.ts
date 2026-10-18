@@ -3,6 +3,7 @@
  * pops a notice wherever you are. Signing out stops it. */
 import { matrix, localpart } from './matrix';
 import { session } from '../api/session';
+import { wallet } from '../wallet/wallet';
 import { current, go } from '../router';
 import { notify } from '../game/fx';
 import { pushNative } from '../game/native';
@@ -23,6 +24,8 @@ export function startBackgroundComms() {
     // A beat after sign-in, so the first screen's own reads go first.
     setTimeout(() => { if (session.status.state === 'in' && matrix.possible) matrix.signIn().then(() => matrix.start()).catch(() => null); }, 3500);
   });
+  // Unlocking the wallet later is when chat becomes possible: start then too.
+  wallet.onChange(() => { if (session.status.state === 'in' && matrix.possible && matrix.state === 'idle') matrix.signIn().then(() => matrix.start()).catch(() => null); });
   matrix.onChange(() => {
     for (const f of fns) f();
     const me = localpart(matrix.me);
