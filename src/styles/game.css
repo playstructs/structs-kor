@@ -89,15 +89,6 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .meter { border: 0; height: 6px; background: #0E0D1C; }
 .meter > i { transition: width .6s; }
 
-.radar { position: relative; height: 200px; background: radial-gradient(circle, #133546 0, #0E0D1C 70%); border: 1px solid var(--line); overflow: hidden; }
-.radar .ring { position: absolute; left: 50%; top: 50%; border: 1px solid var(--cheong-mid); border-radius: 50%; transform: translate(-50%, -50%); }
-.radar .r1 { width: 50px; height: 50px; } .radar .r2 { width: 120px; height: 120px; } .radar .r3 { width: 190px; height: 190px; }
-.radar-sweep { position: absolute; left: 50%; top: 50%; width: 200px; height: 200px; margin: -100px 0 0 -100px; border-radius: 50%; background: conic-gradient(from 0deg, rgba(67,205,182,.4), rgba(67,205,182,0) 22%); animation: sweep 4s linear infinite; }
-@keyframes sweep { to { transform: rotate(360deg); } }
-.blip { position: absolute; width: 8px; height: 8px; transform: translate(-50%, -50%); }
-.blip.home { left: 50%; top: 50%; background: var(--cheong); box-shadow: 0 0 8px var(--cheong); }
-.blip.enemy { background: var(--jeok-strong); box-shadow: 0 0 10px var(--jeok-strong); animation: alert-pulse .8s steps(2) infinite; }
-.blip-l { position: absolute; font: 10px var(--f-mono); color: var(--jeok-hi); white-space: nowrap; }
 
 .feed .log li { padding: 4px 6px; border-left: 2px solid transparent; }
 .feed .log li.bad { background: var(--jeok-bg); border-left-color: var(--jeok-strong); }
@@ -193,7 +184,7 @@ kbd { display: inline-flex; align-items: center; justify-content: center; min-wi
 .keys-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: center; }
 .keys-in p { margin: 0; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; }
 .toast { z-index: 2000; }
-@media (prefers-reduced-motion: reduce) { .fx-banner-in, .fx-banner strong, .debrief-title, .fx-note, .tile.alert, .mission.ready, .raid-alarm strong, .shield-bar i.low, .radar-sweep, .blip.enemy { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .fx-banner-in, .fx-banner strong, .debrief-title, .fx-note, .tile.alert, .mission.ready, .raid-alarm strong, .shield-bar i.low { animation: none !important; } }
 
 /* ── Grid Command ── */
 .grid-cmd { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 16px; align-items: start; }

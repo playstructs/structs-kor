@@ -25,7 +25,11 @@ export interface BoardStruct {
   hot?: boolean;
   /** Veteran rank (0–3): stars on its tag. */
   vet?: number;
+  /** Work it owes the chain (a build, a mine or a refine) and how far along: a plate under the tile. */
+  work?: BoardWork | null;
 }
+export interface BoardWork { kind: 'BUILD' | 'MINE' | 'REFINE'; label: string; p: number | null; done?: boolean }
+const WORK: Record<BoardWork['kind'], { ko: string; glyph: string }> = { BUILD: { ko: '건설', glyph: '\ue90c' }, MINE: { ko: '채굴', glyph: '\ue91b' }, REFINE: { ko: '정제', glyph: '\ue925' } };
 export interface BoardOpts {
   /** Planetary slots per ambit; omit for a fleet-only (simulator) board. */
   slots?: Partial<Record<Ambit, number>>;
@@ -170,7 +174,9 @@ export class Board {
             if (s >= slotsFor(ambit)) marker = `<img class="bd-marker" src="${blockedUrl(ambit)}" alt="">`;
             else { key = `plan|${ambit}|${s}`; marker = `<img class="bd-marker bd-beacon" src="${beaconUrl(ambit)}" alt="">`; }
           } else key = `fleet|${side}|${ambit}|${this.slotAt(col, r, i)}`;
-          html += `<div class="bd-cell${key ? '' : ' bd-blocked'}" style="${bg}" ${key ? `data-key="${key}" data-ambit="${ambit}" data-side="${side}"` : ''}>${marker}${key ? `<div class="bd-mount${side === 'attacker' ? ' bd-flip' : ''}"></div><img class="bd-focus" alt="">` : ''}</div>`;
+          // On the home planet, an empty tile of ours says it can be built on.
+          const tip = key && this.opts.slots && side === 'defender' && col !== 'DC' ? '<span class="bd-slot-tip" aria-hidden="true">+ 건설</span>' : '';
+          html += `<div class="bd-cell${key ? '' : ' bd-blocked'}" style="${bg}" ${key ? `data-key="${key}" data-ambit="${ambit}" data-side="${side}"` : ''}>${marker}${tip}${key ? `<div class="bd-mount${side === 'attacker' ? ' bd-flip' : ''}"></div><img class="bd-focus" alt="">` : ''}</div>`;
         }
         html += '</div>';
       }
@@ -331,22 +337,25 @@ export class Board {
     if (!s || !cell) return;
     const mount = cell.querySelector<HTMLElement>('.bd-mount')!;
     const hp = hpOverride ?? s.health;
-    const sig = [s.typeId, hp, s.maxHealth, s.online, s.hidden, s.protects, s.building, s.isCommand, s.hot, s.vet].join('|');
+    const w = s.work ?? null;
+    const sig = [s.typeId, hp, s.maxHealth, s.online, s.hidden, s.protects, s.building, s.isCommand, s.hot, s.vet, w && `${w.kind}${w.label}${w.p}${w.done}`].join('|');
     if (this.painted.get(id) === sig && cell.querySelector('.bd-still')) return;
     this.painted.set(id, sig);
     if (hp <= 0) { this.clear(cell); return; }
     cell.classList.add('bd-has');
-    const offline = s.online === false;
-    const layers = s.building != null
+    const building = s.building != null || w?.kind === 'BUILD';
+    const offline = s.online === false && !building;
+    const layers = building
       ? `<img src="${import.meta.env.BASE_URL}img/structs/deployment-indicator/deployment-indicator.gif" style="z-index:200" alt="">`
       : stillLayers(s.typeId, hp, s.maxHealth, s.hidden).map((l) => `<img src="${l.src}" style="z-index:${l.z}" alt="">`).join('');
     const pips = Array.from({ length: s.maxHealth }, (_, i) => `<i class="${i < hp ? 'on' : ''}"></i>`).join('');
-    const badges = [offline ? '<span class="bd-badge off" title="오프라인">OFF</span>' : '', s.protects ? '<span class="bd-badge def" title="방어 중">DEF</span>' : '', s.isCommand ? '<span class="bd-badge cmd" title="지휘함">CMD</span>' : '', s.hot && !offline ? '<span class="bd-badge hot" title="과부하 운전">OC</span>' : '', s.vet ? `<span class="bd-badge vet" title="베테랑">${'★'.repeat(s.vet)}</span>` : '', s.building != null ? `<span class="bd-badge bld">${Math.round(s.building * 100)}%</span>` : ''].join('');
+    const badges = [offline ? '<span class="bd-badge off" title="오프라인">OFF</span>' : '', s.protects ? '<span class="bd-badge def" title="방어 중">DEF</span>' : '', s.isCommand ? '<span class="bd-badge cmd" title="지휘함">CMD</span>' : '', s.hot && !offline ? '<span class="bd-badge hot" title="과부하 운전">OC</span>' : '', s.vet ? `<span class="bd-badge vet" title="베테랑">${'★'.repeat(s.vet)}</span>` : ''].join('');
+    const plate = w ? `<div class="bd-work ${w.kind.toLowerCase()}${w.done ? ' done' : ''}" title="${WORK[w.kind].ko} · ${esc(w.label)}"><i class="si">${WORK[w.kind].glyph}</i><span>${WORK[w.kind].ko}</span><em>${esc(w.label)}</em>${w.p != null ? `<b><i style="width:${Math.round(Math.max(0, Math.min(1, w.p)) * 100)}%"></i></b>` : ''}</div>` : '';
     mount.innerHTML = `<div class="bd-still${offline ? ' bd-offline' : ''}${s.hot && !offline ? ' bd-hot' : ''}${s.hidden ? ' bd-stealth' : ''}">${layers}</div><div class="bd-anims"></div>`;
     let hud = cell.querySelector<HTMLElement>('.bd-hud');
     if (!hud) { hud = document.createElement('div'); hud.className = 'bd-hud'; cell.appendChild(hud); }
-    hud.innerHTML = `<div class="bd-pips">${pips}</div><div class="bd-badges">${badges}</div>`;
-    cell.setAttribute('aria-label', `${s.side === 'defender' ? '아군' : '적'} ${STRUCT_TYPE[s.typeId] ?? typeNameOf(s.typeId)} 내구도 ${hp}/${s.maxHealth}`);
+    hud.innerHTML = `<div class="bd-pips">${pips}</div><div class="bd-badges">${badges}</div>${plate}`;
+    cell.setAttribute('aria-label', `${s.side === 'defender' ? '아군' : '적'} ${STRUCT_TYPE[s.typeId] ?? typeNameOf(s.typeId)} 내구도 ${hp}/${s.maxHealth}${w ? ` · ${WORK[w.kind].ko} ${w.label}` : ''}`);
   }
 
   /* ── Selection & targeting marks ── */
