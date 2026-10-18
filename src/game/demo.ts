@@ -186,10 +186,14 @@ export const DOCTRINE_SWITCH = 40;
 const doc = (id: DoctrineId) => s.doctrine === id;
 /** Bonuses on power sold, applied as each block is paid (so they follow the doctrine and guild you hold now). */
 const sellBonus = () => 1 + (inGuild('gold') ? 0.05 : 0) + (doc('trade') ? 0.12 : 0) + (holds('relay') ? 0.05 : 0);
-export const RATE = { maxDealKw: 4, marketDepthKw: 10, mine: 0.6, refine: 0.35, alphaPerOre: 1, baseKw: 3, genKw: 2, raidEvery: 30, raidEta: 6, price: 0.042 };
+export const RATE = { maxDealKw: 4, maxDealBlocks: 1000, marketDepthKw: 10, mine: 0.6, refine: 0.35, alphaPerOre: 1, baseKw: 3, genKw: 2, raidEvery: 30, raidEta: 6, price: 0.042 };
 const lv = (t: TechId) => s.tech?.[t] ?? 0;
 const rivalWorth = (r: Rival) => r.alpha + r.ore * 0.6 + r.fleet * 4;
 const rivals = () => { s.rivals ??= RIVALS(); for (const r of s.rivals) r.fleet = Math.min(r.fleet, 10); return s.rivals; };
+/* Orders take numbers from inputs (and from anyone at the console): junk is refused, never saved. */
+const badAmount = (x: number) => !Number.isFinite(x) || x <= 0;
+const badBlocks = (n: number) => !Number.isInteger(n) || n < 1 || n > RATE.maxDealBlocks;
+const AMBIT_BIT: Record<Ambit, number> = { space: 16, air: 8, land: 4, water: 2 };
 const kwOf = (type: number) => (TYPES_BY_ID[type]?.passiveDraw ?? 0) / 1e6 * 1.2 * (1 - 0.12 * lv('grid')); // mW → kW, nudged so power matters
 const ev = (id: EventId) => s.event?.id === id;
 const inGuild = (id: GuildId) => s.guild?.id === id;
@@ -208,7 +212,7 @@ function fresh(): State {
     height: 1_482_200, ore: 12, alpha: 4.5, infusedKw: 0, vein: 18_400, shield: 72,
     structs: [
       S('5-901', 1, 'space', 0, 'fleet'), S('5-902', 3, 'space', 0, 'fleet'), S('5-903', 12, 'water', 0, 'fleet'), S('5-904', 9, 'land', 1, 'fleet'),
-      S('5-910', 14, 'land', 0, 'planet'), S('5-911', 15, 'land', 1, 'planet', false), S('5-912', 20, 'air', 0, 'planet'), S('5-913', 16, 'space', 0, 'planet'),
+      S('5-910', 14, 'land', 0, 'planet'), S('5-911', 15, 'land', 1, 'planet', false), S('5-912', 20, 'land', 2, 'planet'), S('5-913', 16, 'space', 0, 'planet'),
     ],
     raid: null, nextRaid: 18, contracts: [], log: [], seq: 0, raidsRepelled: 0, raidsLost: 0, earned: 0, chronicle: [],
     priceHist: Array.from({ length: 40 }, (_, i) => RATE.price * (0.8 + 0.25 * Math.sin(i / 5) + i / 160)),
@@ -217,7 +221,7 @@ function fresh(): State {
 
 // The base persists in this browser across visits; it keeps producing while you are away.
 let on = (() => { try { return localStorage.getItem(KEY) === '1'; } catch { return false; } })();
-let s: State = (() => { try { return JSON.parse(localStorage.getItem(KEY + '.state') || 'null') ?? fresh(); } catch { return fresh(); } })();
+let s: State = (() => { try { const st = JSON.parse(localStorage.getItem(KEY + '.state') || 'null') as State | null; return st ? migrate(st) : fresh(); } catch { return fresh(); } })();
 let catching = false;
 
 /* Several tabs, one base: the tab holding a fresh heartbeat runs the blocks; every tab adopts the
@@ -236,6 +240,16 @@ function leading(): boolean {
     return true;
   } catch { return true; }
 }
+/** Saves from before the starting generator moved: one set up in the air goes to a free land or water slot. */
+export function migrate(st: State): State {
+  for (const x of st.structs) {
+    if (x.cat !== 'planet' || (TYPES_BY_ID[x.type]?.possibleAmbit ?? 30) & AMBIT_BIT[x.ambit]) continue;
+    const free = (['land', 'water'] as const).flatMap((a) => [0, 1, 2, 3].map((slot) => ({ a, slot })))
+      .find(({ a, slot }) => (TYPES_BY_ID[x.type]?.possibleAmbit ?? 30) & AMBIT_BIT[a] && !st.structs.some((y) => y.cat === 'planet' && y.ambit === a && y.slot === slot && y.hp > 0));
+    if (free) { x.ambit = free.a; x.slot = free.slot; }
+  }
+  return st;
+}
 /** Take the stored base if it's newer than ours (another tab saved since, or we were frozen). */
 function adoptStored(): boolean {
   if (busy) return false;
@@ -244,7 +258,7 @@ function adoptStored(): boolean {
     if (!raw) return false;
     const st = JSON.parse(raw) as State;
     if ((st.savedAt ?? 0) <= (s.savedAt ?? 0)) return false;
-    s = st;
+    s = migrate(st);
     return true;
   } catch { return false; }
 }
@@ -365,7 +379,7 @@ function blockInner() {
   while (structsKw() + soldKw() > capacityKw() && (sells = s.contracts.find((x) => x.dir !== 'buy'))) { const c = sells; s.contracts = s.contracts.filter((x) => x !== c); log('allocation_cut', `${c.buyer} ${c.kw} kW`); emit('jeok', `정전 · 계약 ${c.id} 차단`); }
   if (structsKw() > capacityKw()) {
     const victim = [...s.structs].reverse().find((x) => x.online && x.building == null && x.type !== 20 && x.type !== 1);
-    if (victim) { victim.online = false; log('struct_status', `${victim.id} 오프라인`); emit('jeok', `전력 부족 · ${TYPES_BY_ID[victim.type].type} 정지`); }
+    if (victim) { victim.online = false; victim.oc = false; log('struct_status', `${victim.id} 오프라인`); emit('jeok', `전력 부족 · ${TYPES_BY_ID[victim.type].type} 정지`); }
   }
   // Construction.
   for (const x of s.structs) if (x.building != null) {
@@ -472,23 +486,26 @@ function blockInner() {
  * meanwhile are settled in summary: a standing fleet turns most away, unrefined ore pays for the rest. */
 function catchUp(): AwayReport | null {
   const n = Math.min(900, Math.floor((Date.now() - (s.savedAt ?? Date.now())) / BLOCK_MS));
-  if (n < 8 || s.raid) return null;
+  if (n < 8) return null;
   const before = { ore: s.ore, alpha: s.alpha, earned: s.earned };
   catching = true; awayRebels = [];
   const r: AwayReport = { blocks: n, ore: 0, alpha: 0, earned: 0, raids: 0, stolen: 0, repelled: 0 };
+  const settle = (startedAt?: number) => {
+    s.rebel = null; // settled here, in summary
+    r.raids++;
+    const fleet = s.structs.filter((x) => x.cat === 'fleet' && x.hp > 0);
+    // A new base's first raids are small here too.
+    const odds = Math.min(0.9, 0.2 + fleet.length * 0.15 + lv('guns') * 0.05 + (rookie() ? 0.4 : 0));
+    if (rnd() < odds) { r.repelled++; s.raidsRepelled++; jobRepelled(startedAt); }
+    else { const take = Math.floor(s.ore * (1 - 0.25 * lv('bunker'))); r.stolen += take; s.ore -= take; s.raidsLost++; s.shield = 0; }
+    s.nextRaid = raidGap() + RATE.raidEta;
+  };
   try {
+    // Left mid-raid: it ends while you're away, in summary like the rest, and the clock runs on.
+    if (s.raid) { const at = s.raid.startedAt; s.raid = null; settle(at); }
     for (let i = 0; i < n; i++) {
       block();
-      if (--s.nextRaid <= 0) {
-        s.rebel = null; // settled here, in summary
-        r.raids++;
-        const fleet = s.structs.filter((x) => x.cat === 'fleet' && x.hp > 0);
-        // A new base's first raids are small here too.
-        const odds = Math.min(0.9, 0.2 + fleet.length * 0.15 + lv('guns') * 0.05 + (rookie() ? 0.4 : 0));
-        if (rnd() < odds) { r.repelled++; s.raidsRepelled++; jobRepelled(); }
-        else { const take = Math.floor(s.ore * (1 - 0.25 * lv('bunker'))); r.stolen += take; s.ore -= take; s.raidsLost++; s.shield = 0; }
-        s.nextRaid = raidGap() + RATE.raidEta;
-      }
+      if (--s.nextRaid <= 0) settle();
     }
   } finally { catching = false; }
   r.ore = s.ore - before.ore; r.alpha = s.alpha - before.alpha; r.earned = s.earned - before.earned; r.rebels = awayRebels; r.loan = awayLoan; awayLoan = undefined;
@@ -1087,7 +1104,7 @@ function attack(a: DemoStruct, t: DemoStruct, dmg: number, evaded: boolean, shie
     attackerHealthBefore: a.hp, attackerHealthMax: a.max, eventAttackShotDetail: [shot],
   };
   log('struct_attack', `${a.id} → ${t.id}`);
-  if (t.hp === 0 && before > 0) t.online = false;
+  if (t.hp === 0 && before > 0) { t.online = false; t.oc = false; }
   if (!forecastRng) for (const f of attackFns) f(d);
 }
 
@@ -1156,6 +1173,8 @@ export const demo = {
   reset() { s = fresh(); persist(); for (const f of changeFns) f(); },
   /** Advance one block now (tests, and anything that must not wait for the timer). */
   step() { block(); },
+  /** Replay the time since the last save now (tests; the leading tab does this when it takes the clock). */
+  catchUp,
   onChange(f: () => void) { changeFns.add(f); return () => changeFns.delete(f); },
   onBlock(f: () => void) { blockFns.add(f); return () => blockFns.delete(f); },
   onAttack(f: (d: AttackDetail) => void) { attackFns.add(f); return () => attackFns.delete(f); },
@@ -1198,6 +1217,9 @@ export const demo = {
     adoptStored(); // another tab may have moved on: act on the newest base
     const t = TYPES_BY_ID[type];
     if (!t) return '알 수 없는 구조체';
+    if (t.category !== cat) return cat === 'planet' ? '함선은 행성 슬롯에 지을 수 없습니다' : '행성 구조체는 함대에 둘 수 없습니다';
+    if (!((t.possibleAmbit ?? 30) & (AMBIT_BIT[ambit] ?? 0))) return '이 구조체는 그 구역에 둘 수 없습니다';
+    if (!Number.isInteger(slot) || slot < 0 || slot > 3) return '없는 슬롯입니다';
     // The command ship rides with the fleet but holds no slot (as in battle).
     const inSlot = (x: DemoStruct) => x.ambit === ambit && x.slot === slot && x.cat === cat && x.type !== 1;
     if (s.structs.some((x) => inSlot(x) && x.hp > 0)) return '이미 사용 중인 슬롯입니다';
@@ -1216,7 +1238,7 @@ export const demo = {
     adoptStored(); // another tab may have moved on: act on the newest base
     const x = s.structs.find((y) => y.id === id);
     if (!x || !OC.types.includes(x.type)) return '과부하 운전은 추출기·정제소·발전기만 가능합니다';
-    if (x.hp <= 0 || x.building != null) return '가동 중인 구조체만 가능합니다';
+    if (x.hp <= 0 || x.building != null || !x.online) return '가동 중인 구조체만 가능합니다';
     if (!x.oc && x.type !== 20 && structsKw() + soldKw() + kwOf(x.type) * (OC.power - 1) > capacityKw()) return `전력이 부족합니다 (+${(kwOf(x.type) * (OC.power - 1)).toFixed(2)} kW 필요)`;
     if (x.oc && x.type === 20 && x.online && structsKw() + soldKw() > capacityKw() - RATE.genKw * (OC.gen - 1)) return '해제하면 전력이 부족합니다 · 먼저 판매를 줄이거나 구조체를 끄세요';
     x.oc = !x.oc;
@@ -1230,6 +1252,7 @@ export const demo = {
     if (!x || x.building != null || x.hp <= 0) return '조작할 수 없습니다';
     if (!x.online && structsKw() + soldKw() + kwOf(x.type) * (x.type === 20 ? 1 : ocf(x, OC.power)) > capacityKw()) return '전력이 부족합니다';
     x.online = !x.online;
+    if (!x.online) x.oc = false; // a machine that is off isn't running hot
     log('struct_status', `${id} ${x.online ? '가동' : '정지'}`);
     persist(); for (const f of changeFns) f();
     return null;
@@ -1258,6 +1281,7 @@ export const demo = {
   },
   sell(kw: number, blocks: number): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
+    if (badAmount(kw) || badBlocks(blocks)) return `수량을 확인하세요 (기간은 1~${RATE.maxDealBlocks}블록)`;
     if (structsKw() + soldKw() + kw > ownKw()) return '판매할 여유 전력이 없습니다 (구매한 전력은 되팔 수 없습니다)';
     // The market is only so deep: buyers take a few kW per contract and so much in all.
     if (kw > RATE.maxDealKw) return `한 계약은 최대 ${RATE.maxDealKw} kW입니다`;
@@ -1304,7 +1328,8 @@ export const demo = {
     const r = rivals().find((x) => x.id === id);
     if (!r) return '없는 세력입니다';
     if (id === '1-666') return '붉은 연합은 외부 자본을 받지 않습니다';
-    if (g <= 0 || s.alpha < g) return `알파 ${g} g 필요`;
+    if (badAmount(g)) return '금액을 확인하세요';
+    if (s.alpha < g) return `알파 ${g} g 필요`;
     const have = s.stakes?.[id] ?? 0;
     if (have + g > INVEST.max) return `한 세력에 최대 ${INVEST.max} g`;
     s.alpha -= g; s.stakes = { ...s.stakes, [id]: have + g };
@@ -1428,6 +1453,7 @@ export const demo = {
     if (!x || x.cat !== 'fleet') return '함대 함선만 개장할 수 있습니다';
     if (x.hp <= 0) return '파괴된 함선은 개장할 수 없습니다';
     if (x.building != null) return '건조가 끝나야 개장할 수 있습니다';
+    if (!Object.hasOwn(REFITS, mod)) return '없는 개장입니다';
     if (x.mod === mod) return '이미 장착했습니다';
     if (s.alpha < REFITS[mod].cost) return `알파 ${REFITS[mod].cost} 필요`;
     return null;
@@ -1487,7 +1513,8 @@ export const demo = {
   /** Send the fleet at an outpost: pay the sortie, roll against its defenders. */
   claimOutpost(id: OutpostId): { ok: boolean; text: string } | string {
     adoptStored();
-    const o = outposts()[id], d = OUTPOSTS.find((x) => x.id === id)!;
+    const d = OUTPOSTS.find((x) => x.id === id), o = d && outposts()[id];
+    if (!o || !d) return '없는 거점입니다';
     if (o.owner === DEMO_ID) return '이미 장악한 거점입니다';
     if (!warships()) return '출격할 전함이 없습니다';
     if (s.alpha < OUTPOST.claim) return `출격 비용 ${OUTPOST.claim} g 필요`;
@@ -1515,7 +1542,7 @@ export const demo = {
   fortify(id: OutpostId): string | null {
     adoptStored();
     const o = outposts()[id];
-    if (o.owner !== DEMO_ID) return '장악한 거점만 요새화할 수 있습니다';
+    if (o?.owner !== DEMO_ID) return '장악한 거점만 요새화할 수 있습니다';
     if (o.garrison >= OUTPOST.maxGarrison) return '수비대가 최대입니다';
     if (s.alpha < OUTPOST.fortify) return `알파 ${OUTPOST.fortify} g 필요`;
     s.alpha -= OUTPOST.fortify; o.garrison++;
@@ -1584,7 +1611,7 @@ export const demo = {
     adoptStored(); // another tab may have moved on: act on the newest base
     const st = engineStage();
     if (st >= ENGINE.length) return '월드 엔진이 이미 가동 중입니다';
-    if (g <= 0) return '금액을 확인하세요';
+    if (badAmount(g)) return '금액을 확인하세요';
     s.engine ??= { stage: 0, paid: 0 };
     const need = ENGINE.slice(0, st + 1).reduce((a, x) => a + x.cost, 0) - s.engine.paid;
     // Only what the stage still needs is charged.
@@ -1641,12 +1668,14 @@ export const demo = {
   /** Take up a doctrine (free the first time). */
   adopt(id: DoctrineId): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
+    const d = DOCTRINES.find((x) => x.id === id);
+    if (!d) return '없는 교리입니다';
     if (s.doctrine === id) return '이미 따르는 교리입니다';
     if (s.doctrine && s.alpha < DOCTRINE_SWITCH) return `교리 전환에 알파 ${DOCTRINE_SWITCH} g 필요`;
     if (s.doctrine) s.alpha -= DOCTRINE_SWITCH;
     s.doctrine = id;
-    log('event', `교리 · ${DOCTRINES.find((d) => d.id === id)!.name}`);
-    chronicle('cheong', `${DOCTRINES.find((d) => d.id === id)!.name}를 따르기로 했다`);
+    log('event', `교리 · ${d.name}`);
+    chronicle('cheong', `${d.name}를 따르기로 했다`);
     persist(); for (const f of changeFns) f();
     return null;
   },
@@ -1660,7 +1689,7 @@ export const demo = {
   /** Buy power from the market: capacity now, alpha every block, at the ask (price + 5%). */
   buy(kw: number, blocks: number): string | null {
     adoptStored(); // another tab may have moved on: act on the newest base
-    if (kw <= 0 || blocks <= 0) return '수량을 확인하세요';
+    if (badAmount(kw) || badBlocks(blocks)) return `수량을 확인하세요 (기간은 1~${RATE.maxDealBlocks}블록)`;
     const rate = s.priceHist[s.priceHist.length - 1] * (inGuild('gold') ? 1.02 : 1.05);
     if (s.alpha < kw * rate * 3) return '알파가 부족합니다 (최소 3블록치)';
     s.contracts.push({ id: `11-${300 + s.seq}`, kw, rate, left: blocks, buyer: ['3-15', '1-77', '3-88'][s.seq % 3], dir: 'buy' });
@@ -1740,7 +1769,7 @@ export const demo = {
       // The battle engine caps a hull at its type's maximum; armour above that rides along and
       // comes home with a ship that survives.
       const extra = Math.max(0, x.hp - TYPES_BY_ID[x.type].maxHealth);
-      x.hp = hp[x.id] > 0 ? Math.min(x.max, hp[x.id] + extra) : 0; if (x.hp <= 0) x.online = false;
+      x.hp = hp[x.id] > 0 ? Math.min(x.max, hp[x.id] + extra) : 0; if (x.hp <= 0) { x.online = false; x.oc = false; }
     }
     if (rivalId === 'void') {
       if (!won || !s.boss) { if (s.boss) s.boss.engaged = undefined; persist(); for (const f of changeFns) f(); return { ore: 0, alpha: 0, promoted }; }

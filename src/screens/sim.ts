@@ -364,8 +364,8 @@ const screen: Screen = {
           <div class="field"><span>난이도 · 기본 보상 <b class="c-hwang mono">+${DIFF_XP[diff]} XP</b></span>${pills((Object.keys(DIFF_KO) as Difficulty[]).map((d) => [d, DIFF_KO[d]]), diff, 'diff')}</div>
           <div class="field"><span>적 규모</span>${pills((Object.keys(PRESET_KO) as Preset[]).map((p) => [p, PRESET_KO[p]]), preset, 'preset')}</div>` : ''}
           <div class="field"><span>블록 시간</span>${pills([['2000', '2초 · 훈련'], ['6000', '6초 · 체인']], String(blockMs), 'block')}</div>
-          <label class="field"><span>시작 충전량 · <b class="mono c-cheong">${charge}</b> / ${MAX_CHARGE}</span><input type="range" min="0" max="${MAX_CHARGE}" value="${charge}" data-act="charge" style="accent-color:var(--cheong);min-height:32px"></label>
-          ${mode === 'single' ? html`<label class="field"><span>시드</span><input class="input" value="${seed}" data-act="seed"></label>` : ''}
+          <label class="field"><span>시작 충전량 · <b class="mono c-cheong">${charge}</b> / ${MAX_CHARGE}</span><input type="range" min="0" max="${MAX_CHARGE}" value="${charge}" aria-label="시작 충전량" data-act="charge" style="accent-color:var(--cheong);min-height:32px"></label>
+          ${mode === 'single' ? html`<label class="field"><span>시드</span><input class="input" value="${seed}" aria-label="시드" data-act="seed"></label>` : ''}
           <button class="btn primary lg" data-act="toDeploy">배치 단계로 <kbd>Enter</kbd></button>
         </section>
         <section class="card game-panel"><h2>오늘의 일일 교전 ${ladder ? html`<span class="mono dim" style="font-size:14px">${ladder.date}</span>` : ''}</h2>

@@ -1,18 +1,5 @@
 {
   "_doc": "Known issues found by the playtest harness and accepted for now. Hard gates ignore these so CI catches new bugs; delete an entry once it is fixed and the gate will guard it. Each has the date it was found and where it lives.",
-  "violations": [
-    { "id": "ambit.20.air", "found": "2026-10-17", "where": "src/game/demo.ts fresh(): the starting Field Generator (5-912) is in air; the catalogue allows land or water (possibleAmbit 6)" },
-    { "id": "ambit.*", "found": "2026-10-17", "where": "demo.build() never checks TYPES_BY_ID[type].possibleAmbit; only the UI's build card limits ambits (chaos persona)" },
-    { "id": "category.*", "found": "2026-10-17", "where": "demo.build() accepts a fleet type in a planet slot and vice versa (chaos persona)" },
-    { "id": "range.slot", "found": "2026-10-17", "where": "demo.build() accepts slot -1 and slots beyond the planet's 4 (chaos persona)" },
-    { "id": "nonfinite.alpha", "found": "2026-10-17", "where": "demo.sell(NaN, ...), demo.buildEngine(NaN), demo.invest(id, NaN) are accepted and turn alpha (and the save) into NaN for good" },
-    { "id": "nonfinite.worth", "found": "2026-10-17", "where": "follows from nonfinite.alpha" },
-    { "id": "negative.alpha", "found": "2026-10-17", "where": "follows from junk amounts accepted by sell/buildEngine/invest (alpha -Infinity seen)" },
-    { "id": "contract", "found": "2026-10-17", "where": "demo.sell()/buy() accept NaN kW and negative or huge block counts, creating contracts with NaN kW" }
-  ],
-  "crashes": [
-    { "action": "chaos.adopt", "message": "reading 'name'", "found": "2026-10-17", "where": "demo.adopt(unknown doctrine) throws instead of refusing" },
-    { "action": "chaos.claim", "message": "reading 'owner'", "found": "2026-10-17", "where": "demo.claimOutpost(unknown id) throws instead of refusing" },
-    { "action": "chaos.refit", "message": "reading 'cost'", "found": "2026-10-17", "where": "demo.refit(id, unknown module) throws instead of refusing" }
-  ]
+  "violations": [],
+  "crashes": []
 }

@@ -89,8 +89,10 @@ export function summarise(p: Profile, runs: RunResult[]): PersonaSummary {
   return s;
 }
 
-const knownViolation = (id: string) => BASELINE.violations.some((k) => id === k.id || (k.id.endsWith('*') && id.startsWith(k.id.slice(0, -1))));
-const knownCrash = (action: string, message: string) => BASELINE.crashes.some((k) => action === k.action && message.includes(k.message));
+/** Typed here: with every entry fixed the lists are empty, and JSON alone would type them never[]. */
+const KNOWN = BASELINE as { violations: { id: string }[]; crashes: { action: string; message: string }[] };
+const knownViolation = (id: string) => KNOWN.violations.some((k) => id === k.id || (k.id.endsWith('*') && id.startsWith(k.id.slice(0, -1))));
+const knownCrash = (action: string, message: string) => KNOWN.crashes.some((k) => action === k.action && message.includes(k.message));
 
 function personaGates(p: Profile, s: PersonaSummary): Gate[] {
   const g = [] as Gate[];

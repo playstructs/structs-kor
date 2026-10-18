@@ -2,8 +2,9 @@
  * and the attack-animation plan. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { demo, TECH, EVENTS } from '../src/game/demo';
+import { demo, migrate, TECH, EVENTS, RATE } from '../src/game/demo';
 import { advise } from '../src/game/advisor';
+import { TYPES_BY_ID } from '../src/data/catalogue';
 import { MISSIONS, missionUnits } from '../src/game/campaign';
 import { validate, chainSetup, YOU, CPU } from '../src/sim/fleets';
 import { Chain, type AttackDetail } from '../src/sim/chain';
@@ -872,4 +873,100 @@ test('raid stance: chosen while the raid approaches, locked once it lands', () =
   assert.equal(demo.raid!.stance, 'intercept');
   demo.state.raid!.eta = 0;
   assert.match(demo.setStance('entrench') ?? '', /교전/);
+});
+
+/* Playtest harness findings (playtest/baseline.json): each order refuses junk instead of saving it. */
+test('orders refuse junk amounts: NaN, Infinity, zero and negatives never reach the save', () => {
+  demo.reset();
+  const s = demo.state;
+  s.alpha = 500;
+  const rival = demo.rivals().find((r) => r.id !== '1-666')!.id;
+  for (const x of [NaN, Infinity, -Infinity, 0, -1]) {
+    assert.ok(demo.sell(x, 30), `sell(${x})`);
+    assert.ok(demo.buy(x, 30), `buy(${x})`);
+    assert.ok(demo.buildEngine(x), `buildEngine(${x})`);
+    assert.ok(demo.invest(rival, x), `invest(${x})`);
+  }
+  for (const n of [NaN, 0, -5, 2.5, 2 ** 31, RATE.maxDealBlocks + 1]) {
+    assert.match(demo.sell(1, n) ?? '', /수량/, `sell blocks ${n}`);
+    assert.match(demo.buy(1, n) ?? '', /수량/, `buy blocks ${n}`);
+  }
+  assert.equal(s.alpha, 500);
+  assert.equal(s.contracts.length, 0);
+  assert.equal(demo.buy(1, 30), null, 'a sane order still goes through');
+});
+
+test('build refuses an ambit the type cannot hold, the wrong category, and slots off the planet', () => {
+  demo.reset();
+  demo.state.alpha = 500;
+  assert.match(demo.build(20, 'air', 3, 'planet') ?? '', /구역/, 'a generator in the air');
+  assert.match(demo.build(14, 'space', 3, 'planet') ?? '', /구역/, 'an extractor in space');
+  assert.match(demo.build(3, 'space', 2, 'planet') ?? '', /행성 슬롯/, 'a ship in a planet slot');
+  assert.match(demo.build(14, 'land', 3, 'fleet') ?? '', /함대/, 'a planet struct in the fleet');
+  for (const slot of [-1, 4, 1.5, NaN]) assert.match(demo.build(3, 'space', slot, 'fleet') ?? '', /슬롯/, `slot ${slot}`);
+  assert.equal(demo.build(3, 'space', 2, 'fleet'), null, 'a legal build still goes through');
+});
+
+test('adopt, claimOutpost, refit and fortify refuse unknown ids instead of throwing', () => {
+  demo.reset();
+  demo.state.alpha = 500;
+  const ship = demo.state.structs.find((x) => x.cat === 'fleet' && x.type !== 1)!;
+  for (const id of ['void', '', '__proto__', 'toString']) {
+    assert.ok(demo.adopt(id as never), `adopt ${id}`);
+    assert.ok(demo.claimOutpost(id as never), `claim ${id}`);
+    assert.ok(demo.refit(ship.id, id as never), `refit ${id}`);
+    assert.ok(demo.fortify(id as never), `fortify ${id}`);
+  }
+  assert.equal(demo.state.alpha, 500);
+  assert.equal(demo.state.doctrine ?? null, null);
+});
+
+test('fresh base: every starting struct sits in an ambit and slot its type allows, one to a slot', () => {
+  demo.reset();
+  const bit: Record<string, number> = { space: 16, air: 8, land: 4, water: 2 };
+  const taken = new Set<string>();
+  for (const x of demo.state.structs) {
+    const t = TYPES_BY_ID[x.type];
+    assert.equal(t.category, x.cat, x.id);
+    assert.ok(t.possibleAmbit & bit[x.ambit], `${x.id} (${t.type}) in ${x.ambit}`);
+    assert.ok(x.slot >= 0 && x.slot <= 3, x.id);
+    if (x.type === 1) continue;
+    const k = `${x.cat}|${x.ambit}|${x.slot}`;
+    assert.ok(!taken.has(k), `${k} twice`); taken.add(k);
+  }
+  // An old save with the generator in the air is moved to a free land or water slot.
+  const old = JSON.parse(JSON.stringify(demo.state));
+  const gen = old.structs.find((x: { type: number }) => x.type === 20);
+  gen.ambit = 'air'; gen.slot = 0;
+  const fixed = migrate(old).structs.find((x) => x.type === 20)!;
+  assert.ok(fixed.ambit === 'land' || fixed.ambit === 'water', fixed.ambit);
+  assert.ok(!old.structs.some((x: { id: string; cat: string; ambit: string; slot: number }) => x.id !== fixed.id && x.cat === 'planet' && x.ambit === fixed.ambit && x.slot === fixed.slot));
+});
+
+test('away during a raid: the raid is settled and the absence still plays out', () => {
+  demo.reset();
+  demo.state.nextRaid = 1; demo.step();
+  assert.ok(demo.raid, 'a raid is on its way');
+  const h0 = demo.state.height;
+  demo.state.savedAt = Date.now() - 100 * 4000;
+  const r = demo.catchUp();
+  assert.ok(r, 'the absence is reported');
+  assert.equal(r!.blocks, 100);
+  assert.equal(demo.state.height, h0 + 100, 'the missed blocks were played');
+  assert.ok(r!.raids >= 1, 'the raid that was on counts');
+  assert.ok(demo.state.raid == null || demo.state.raid.startedAt > h0, 'the old raid is gone');
+});
+
+test('overclock: only a running machine runs hot, and switching it off or losing it ends the overclock', () => {
+  demo.reset();
+  const s = demo.state;
+  s.nextRaid = 9999;
+  const ref = s.structs.find((x) => x.type === 15)!;
+  assert.equal(ref.online, false);
+  assert.match(demo.overclock(ref.id) ?? '', /가동 중/, 'an offline refinery cannot be overclocked');
+  const ext = s.structs.find((x) => x.type === 14)!;
+  assert.equal(demo.overclock(ext.id), null);
+  assert.equal(demo.toggle(ext.id), null);
+  assert.equal(ext.online, false);
+  assert.equal(ext.oc, false, 'switched off, it stops running hot at once');
 });
