@@ -1358,7 +1358,7 @@ export const demo = {
     s.alpha -= o.price;
     let note = '';
     if (id === 'shield') { s.shield = 100; note = '방어막 100%'; }
-    else if (id === 'bribe') { s.nextRaid += BLACK.bribe; note = `다음 습격 ${s.nextRaid}블록 뒤`; }
+    else if (id === 'bribe') { s.nextRaid += BLACK.bribe; note = `다음 습격 ${demo.nextRaider()?.in ?? s.nextRaid}블록 뒤`; }
     else if (id === 'scrap') { const n = Math.min(BLACK.scrapMax, Math.floor(s.ore)); s.ore -= n; const got = Math.round(n * BLACK.scrapRate * 10) / 10; s.alpha += got; note = `광석 ${n} → +${got} α`; }
     else if (id === 'cool') { s.cd = {}; note = '능력 재사용 가능'; }
     else { for (const x of s.structs) if (x.hp > 0 && x.hp < x.max) x.hp = x.max; note = '구조체 수리 완료'; }
