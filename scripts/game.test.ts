@@ -635,10 +635,13 @@ test('commander abilities: rank-gated, effective, then on cooldown', () => {
   for (const x of demo.state.structs) if (x.type === 15) x.online = true;
   demo.state.ore = 50;
   assert.match(demo.useAbility('surge', 0) ?? '', /계급/);
-  const a = demo.state.alpha;
+  const a = demo.state.alpha, cap = demo.surgeCap();
   assert.equal(demo.useAbility('surge', 17), null);
-  assert.ok(demo.state.alpha > a, 'refined at once');
+  assert.ok(Math.abs(demo.state.alpha - a - Math.min(50, cap)) < 1e-9 && cap > 5, `refined ${Math.min(50, cap).toFixed(1)} at once`);
   assert.match(demo.useAbility('surge', 17) ?? '', /재사용/);
+  demo.state.shield = 10;
+  assert.match(demo.useAbility('overshield', 17) ?? '', /습격/, 'only with a raid coming');
+  demo.state.nextRaid = 1; demo.step();
   demo.state.shield = 10;
   assert.equal(demo.useAbility('overshield', 17), null);
   assert.equal(demo.state.shield, 50);

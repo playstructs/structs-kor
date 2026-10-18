@@ -659,8 +659,10 @@ function allyStep() {
 
 /* ── 지휘관 능력: active powers with cooldowns, unlocked by rank. ── */
 export type AbilityId = 'surge' | 'overshield' | 'rally';
+/** What emergency refining can turn into alpha right now: 25 blocks of every running refinery. */
+const surgeCap = () => s.structs.filter((x) => x.type === 15 && x.online && x.building == null && x.hp > 0).reduce((a, x) => a + refineRate() * ocf(x, OC.out), 0) * 25;
 export const ABILITIES: { id: AbilityId; name: string; what: string; cooldown: number; rank: number; key: string }[] = [
-  { id: 'surge', name: '긴급 정제', what: '정제소 3블록치를 즉시 정제', cooldown: 60, rank: 3, key: '7' },
+  { id: 'surge', name: '긴급 정제', what: '정제소 25블록치를 즉시 정제', cooldown: 60, rank: 3, key: '7' },
   { id: 'overshield', name: '방어막 과충전', what: '방어막 +40%', cooldown: 90, rank: 4, key: '8' },
   { id: 'rally', name: '총동원', what: '20블록 동안 모든 함포가 방어 사격', cooldown: 150, rank: 7, key: '9' },
 ];
@@ -895,7 +897,7 @@ function raidStep() {
   const shooters = s.structs.filter((x) => x.hp > 0 && x.online && x.building == null && (x.cat === 'fleet' || x.type === 19))
     .sort((a, z) => vetRank(z.kills) - vetRank(a.kills) || Number(z.type === 19) - Number(a.type === 19));
   // 총동원: every gun fires while it lasts.
-  for (const d of shooters.slice(0, (s.rallyUntil ?? 0) > s.height ? shooters.length : 2)) {
+  for (const d of shooters.slice(0, (s.rallyUntil ?? 0) >= s.height ? shooters.length : 2)) {
     const left = r.structs.filter((x) => x.hp > 0);
     if (!left.length) break;
     const tgt = left.find((x) => x.type !== 1) ?? left[0];
@@ -1107,6 +1109,7 @@ export const demo = {
   /** Blocks until an ability is ready (0 = now). */
   abilityLeft: (id: AbilityId) => Math.max(0, (s.cd?.[id] ?? 0) - s.height),
   get rallying() { return Math.max(0, (s.rallyUntil ?? 0) - s.height); },
+  surgeCap,
   /** Use a commander ability (`rank` is the commander's rank index). */
   useAbility(id: AbilityId, rank: number): string | null {
     adoptStored();
@@ -1115,14 +1118,15 @@ export const demo = {
     const left = Math.max(0, (s.cd?.[id] ?? 0) - s.height);
     if (left) return `${a.name} 재사용까지 ${left}블록`;
     if (id === 'surge') {
-      const cap = s.structs.filter((x) => x.type === 15 && x.online && x.building == null && x.hp > 0).length * refineRate() * 3;
+      const cap = surgeCap();
       const amt = Math.min(s.ore, cap);
       if (amt <= 0) return '정제할 광석이나 가동 중인 정제소가 없습니다';
       s.ore -= amt; s.alpha += amt * RATE.alphaPerOre;
     } else if (id === 'overshield') {
+      if (!s.raid) return '다가오는 습격이 없습니다';
       if (s.shield >= 100) return '방어막이 이미 가득합니다';
       s.shield = Math.min(100, s.shield + 40);
-    } else s.rallyUntil = s.height + 20;
+    } else { if (!s.raid) return '습격이 없습니다'; s.rallyUntil = s.height + 20; }
     s.cd = { ...s.cd, [id]: s.height + a.cooldown };
     log('event', `능력 · ${a.name}`);
     persist(); for (const f of changeFns) f();
@@ -1311,7 +1315,7 @@ export const demo = {
     if (s.raid) return '습격을 막아 낸 뒤에 새 시대를 열 수 있습니다';
     if (s.loan) return '청룡 상단 대출을 먼저 갚아야 새 시대를 열 수 있습니다';
     // Running totals survive too (daily orders and medals count from them).
-    const keep = { era: (s.era ?? 0) + 1, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
+    const keep = { era: (s.era ?? 0) + 1, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
     s = fresh();
     Object.assign(s, keep);
     log('event', `제${keep.era + 1}시대 개막`);

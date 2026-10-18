@@ -152,8 +152,8 @@ const screen: Screen = {
       if (!isDemo) return html``;
       const rank = career.rank.i, rally = demo.rallying;
       return html`<section class="card game-panel abilities"><div class="card-head"><h2>지휘관 능력</h2>${rally ? html`<span class="end chip jeok mono">총동원 ${rally}블록</span>` : ''}</div>
-        <div class="ab-row">${ABILITIES.map((a) => { const left = demo.abilityLeft(a.id), locked = rank < a.rank; return html`<button class="ab ${left || locked ? '' : 'ready'}" data-act="ability" data-id="${a.id}" ${left || locked ? 'disabled' : ''} title="${a.what}">
-          <b>${a.name} <kbd>${a.key}</kbd></b><small>${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : a.what}</small>
+        <div class="ab-row">${ABILITIES.map((a) => { const left = demo.abilityLeft(a.id), locked = rank < a.rank, idle = a.id !== 'surge' && !demo.raid; return html`<button class="ab ${left || locked || idle ? '' : 'ready'}" data-act="ability" data-id="${a.id}" ${left || locked || idle ? 'disabled' : ''} title="${a.what}">
+          <b>${a.name} <kbd>${a.key}</kbd></b><small>${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : idle ? '습격 때 사용' : a.what}</small>
           ${left && !locked ? html`<i class="ab-cd" style="width:${Math.round((left / a.cooldown) * 100)}%"></i>` : ''}</button>`; })}</div></section>`;
     };
     const daily = (): Safe => {
@@ -439,6 +439,7 @@ const screen: Screen = {
       nameShip: (el: HTMLElement) => {
         const n = String(new FormData(el as HTMLFormElement).get('n') ?? '');
         if (err(demo.nameShip(el.dataset.id!, n))) return;
+        (document.activeElement as HTMLElement | null)?.blur?.();
         sfx.play('confirm'); toast(n.trim() ? `「${n.trim().slice(0, 12)}」` : '이름을 지웠습니다'); refresh();
       },
       repair: (el: HTMLElement) => { if (!err(demo.repair(el.dataset.id!))) { sfx.play('build'); float(el, '수리 완료', 'var(--cheong-hi)'); refresh(); } },
@@ -486,14 +487,19 @@ const screen: Screen = {
       v: () => { const b = root.querySelector<HTMLElement>('[data-act="overclock"]'); if (!b) return false; handlers.overclock(b); },
       r: () => { if (isDemo && panel?.kind === 'struct') handlers.repair(document.querySelector('[data-act="repair"]') ?? document.body); },
       Escape: () => handlers.close(),
-      ...Object.fromEntries(ABILITIES.map((a) => [a.key, () => { if (!isDemo) return false; const b = root.querySelector<HTMLElement>(`[data-act="ability"][data-id="${a.id}"]`); if (!b) return false; handlers.ability(b); }])),
+      ...Object.fromEntries(ABILITIES.map((a) => [a.key, () => { if (!isDemo) return false; const b = root.querySelector<HTMLElement>(`[data-act="ability"][data-id="${a.id}"]`); if (!b || (b as HTMLButtonElement).disabled) return false; handlers.ability(b); }])),
       '1': () => (isDemo && demo.decision ? handlers.decide({ dataset: { i: '0' } } as unknown as HTMLElement) : false),
       '2': () => (isDemo && demo.decision ? handlers.decide({ dataset: { i: '1' } } as unknown as HTMLElement) : false),
     });
     offs.push(offKeys);
 
-    // Mid-typing (a ship's name), the block's repaint waits: it would wipe the field and break Korean input.
-    const refresh = () => { if (isDemo) { d = demo.dashboard(); const a = document.activeElement; if (a instanceof HTMLInputElement && root.contains(a)) return; paint(); } };
+    // Mid-typing a ship's name, repaints wait (they'd wipe the field and break Korean input) and run as
+    // soon as the field lets go of focus.
+    let pending = false;
+    const typing = () => { const a = document.activeElement; return a instanceof HTMLInputElement && !!a.closest('.ship-name') && root.contains(a); };
+    const repaint = () => { if (typing()) { pending = true; return; } pending = false; paint(); };
+    const refresh = () => { if (isDemo) { d = demo.dashboard(); repaint(); } };
+    root.addEventListener('focusout', () => { if (pending) setTimeout(() => { if (pending && !typing()) { pending = false; paint(); } }, 0); });
     const load = async () => {
       try {
         d = isDemo ? demo.dashboard() : await dashboard(pid);
@@ -527,7 +533,7 @@ const screen: Screen = {
         if (e.category === 'raid_status' && key !== lastRaidKey) { lastRaidKey = key; sfx.play('alarm'); flash(); }
       }));
     }
-    offs.push(career.onChange(() => paint()));
+    offs.push(career.onChange(() => repaint()));
     // The proof card follows every hash; the advisor's proof tips follow at most every few seconds.
     let advisedAt = 0;
     const repaintAdvisor = () => { const el = root.querySelector('.advisor'); if (el && Date.now() - advisedAt > 3000) { advisedAt = Date.now(); el.outerHTML = advisor().s; } };

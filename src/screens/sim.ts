@@ -233,6 +233,12 @@ const screen: Screen = {
                 void board?.idle().then(() => { if (root.isConnected) { callout(t, n >= 4 ? 'jeok' : 'gold'); sfx.play(n >= 3 ? 'levelup' : 'coin'); } });
               }
             }
+            // The target's own counter and its death blast can destroy the attacker too: a kill for the target.
+            const targetKilled = shot.targetCounterDestroyedAttacker || shot.postDestructionDamageDestroyedAttacker;
+            if (targetKilled) {
+              stats[who].lost++;
+              if (them === 'player' && !replaying) { const a = (ace[shot.targetStructId] ??= { type: chain.get(shot.targetStructId)?.typeId ?? 0, dmg: 0, kills: 0, id: shot.targetStructId }); a.kills++; a.dmg += (shot.targetCounteredDamage ?? 0) + (shot.postDestructionDamage ?? 0); }
+            }
             for (const c of shot.eventAttackDefenderCounterDetail || []) {
               stats[them].counter += c.counterDamage || 0;
               // A guard's counter that kills the attacker is a kill for the guard (MVP and veterancy too).
@@ -308,8 +314,8 @@ const screen: Screen = {
           const kills: Record<string, number> = {};
           for (const [uid, sid] of Object.entries(raidIds)) { const k = ace[idMap[uid]]?.kills; if (k) kills[sid] = k; }
           loot = demo.settleRaid(raidOn.id, w === 'player', hp, kills);
-          // A ship that went down in this raid keeps its record, but its promotion waits for its repair.
-          for (const v of loot.promoted ?? []) if (hp[v.id] !== 0) setTimeout(() => notify('베테랑 진급', `${v.name ? `「${v.name}」 ` : ''}${STRUCT_TYPE[v.type] ?? v.type} ${'★'.repeat(v.rank)}`, 'hwang', 'levelup'), 2400);
+          // A ship that went down in this raid keeps its record; its promotion says it needs repair.
+          for (const v of loot.promoted ?? []) setTimeout(() => notify('베테랑 진급', `${v.name ? `「${v.name}」 ` : ''}${STRUCT_TYPE[v.type] ?? v.type} ${'★'.repeat(v.rank)}${hp[v.id] === 0 ? ' · 대파, 수리 필요' : ''}`, 'hwang', 'levelup'), 2400);
           if (w === 'player') setTimeout(() => career.award(80 + raidOn.fleet * 10, `${raidOn.name} 습격 성공`), 1600);
         }
         if (run) {
