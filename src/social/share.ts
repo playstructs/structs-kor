@@ -145,7 +145,7 @@ export function share(t: ShareTarget) {
 
 /** The text of a message, ready to read: ids as chips, share links as nothing (the card says it). */
 export function messageHtml(body: string, base = href('')): string {
-  const stripped = body.replace(/https?:\/\/\S+\/(o\/\d{1,2}-\d{1,9}|s\/S[A-Za-z0-9_-]{8,6000})\S*/g, '').trim();
+  const stripped = body.replace(/https?:\/\/\S+\/(o\/\d{1,2}-\d{1,9}|s\/S[A-Za-z0-9_-]{8,6000}|sim\/R[A-Za-z0-9_-]+|daily\/\d{4}-\d{2}-\d{2}(\/D[A-Za-z0-9_-]+)?)\S*/g, '').trim();
   return linkIds(esc(stripped || body), base);
 }
 /** Object ids a message is about: named ids plus /o/ links (situations bring their own). */

@@ -28,6 +28,7 @@ import { baseSituation } from '../social/situations';
 import { ask } from '../ui/sheet';
 import { sfx } from '../game/sfx';
 import { webRoot } from '../core/desktop';
+import { hasChallenge, challengeSlot, hydrateChallenges } from '../social/challenge';
 
 const PINNED = ['#sn-corp', '#help', '#infrastructure'];
 const GUESS = ['#sn-corp', '#help', '#infrastructure', '#raid', '#trade', '#market', '#recruit', '#korea', '#kr', '#general', '#announcements'];
@@ -172,14 +173,14 @@ const screen: Screen = {
     const line = (r: Room, m: Message, grouped: boolean): Safe => {
       if (m.redacted) return html`<div class="cm redacted ${grouped ? 'g' : ''}"><span class="cm-face"></span><div class="cm-body"><p class="faint">삭제된 메시지</p></div></div>`;
       const reply = m.replyTo ? r.events.find((x) => x.id === m.replyTo) : null;
-      const ids = messageIds(m.body), sits = situationsIn(m.body);
+      const chal = hasChallenge(m.body), ids = chal ? [] : messageIds(m.body), sits = situationsIn(m.body);
       return html`<div class="cm ${m.mine ? 'mine' : ''} ${grouped ? 'g' : ''} ${mentionsMe(m) ? 'hi' : ''} ${m.pending ?? ''}" data-mid="${m.id}">
         <span class="cm-face">${grouped ? '' : face(m.sender)}</span>
         <div class="cm-body">
           ${grouped ? '' : html`<div class="cm-meta"><a class="cm-who" href="${href(`/o/${localpart(m.sender)}`)}">${matrix.displayName(r.id, m.sender)}</a><span class="mono faint">${localpart(m.sender)}</span><time>${time(m.ts)}</time></div>`}
           ${reply ? html`<button class="cm-quote" data-act="jump" data-id="${reply.id}"><b>${matrix.displayName(r.id, reply.sender)}</b> ${reply.redacted ? '삭제된 메시지' : reply.body.slice(0, 90)}</button>` : ''}
           <p class="cm-text ${m.emote ? 'emote' : ''}">${m.emote ? html`<b>* ${matrix.displayName(r.id, m.sender)}</b> ` : ''}${raw(messageHtml(m.body, base))}${m.edited ? html` <small class="faint">(수정됨)</small>` : ''}</p>
-          ${sits.length || ids.length ? html`<div class="cm-cards">${sits.map((s) => raw(situationHtml(s, base)))}${ids.map((id) => raw(refSlot(id, { compact: true, base, me: pid })))}</div>` : ''}
+          ${sits.length || ids.length || chal ? html`<div class="cm-cards">${chal ? raw(challengeSlot(m.body, base)) : ''}${sits.map((s) => raw(situationHtml(s, base)))}${ids.map((id) => raw(refSlot(id, { compact: true, base, me: pid })))}</div>` : ''}
           ${reactionChip(m)}
           ${m.pending === 'failed' ? html`<span class="cm-fail">전송 실패 · <button class="linkish" data-act="retry" data-id="${m.id}">다시 보내기</button></span>` : m.pending === 'sending' ? html`<span class="cm-sending faint">보내는 중…</span>` : ''}
         </div>
@@ -211,6 +212,7 @@ const screen: Screen = {
           return html`${newDay ? html`<div class="comms-day"><span>${day(m.ts)}</span></div>` : ''}${line(r, m, grouped)}`;
         }) : html`<p class="empty">아직 메시지가 없습니다. 첫 메시지를 보내보세요.</p>`}
         ${seen.length ? html`<div class="comms-seen faint">읽음 · ${seen.slice(0, 4).join(', ')}${seen.length > 4 ? ` 외 ${seen.length - 4}명` : ''}</div>` : ''}`, tlHandlers);
+      void hydrateChallenges(tl);
       if (stick || atBottom) tl.scrollTop = tl.scrollHeight;
       else if (backfilling) tl.scrollTop = prevTop + (tl.scrollHeight - prevH);
       else tl.scrollTop = prevTop;

@@ -151,3 +151,14 @@
 .hud-btn[hidden] { display: none !important; }
 #comms-btn { position: relative; display: grid; place-items: center; color: inherit; }
 .bell-n.hi { background: var(--hwang); color: #1A1200; }
+
+/* Battle links */
+.chal { display: flex; flex-direction: column; gap: 8px; max-width: 460px; padding: 10px 12px; background: var(--surface); border: 2px solid var(--line-strong); box-shadow: 3px 3px 0 #0E0D1C; --sc: var(--cheong); }
+.chal.win { border-color: var(--cheong); } .chal.loss { border-color: var(--jeok-strong); --sc: var(--jeok-strong); } .chal.daily { border-color: var(--hwang); --sc: var(--hwang); }
+.chal header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chal header b { flex: 1 1 auto; color: #fff; font: 700 14px var(--f-pix); }
+.chal-vs { display: flex; align-items: center; gap: 10px; padding: 6px; background: var(--sunken); border: 1px solid var(--line); }
+.chal-vs b { color: var(--hwang); }
+.chal-side { display: flex; flex-wrap: wrap; gap: 2px; flex: 1 1 0; }
+.chal-side.foe { justify-content: flex-end; transform: scaleX(-1); }
+.chal-acts { display: flex; gap: 6px; flex-wrap: wrap; }

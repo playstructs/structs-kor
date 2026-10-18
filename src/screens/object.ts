@@ -64,7 +64,7 @@ const screen: Screen = {
 
     const view = (): Safe => html`
       <div class="card-head"><h1 style="font-size:28px">${card?.title ?? `${entityOf(id)} ${id}`}</h1><span class="label c-cheong">${entityOf(id)} · ${id}</span>
-        <span class="end" style="display:flex;gap:6px"><button class="btn ghost" data-act="watch">${watchlist().includes(id) ? '★ 감시 중' : '☆ 감시'}</button><button class="btn primary" data-act="share">공유</button></span></div>
+        <span class="end" style="display:flex;gap:6px">${kind === 'planet' || kind === 'fleet' ? html`<a class="btn ghost" href="${href(`/chat?room=${encodeURIComponent(`#${kind}-${id}`)}`)}" title="이 ${kind === 'planet' ? '행성' : '함대'}의 통신방">통신방</a>` : ''}<button class="btn ghost" data-act="watch">${watchlist().includes(id) ? '★ 감시 중' : '☆ 감시'}</button><button class="btn primary" data-act="share">공유</button></span></div>
       <div class="obj-wrap">
         <div class="obj-main">
           ${kind === 'planet' ? html`<section class="card flush game-panel obj-board"><div id="obj-board"></div></section>` : ''}
