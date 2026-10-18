@@ -31,7 +31,7 @@ const SECTIONS: [string, string, Entry[]][] = [
     { icon: 6, title: '공작', body: html`${(Object.keys(OPS) as OpId[]).map((k) => `${OPS[k].name} ${OPS[k].cost} g · 성공 ${pct(OPS[k].odds)}(첩보망 연구로 상승) · ${OPS[k].what}`).join(' / ')}. 발각되면 불가침이 깨지고 보복 함대가 옵니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 2, title: '현상금', body: html`${BOUNTY.every}블록마다 한 세력이 다른 세력에 현상금을 겁니다(지도의 ◆). ${BOUNTY.lasts}블록 안에 그 세력을 습격해 이기면 받습니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 10, title: '거점', body: html`${OUTPOSTS.map((o) => `${o.name}(${o.perk})`).join(' · ')}. 공략 ${OUTPOST.claim} g · 성공률은 내 전함 대 (기본 수비 + 수비대 레벨×2 + 점령 세력 함대의 절반). 요새화 ${OUTPOST.fortify} g(최대 ${OUTPOST.maxGarrison}). ${OUTPOST.contestEvery}블록마다 경쟁 세력이 빼앗으려 하고, 비어 있는 거점은 먼저 차지해 버립니다. 거점마다 세력 +40.`, go: ['/galaxy', '은하 지도'] },
-    { icon: 2, title: '원한', body: html`약탈당한 세력은 잊지 않습니다. 이길 때마다 원한이 1 쌓이고(최대 ${GRUDGE.max}), 원한 하나마다 그 세력이 당신을 습격하러 올 확률이 ${Math.round(GRUDGE.per * 100)}% 오릅니다. ${GRUDGE.fade}블록마다 하나씩 옅어집니다. 한 세력만 털지, 고루 털지 정하세요.`, go: ['/galaxy', '은하 지도'] },
+    { icon: 2, title: '원한', body: html`약탈당한 세력은 잊지 않습니다. 이길 때마다 원한이 1 쌓이고(최대 ${GRUDGE.max}), 원한 하나마다 그 세력이 당신을 습격하러 올 확률이 ${Math.round(GRUDGE.per * 100)}% 오릅니다. ${GRUDGE.fade}블록마다 하나씩 옅어집니다. 한 세력만 털지, 고루 털지 정하세요. 은하 지도의 위협 칸이 다음 습격의 가장 유력한 세력과 확률을 보여 줍니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 4, title: '세력의 성향', body: html`${Object.entries(TEMPER).map(([, t]) => `${t.name}: ${t.note}`).join(' · ')}. 세력끼리도 ${WAR.every}블록마다 서로 습격합니다.`, go: ['/galaxy', '은하 지도'] },
   ]],
   ['결단과 위기', '은하가 당신에게 선택을 요구한다.', [

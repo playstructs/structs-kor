@@ -244,7 +244,7 @@ const screen: Screen = {
       setTiles([
         { label: '내 세력', value: n(Math.round(demo.netWorth())), tone: 'var(--cheong-hi)' },
         { label: '알파 매터', value: '', num: demo.state.alpha, fmt: (v) => n(v, 2) + ' g', tone: 'var(--hwang)' },
-        { label: '위협', value: demo.raid ? `${demo.raid.name} · ${demo.raid.eta || '교전'}` : '없음', tone: demo.raid ? 'var(--jeok)' : 'var(--cheong)', alert: !!demo.raid },
+        { label: '위협', value: demo.raid ? `${demo.raid.name} · ${demo.raid.eta || '교전'}` : (() => { const nx = demo.nextRaider(); return nx ? `${nx.in}블록 뒤 · ${nx.name} ${Math.round(nx.p * 100)}%` : '없음'; })(), tone: demo.raid ? 'var(--jeok)' : 'var(--cheong)', alert: !!demo.raid },
       ]);
     };
     const handlers = {

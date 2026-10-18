@@ -952,13 +952,17 @@ function fileReport(r: DemoRaid, won: boolean) {
     kills: Object.entries(tl.kills).map(([id, n]) => { const x = s.structs.find((y) => y.id === id); return { id, type: x?.type ?? 0, n, name: x?.name }; }).sort((a, z) => z.n - a.n) };
   if (promoted.length) emit('promote', promoted.map((x) => `${x.name ? `「${x.name}」` : STRUCT_TYPE[x.type] ?? TYPES_BY_ID[x.type].type} ${'★'.repeat(x.rank)}`).join(' · '));
 }
+/** Who may come for you next, and how heavily each is weighted: vassals, pacts and allies don't;
+ * temperament, grudges and a calculating rival's sums do. (A rebel, when there is one, comes first.) */
+function raidWeights(): [Rival, number][] {
+  const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height) && x.id !== allyId());
+  return free.map((x) => [x, (TEMPER[x.id]?.raid ?? 2) * (1 + GRUDGE.per * (x.grudge ?? 0)) * (x.id === '1-313' && rivalWorth(x) < demo.netWorth() ? 0.3 : 1) * (x.id === '1-87' && s.ore > 50 ? 1.5 : 1)]);
+}
 function raidStep() {
   if (!s.raid) {
     if ((s.nextRaid -= ev('pirates') ? 2 : 1) > 0) return;
-    // Vassals and allies don't raid you; a rebel strikes first.
-    const free = rivals().filter((x) => x.vassal == null && !((s.pacts?.[x.id] ?? 0) > s.height) && x.id !== allyId());
-    // Who comes is weighted by temperament (and a calculating rival only when it's the stronger).
-    const weight = (x: Rival) => (TEMPER[x.id]?.raid ?? 2) * (1 + GRUDGE.per * (x.grudge ?? 0)) * (x.id === '1-313' && rivalWorth(x) < demo.netWorth() ? 0.3 : 1) * (x.id === '1-87' && s.ore > 50 ? 1.5 : 1);
+    const ws = raidWeights(), free = ws.map(([x]) => x);
+    const weight = (x: Rival) => ws.find(([y]) => y === x)![1];
     const total = free.reduce((a, x) => a + weight(x), 0);
     let roll = rnd() * total, pick = free[free.length - 1];
     for (const x of free) { roll -= weight(x); if (roll <= 0) { pick = x; break; } }
@@ -1264,6 +1268,15 @@ export const demo = {
     return null;
   },
   raidForecast,
+  /** The likeliest next raider while none is on its way (null otherwise): name, chance, blocks to go. */
+  nextRaider() {
+    if (s.raid) return null;
+    const ws = raidWeights();
+    const rebel = s.rebel ? ws.find(([x]) => x.id === s.rebel) : undefined;
+    const total = ws.reduce((a, [, w]) => a + w, 0);
+    const [x, w] = rebel ?? [...ws].sort((a, z) => z[1] - a[1])[0] ?? [];
+    return x ? { id: x.id, name: x.name, p: rebel ? 1 : w! / Math.max(1e-9, total), in: Math.max(0, s.nextRaid) } : null;
+  },
   /** The last defence's report while it's fresh (60 blocks), unless dismissed. */
   get report() { const p = s.report; return p && s.height - p.h <= 60 ? p : null; },
   dismissReport() { s.report = null; persist(); for (const f of changeFns) f(); },
