@@ -16,14 +16,8 @@ const RECENT = 'structs-kor.pay.recent';
 const recent = (): { id: string; name: string }[] => { try { return JSON.parse(localStorage.getItem(RECENT) || '[]'); } catch { return []; } };
 const remember = (p: { id: string; name: string }) => { try { localStorage.setItem(RECENT, JSON.stringify([p, ...recent().filter((x) => x.id !== p.id)].slice(0, 6))); } catch { /* fine */ } };
 
-/** Alpha in grams, typed the way players say it: "12", "1.5k", "300m" (mg). */
-export function parseGrams(s: string): number | null {
-  const m = s.trim().toLowerCase().replace(/,/g, '').match(/^(\d+(?:\.\d+)?)\s*(k|kg|m|mg|μg|ug|g)?$/);
-  if (!m) return null;
-  const v = Number(m[1]), u = m[2] ?? 'g';
-  const g = u === 'k' || u === 'kg' ? v * 1000 : u === 'm' || u === 'mg' ? v / 1000 : u === 'μg' || u === 'ug' ? v / 1e6 : v;
-  return Number.isFinite(g) && g > 0 ? g : null;
-}
+import { parseGrams } from '../core/units';
+export { parseGrams };
 
 export interface PayOpts { to?: string; amount?: number; denom?: string; from?: number; memo?: string }
 

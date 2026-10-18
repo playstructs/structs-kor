@@ -12,10 +12,8 @@ import { portraitHtml, seededPfp } from '../game/portrait';
 import { STRUCT_TYPE, AMBIT, entityOf } from '../i18n/ko';
 import { KW, BLOCKS_PER_DAY, perKwDay } from '../api/rates';
 
-export const ID_RE = /(^|[^0-9A-Za-z_-])(\d{1,2}-\d{1,9})(?![0-9-])/g;
-/** Kinds worth a card. Allocations and infusions are plumbing; a card that says nothing is worse than text. */
-export const REF_KINDS: Record<string, RefKind> = { '0': 'guild', '1': 'player', '2': 'planet', '3': 'reactor', '4': 'substation', '5': 'struct', '9': 'fleet', '10': 'provider' };
-export type RefKind = 'guild' | 'player' | 'planet' | 'reactor' | 'substation' | 'struct' | 'fleet' | 'provider';
+import { REF_KINDS, type RefKind } from './ids';
+export { ID_RE, REF_KINDS, idsIn, isRefId, linkIds, type RefKind } from './ids';
 export type RefAction = 'pay' | 'message' | 'planet' | 'fleet' | 'rent' | 'guild' | 'sim' | 'raid' | 'join';
 export interface RefCard {
   id: string; kind: RefKind; title: string; subtitle: string; pfp?: string | null; glyph: string;
@@ -24,26 +22,6 @@ export interface RefCard {
   actions: RefAction[];
   owner?: string; planetId?: string; fleetId?: string; guildId?: string;
   provider?: ProviderRow; meter?: { label: string; pct: number; tone?: string };
-}
-
-/** Ids a text names, in order, once each, only kinds worth a card. */
-export function idsIn(text: string, max = 6): string[] {
-  const out: string[] = [];
-  for (const m of text.matchAll(ID_RE)) {
-    const id = m[2];
-    if (REF_KINDS[id.split('-')[0]] && !out.includes(id)) out.push(id);
-    if (out.length >= max) break;
-  }
-  return out;
-}
-export const isRefId = (s: string) => /^\d{1,2}-\d{1,9}$/.test(s) && !!REF_KINDS[s.split('-')[0]];
-
-/** Escaped text with every id turned into a chip (a link to the object's page). */
-export function linkIds(escaped: string, base: string): string {
-  return escaped.replace(ID_RE, (_m, pre: string, id: string) => {
-    const k = REF_KINDS[id.split('-')[0]];
-    return k ? `${pre}<a class="ref-chip ${k}" href="${base}/o/${id}" data-ref-id="${id}" title="${esc(entityOf(id))} ${id}">${id}</a>` : `${pre}<span class="mono">${id}</span>`;
-  });
 }
 
 /* ── Resolution ── */

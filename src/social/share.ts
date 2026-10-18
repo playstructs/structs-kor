@@ -12,40 +12,13 @@ import { session } from '../api/session';
 import { refSlot, resolveRef, idsIn, linkIds, type RefCard } from './refs';
 import { entityOf } from '../i18n/ko';
 import { sfx } from '../game/sfx';
-
-export type SituationKind = 'raid' | 'battle' | 'market' | 'base' | 'replay' | 'daily' | 'guild' | 'alert' | 'fleet';
-export interface Situation {
-  t: SituationKind; title: string; sub?: string;
-  /** label → value lines, at most eight. */
-  lines: [string, string][];
-  /** Objects it is about; chat unfurls them under it. */
-  ids?: string[];
-  /** Where "open" goes (a sim replay, the daily, a screen). */
-  go?: string;
-  tone?: 'cheong' | 'hwang' | 'jeok';
-  by?: string; at: number;
-}
+import { encodeSituation, decodeSituation, type Situation, type SituationKind } from './situation-code';
+export { encodeSituation, decodeSituation, type Situation, type SituationKind };
 
 const KIND: Record<SituationKind, [string, string]> = {
   raid: ['습격 상황', 'icon-raid'], battle: ['전투 예측', 'icon-combat-log'], market: ['거래 제안', 'icon-transfers'], base: ['기지 현황', 'icon-cmd-post'],
   replay: ['전투 기록', 'icon-combat-log'], daily: ['일일 교전', 'icon-success'], guild: ['길드 소식', 'icon-guild'], alert: ['경보', 'icon-alert'], fleet: ['함대 이동', 'icon-fleet-tile'],
 };
-
-/* ── Encoding: JSON → UTF-8 → base64url, prefixed S. ── */
-const b64u = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const unb64u = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
-export function encodeSituation(s: Situation): string { return 'S' + b64u(new TextEncoder().encode(JSON.stringify({ ...s, lines: s.lines.slice(0, 8) }))); }
-export function decodeSituation(code: string): Situation | null {
-  if (!/^S[A-Za-z0-9_-]{8,6000}$/.test(code)) return null;
-  try {
-    const s = JSON.parse(new TextDecoder().decode(unb64u(code.slice(1)))) as Situation;
-    if (!s || typeof s.title !== 'string' || !KIND[s.t] || !Array.isArray(s.lines)) return null;
-    s.lines = s.lines.filter((l) => Array.isArray(l) && l.length === 2).map(([a, b]) => [String(a).slice(0, 40), String(b).slice(0, 80)] as [string, string]).slice(0, 8);
-    s.ids = (s.ids ?? []).filter((x) => typeof x === 'string' && /^\d{1,2}-\d{1,9}$/.test(x)).slice(0, 4);
-    if (s.go && !/^\/[a-z0-9/?=&._~-]*$/i.test(s.go)) delete s.go;
-    return s;
-  } catch { return null; }
-}
 
 const origin = () => (typeof location === 'undefined' ? '' : location.origin);
 export const objectLink = (id: string) => origin() + href(`/o/${id}`);

@@ -45,18 +45,7 @@ const VERBS: Verb[] = [
   { word: '도움말', aliases: ['help', '?', 'commands', '명령어'], label: '명령어 목록', hint: '도움말', icon: 'icon-tip', arg: 'none', run: () => undefined },
 ];
 
-/* ── Hangul initial consonants (초성) ── */
-const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
-export const chosung = (s: string) => Array.from(s, (c) => { const k = c.charCodeAt(0) - 0xac00; return k >= 0 && k < 11172 ? CHO[Math.floor(k / 588)] : c; }).join('');
-const isJamo = (s: string) => /^[ㄱ-ㅎ]+$/.test(s);
-export function matches(label: string, q: string): number {
-  const L = label.toLowerCase(), Q = q.toLowerCase().trim();
-  if (!Q) return 1;
-  if (L.startsWith(Q)) return 3;
-  if (L.includes(Q)) return 2;
-  if (isJamo(Q) && chosung(L).replace(/\s/g, '').includes(Q)) return 2;
-  return 0;
-}
+import { matches } from '../core/hangul';
 
 interface Item { label: string; hint: string; icon: string; key?: string; run: () => void | Promise<void> }
 
