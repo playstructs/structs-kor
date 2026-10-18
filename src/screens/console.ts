@@ -23,7 +23,7 @@ import { career, activeMissions, tutorialDone, RANKS, type MissionState } from '
 import { sfx } from '../game/sfx';
 import { banner, notify, float, flash, shake } from '../game/fx';
 import { keys } from '../game/keys';
-import { spriteHtml } from '../game/map/art';
+import { spriteHtml, tileUrl, AMBIT_BG } from '../game/map/art';
 import { portraitHtml, seededPfp, myPfp } from '../game/portrait';
 import { pow, blocksUntil } from '../pow/engine';
 import { runTour, tourSeen, BRIDGE_TOUR } from '../game/tour';
@@ -222,8 +222,27 @@ const screen: Screen = {
      * Nothing selected: the base's command card. A struct: power switch, properties, its orders.
      * An empty slot: what can be built there. Orders that need a target (공격, 방어) turn the header
      * inverted until a tile is picked; Esc or the same button again cancels. */
-    const sbtn = (o: { act: string; label: string; key?: string; icon?: string; img?: Safe; sub?: string; tone?: string; dis?: boolean; title?: string; data?: Record<string, string> }): Safe =>
-      html`<button class="sb ${o.tone ?? ''}" type="button" data-act="${o.act}" ${raw(Object.entries(o.data ?? {}).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' '))} ${o.dis ? 'disabled' : ''} title="${o.title ?? o.label}">${o.key ? html`<kbd>${o.key}</kbd>` : ''}${o.img ?? (o.icon ? raw(`<i class="si icon-${o.icon}"></i>`) : '')}<span>${o.label}</span>${o.sub ? html`<small>${o.sub}</small>` : ''}</button>`;
+    /* A command key (.ck): keycap, icon, label, and the value in its own strip below. Tones: gold (ready to
+     * spend), offense/defense (an armed mode, sat pressed in), warn (a red rim), esc (the narrow way out). */
+    const sbtn = (o: { act: string; label: string; key?: string; icon?: string; sub?: string; tone?: string; dis?: boolean; title?: string; data?: Record<string, string>; cd?: number }): Safe =>
+      html`<button class="ck ${o.tone ?? ''}" type="button" data-act="${o.act}" ${raw(Object.entries(o.data ?? {}).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' '))} ${o.dis ? 'disabled' : ''} title="${o.title ?? o.label}"${o.key ? ` aria-keyshortcuts="${o.key}"` : ''}><span class="ck-face">${o.key ? html`<kbd>${o.key}</kbd>` : ''}${o.icon ? raw(`<i class="si icon-${o.icon}" aria-hidden="true"></i>`) : ''}<span class="lbl ${[...o.label].length > 4 ? 'long' : ''}">${o.label}</span>${o.sub ? html`<small class="val">${o.cd != null ? html`<i class="cd" style="width:${Math.round(o.cd * 100)}%"></i>` : ''}<span>${o.sub}</span></small>` : ''}</span></button>`;
+    const escKey = (label: string, cart = false): Safe => html`<span class="ab-groove"></span>${sbtn({ act: 'close', label, key: 'Esc', icon: 'close', tone: cart ? 'esc cart' : 'esc', title: `${label} (Esc)` })}`;
+    /* The build header's budget: free power as ten segments, or, while a cartridge is hovered or
+     * focused, what would be left after building it. Painted in place so hovering never repaints. */
+    const budget = (free: number, need?: number): { segs: string; text: string; bad: boolean } => {
+      if (need == null) return { segs: Array(10).fill('on').join(' '), text: `${free.toFixed(2)}kW`, bad: false };
+      if (need > free) return { segs: Array(10).fill('over').join(' '), text: `-${(need - free).toFixed(2)}kW`, bad: true };
+      const spend = free > 0 ? Math.max(1, Math.round((need / free) * 10)) : 10;
+      return { segs: Array.from({ length: 10 }, (_, k) => (k < 10 - spend ? 'on' : 'spend')).join(' '), text: `→${(free - need).toFixed(2)}kW`, bad: false };
+    };
+    const budgetHtml = (free: number): Safe => { const b = budget(free); return html`<span class="budget"><span>여유</span><span class="meter" aria-hidden="true">${b.segs.split(' ').map((c) => html`<i class="${c}"></i>`)}</span><b>${b.text}</b></span>`; };
+    const previewBudget = (el: HTMLElement | null) => {
+      const box = root.querySelector<HTMLElement>('.ab-bar.player .budget'), free = Number(box?.closest<HTMLElement>('[data-free]')?.dataset.free);
+      if (!box || Number.isNaN(free)) return;
+      const b = budget(free, el?.dataset.need ? Number(el.dataset.need) : undefined), segs = b.segs.split(' ');
+      box.querySelectorAll('.meter i').forEach((i, k) => { i.className = segs[k]; });
+      const t = box.querySelector('b')!; t.textContent = b.text; t.classList.toggle('bad', b.bad);
+    };
     const freeKw = () => (d ? (isDemo ? demo.capacityKw() - demo.structsKw() - demo.soldKw() : kw(d.power?.total_capacity) - kw(d.power?.total_load)) : 0);
     const battery = (): Safe => {
       const cap = isDemo ? demo.capacityKw() : kw(d?.power?.total_capacity);
@@ -235,11 +254,17 @@ const screen: Screen = {
       if (!d) return html``;
       if (panel?.kind === 'build') {
         const { ambit, cat, slot } = panel, free = freeKw();
-        return html`<div class="ab-head">건설 · ${AMBIT[ambit]} ${slot + 1}<span class="sub">${cat === 'planet' ? '행성 슬롯' : '함대 슬롯'} · 여유 ${free.toFixed(2)} kW</span></div>
+        return html`<div class="ab-head" data-free="${String(free)}">건설 · ${AMBIT[ambit]} ${slot + 1}<span class="chip">${cat === 'planet' ? '행성 슬롯' : '함대 슬롯'}</span>${budgetHtml(free)}</div>
           <div class="ab-row"><div class="ab-btns">${buildOptions(ambit, cat).map((t, i) => {
             const need = (t.passiveDraw * 1.2) / 1e6, ok = !isDemo || need <= free;
-            return sbtn({ act: 'build', label: STRUCT_TYPE[t.id] ?? t.type, key: i < 9 ? String(i + 1) : undefined, img: pixel(t.id, 32), sub: `${need.toFixed(1)}kW`, dis: !ok, title: `${STRUCT_TYPE[t.id]} · ${need.toFixed(2)} kW · ${Math.max(3, Math.round(t.buildDifficulty / 140))}블록${ok ? '' : ' · 전력 부족'}`, data: { type: String(t.id) } });
-          })}${sbtn({ act: 'close', label: '취소', key: 'Esc', icon: 'close' })}</div></div>
+            // A cartridge: the unit on a tile of the slot's ambit, its name, and its draw as pips of the free power.
+            const name = STRUCT_TYPE[t.id] ?? t.type, short = need > free;
+            const on = free > 0 ? Math.min(5, Math.ceil((need / free) * 5)) : 5;
+            return html`<button class="ck cart" type="button" data-act="build" data-type="${String(t.id)}" data-need="${String(need)}" ${ok ? '' : 'disabled'} title="${name} · ${need.toFixed(2)} kW · ${Math.max(3, Math.round(t.buildDifficulty / 140))}블록${short ? ' · 전력 부족' : ''}"${i < 9 ? ` aria-keyshortcuts="${i + 1}"` : ''}><span class="ck-face">
+              <span class="view" style="background-color:${AMBIT_BG[ambit]};background-image:url('${tileUrl(ambit, 2, 'middle')}')">${pixel(t.id, 64)}${short ? html`<span class="band"><span>전력 부족</span></span>` : ''}</span>
+              ${i < 9 ? html`<kbd>${String(i + 1)}</kbd>` : ''}<span class="lbl">${name}</span>
+              <small class="val"><span class="pips" aria-hidden="true">${Array.from({ length: 5 }, (_, k) => html`<i class="${short ? 'over' : k < on ? 'on' : ''}"></i>`)}</span><span>${need.toFixed(1)}kW</span></small></span></button>`;
+          })}${escKey('취소', true)}</div></div>
           ${isDemo || wallet.state === 'unlocked' ? '' : html`<div class="ab-head" style="font-weight:400">착공하려면 지갑 잠금을 해제하세요</div>`}`;
       }
       if (panel?.kind === 'struct') {
@@ -261,7 +286,6 @@ const screen: Screen = {
           if (ds?.cat === 'fleet') for (const m of Object.keys(REFITS) as RefitId[]) { const why = demo.refitBlocked(s.id, m); btns.push(sbtn({ act: 'refit', label: REFITS[m].name, icon: 'kinetic-barrier', tone: ds.mod === m ? 'defense' : '', sub: `${REFITS[m].cost} α`, dis: !!why, title: why ?? REFITS[m].what, data: { id: s.id, m } })); }
         }
         if (isDemo && (dead || s.health < (t?.maxHealth ?? 0))) btns.push(sbtn({ act: 'repair', label: '수리', key: 'R', icon: 'add', tone: 'gold', sub: `${demo.repairCost(s.id).toFixed(1)} g`, data: { id: s.id } }));
-        btns.push(sbtn({ act: 'close', label: '닫기', key: 'Esc', icon: 'close' }));
         const sw = dead || building != null ? 'disabled' : online ? 'on' : 'off';
         return html`<div class="ab-head ${mode ? 'inv' : ''}">${head}<span class="sub">${s.id} · ${AMBIT[s.operating_ambit] ?? ''} ${s.slot + 1}</span></div>
           <div class="ab-row">
@@ -276,7 +300,7 @@ const screen: Screen = {
               ${building != null ? html`<div class="ab-prog" style="width:100%">${Array.from({ length: 10 }, (_, i) => html`<i class="${i < Math.round(building * 10) ? 'on' : ''}"></i>`)}</div>` : ''}
               ${v ? html`<form class="ab-name ship-name" data-act="nameShip" data-on="submit" data-id="${s.id}"><input class="input" name="n" maxlength="12" placeholder="함선 이름" value="${ds?.name ?? ''}" aria-label="함선 이름"><button class="btn ghost" type="submit">명명</button></form>` : ''}
             </div>
-            <div class="ab-btns">${btns}</div>
+            <div class="ab-btns">${btns}${escKey('닫기')}</div>
           </div>
           ${!isDemo && !canSign ? html`<div class="ab-head" style="font-weight:400">명령을 서명하려면 지갑 잠금을 해제하세요</div>` : ''}`;
       }
@@ -285,7 +309,10 @@ const screen: Screen = {
       const rank = career.rank.i;
       const abil = isDemo ? ABILITIES.filter((a) => rank >= a.rank).map((a) => {
         const left = demo.abilityLeft(a.id), locked = rank < a.rank, idle = (a.id === 'overshield' && !demo.raid) || ((a.id === 'rally' || a.id === 'strike') && demo.raid?.eta !== 0);
-        return html`<button class="sb ${left || locked || idle ? 'off' : 'gold'}" type="button" data-act="ability" data-id="${a.id}" ${left || locked || idle ? 'disabled' : ''} title="${a.name} · ${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : idle ? (a.id === 'overshield' ? '습격 때 사용' : '습격 함대 도착 후') : a.what}"><kbd>${a.key}</kbd><i class="si icon-${a.id === 'overshield' ? 'planetary-shield' : a.id === 'rally' ? 'raid' : a.id === 'strike' ? 'range' : 'refine'}"></i><span>${a.name}</span>${left && !locked ? html`<span class="cd"><i style="width:${Math.round((1 - left / a.cooldown) * 100)}%"></i></span>` : ''}</button>`;
+        const off = !!(left || locked || idle);
+        return sbtn({ act: 'ability', label: a.name, key: a.key, icon: a.id === 'overshield' ? 'planetary-shield' : a.id === 'rally' ? 'raid' : a.id === 'strike' ? 'range' : 'refine', tone: off ? '' : 'gold ready', dis: off,
+          sub: locked ? RANKS[a.rank] : left ? `${left}블록` : idle ? '대기' : '준비', cd: left && !locked ? 1 - left / a.cooldown : undefined,
+          title: `${a.name} · ${locked ? `${RANKS[a.rank]} 이상` : left ? `재사용 ${left}블록` : idle ? (a.id === 'overshield' ? '습격 때 사용' : '습격 함대 도착 후') : a.what}`, data: { id: a.id } });
       }) : [];
       return html`<div class="ab-head">기지 명령<span class="sub">${d.planet?.name || `행성 ${d.player.planet_id || '—'}`} · 블록 ${d.height == null ? '—' : '#' + n(d.height)}</span></div>
         <div class="ab-row">
@@ -300,9 +327,9 @@ const screen: Screen = {
             ${sbtn({ act: 'refineAll', label: '정제', key: 'Q', icon: 'refine', tone: 'gold', sub: isDemo ? `+${demo.rates().alpha.toFixed(2)}α` : '알파' })}
             ${sbtn({ act: 'infuse', label: '주입', key: 'I', icon: 'send-alpha', sub: isDemo ? '1g→1kW' : '리액터' })}
             ${abil}
-            ${sbtn({ act: 'nav', label: '전력망', key: 'G', icon: 'unpowered', tone: use > 0.9 ? 'offense' : '', data: { to: '/energy' } })}
-            ${sbtn({ act: 'nav', label: '거래', key: 'T', icon: 'transfers', data: { to: '/market' } })}
-            ${sbtn({ act: 'nav', label: '전투', key: 'B', icon: 'raid', data: { to: '/sim' } })}
+            ${sbtn({ act: 'nav', label: '전력망', key: 'G', icon: 'unpowered', tone: use > 0.9 ? 'warn' : '', sub: `${Math.round(use * 100)}%`, data: { to: '/energy' } })}
+            ${sbtn({ act: 'nav', label: '거래', key: 'T', icon: 'transfers', sub: '시장', data: { to: '/market' } })}
+            ${sbtn({ act: 'nav', label: '전투', key: 'B', icon: 'raid', sub: '모의전', data: { to: '/sim' } })}
           </div>
         </div>`;
     };
@@ -638,6 +665,9 @@ const screen: Screen = {
     let pressing = false;
     const typing = () => { const a = document.activeElement; return pressing || (a instanceof HTMLInputElement && !!a.closest('.ship-name') && root.contains(a)); };
     root.addEventListener('pointerdown', (e) => { if ((e.target as Element).closest?.('.ship-name')) pressing = true; });
+    const onPreview = (e: Event) => previewBudget((e.target as Element).closest?.<HTMLElement>('.ck.cart[data-need]') ?? null);
+    root.addEventListener('pointerover', onPreview);
+    root.addEventListener('focusin', onPreview);
     const onPointerUp = () => { if (!pressing) return; setTimeout(() => { pressing = false; if (pending && !typing()) { pending = false; paint(); } }, 0); };
     addEventListener('pointerup', onPointerUp);
     const repaint = () => { if (typing()) { pending = true; return; } pending = false; paint(); };

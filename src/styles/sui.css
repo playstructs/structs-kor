@@ -170,6 +170,75 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
 .ab-btns .sb { --sb-w: 72px; --sb-h: 72px; }
 .ab-btns .sb.wide { --sb-w: 108px; }
 .ab-btns .sb .px-icon { background: transparent; border: 0; }
+/* ── Command keys (.ck): the action bar's own buttons. A dark notched shell, a lip that shows the
+ * key's depth, and a face that sinks into it when pressed. Label and value each get their own row,
+ * so Korean names and numbers never share space with the keycap. Active modes sit pressed in. */
+.ck { --ck-w: 76px; --ck-h: 88px; --face: #B4C5CE; --hi: #DDE9EF; --lo: #8CA4B1; --ink: #15232D; --icon: var(--icon-dark); --val-bg: var(--p-body); --val: var(--p-text-hi); --ring: var(--p-inv);
+  --cut: polygon(0 4px,2px 4px,2px 2px,4px 2px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 2px,calc(100% - 2px) 2px,calc(100% - 2px) 4px,100% 4px,100% calc(100% - 10px),calc(100% - 2px) calc(100% - 10px),calc(100% - 2px) calc(100% - 8px),calc(100% - 4px) calc(100% - 8px),calc(100% - 4px) calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) calc(100% - 4px),calc(100% - 8px) calc(100% - 4px),calc(100% - 8px) calc(100% - 2px),calc(100% - 10px) calc(100% - 2px),calc(100% - 10px) 100%,4px 100%,4px calc(100% - 2px),2px calc(100% - 2px),2px calc(100% - 4px),0 calc(100% - 4px));
+  position: relative; display: block; flex: 0 0 auto; width: var(--ck-w); height: var(--ck-h); padding: 0; margin: 0; border: 0; background: none; cursor: pointer; color: var(--ink); font: 700 13px/16px var(--f-pix); outline: none; }
+.ck::before, .ck::after, .ck-face { position: absolute; clip-path: var(--cut); }
+.ck::before { content: ''; inset: 0; background: #0E0D1C; }
+.ck::after { content: ''; inset: 2px; background: #3B5262; }
+.ck-face { z-index: 1; left: 2px; right: 2px; top: 2px; bottom: 6px; background: var(--face); box-shadow: inset 2px 2px 0 var(--hi), inset -2px -2px 0 var(--lo); }
+.ck kbd { position: absolute; left: 4px; top: 4px; z-index: 2; min-width: 16px; height: 16px; padding: 0 3px; box-sizing: border-box; background: #0E0D1C; color: #fff; border: 0; font: 400 12px/16px var(--f-hud); text-align: center; }
+.ck .si { position: absolute; left: 0; right: 0; top: 14px; font-size: 22px; color: var(--icon); text-align: center; }
+.ck .lbl { position: absolute; left: 2px; right: 2px; top: 40px; text-align: center; white-space: nowrap; overflow: hidden; }
+.ck .lbl.long { font-size: 11px; letter-spacing: -.5px; }
+.ck .val { position: absolute; left: 4px; right: 10px; bottom: 4px; height: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--val-bg); box-shadow: inset 0 0 0 2px #0E0D1C; color: var(--val); font: 400 11px/1 var(--f-hud); white-space: nowrap; }
+.ck .val > span { position: relative; }
+.ck .val .cd { position: absolute; left: 2px; top: 2px; bottom: 2px; background: var(--hwang-line); }
+.ck:hover:not(:disabled) { --face: #C4D3DA; }
+.ck:active:not(:disabled) .ck-face, .ck.offense .ck-face, .ck.defense .ck-face { top: 6px; bottom: 2px; }
+.ck:focus-visible, .ck.ready { filter: drop-shadow(0 -2px 0 var(--ring)) drop-shadow(0 2px 0 var(--ring)) drop-shadow(2px 0 0 var(--ring)) drop-shadow(-2px 0 0 var(--ring)); }
+.ck.gold { --face: var(--hwang); --hi: #F6D293; --lo: #B7802A; --ink: var(--hwang-bg); --icon: var(--hwang-bg); --val-bg: var(--hwang-bg); --val: var(--warn); --ring: var(--hwang); }
+.ck.gold:hover:not(:disabled) { --face: #F0BA62; }
+.ck.ready { animation: ck-ready 1.6s steps(2) infinite; }
+@keyframes ck-ready { 50% { --ring: #F6D293; } }
+.ck.offense { --face: var(--e-text); --hi: var(--e-text-hi); --lo: #B5503F; --ink: var(--e-body); --icon: var(--e-body); --val-bg: var(--e-body); --val: var(--e-text-hi); }
+.ck.offense:hover:not(:disabled) { --face: #F28D7B; }
+.ck.defense { --face: var(--p-inv); --hi: var(--p-text-hi); --lo: #2A9483; --ink: var(--p-body); --icon: var(--p-body); }
+.ck.defense:hover:not(:disabled) { --face: #5AD6C1; }
+.ck.warn .ck-face { box-shadow: inset 2px 2px 0 var(--hi), inset -2px -2px 0 var(--lo), inset 0 0 0 4px var(--e-inv); }
+.ck.warn { --val-bg: var(--e-body); --val: var(--e-text-hi); }
+.ck:disabled { cursor: not-allowed; --face: #8D9FA9; --hi: #A7B8C1; --lo: #6F8491; --ink: #2A363E; --icon: #55666F; filter: none; animation: none; }
+.ck:disabled .val { --val-bg: #1E2B34; --val: #A7C0C6; }
+/* Esc: narrow and dark, behind a groove, so it reads as the way out rather than an option. */
+.ck.esc { --ck-w: 52px; --face: #2C4352; --hi: var(--panel-medium); --lo: #1E3140; --ink: var(--p-text-hi); --icon: var(--p-text-hi); }
+.ck.esc:hover:not(:disabled) { --face: #335061; }
+.ck.esc kbd { left: 50%; transform: translateX(-50%); }
+.ck.esc .si { top: 26px; }
+.ck.esc .lbl { top: 52px; }
+.ab-groove { flex: 0 0 4px; align-self: stretch; margin: 0 2px; background: var(--panel-medium); box-shadow: inset 1px 0 0 #0E0D1C66, 1px 0 0 #82A5B6; }
+/* Build cartridge: the unit on its ambit's tile in a little screen, its name, and a cost strip whose
+ * five pips show the draw against the free power. Short on power: grey face and a hazard band. */
+.ck.cart { --ck-w: 100px; --ck-h: 128px; }
+.ck.cart .view { position: absolute; left: 6px; right: 6px; top: 6px; height: 64px; overflow: hidden; background-size: 64px 64px; background-position: center; image-rendering: pixelated; box-shadow: inset 0 0 0 2px #0E0D1C, inset 0 0 0 4px var(--p-body); }
+.ck.cart .view .px-icon { position: absolute; left: 50%; top: 50%; margin: -32px 0 0 -32px; background: transparent; border: 0; transition: transform .12s steps(2); }
+.ck.cart:hover:not(:disabled) .view .px-icon, .ck.cart:focus-visible .view .px-icon { transform: translateY(-3px); }
+.ck.cart .lbl { top: 76px; }
+.ck.cart .val { left: 6px; bottom: 6px; height: 18px; justify-content: space-between; padding: 0 5px; }
+.ck .pips { display: flex; gap: 2px; }
+.ck .pips i { width: 4px; height: 8px; background: #2B4655; }
+.ck .pips i.on { background: var(--p-inv); }
+.ck .pips i.over { background: var(--e-inv); }
+.ck.cart:disabled .view .px-icon { filter: grayscale(1) brightness(.75); opacity: .7; }
+.ck.cart:disabled .val { --val-bg: var(--e-body); --val: var(--e-text-hi); }
+.ck .band { position: absolute; left: 4px; right: 4px; bottom: 4px; height: 14px; background: repeating-linear-gradient(-45deg, var(--e-hi) 0 4px, var(--e-body) 4px 8px); }
+.ck .band span { display: block; width: max-content; margin: 0 auto; padding: 0 4px; background: var(--e-body); color: var(--e-text-hi); font: 700 10px/14px var(--f-pix); }
+.ab-btns .ck.cart.esc { --ck-w: 56px; --ck-h: 128px; }
+.ck.cart.esc .si { top: 40px; }
+.ck.cart.esc .lbl { top: 72px; }
+/* The header's budget: free power as ten segments; hovering a cartridge previews what it would take. */
+.ab-head .budget { margin-left: auto; display: flex; align-items: center; gap: 5px; font: 400 11px var(--f-pix); }
+.ab-head .meter { display: flex; gap: 2px; padding: 2px; background: #0E0D1C; }
+.ab-head .meter i { width: 5px; height: 10px; background: #2B4655; }
+.ab-head .meter i.on { background: var(--p-inv); }
+.ab-head .meter i.spend { background: var(--warn); }
+.ab-head .meter i.over { background: var(--e-inv); }
+.ab-head .budget b { min-width: 56px; text-align: right; font: 400 12px var(--f-hud); color: var(--p-text-hi); }
+.ab-head .budget b.bad { color: var(--e-text-hi); }
+.ab-head .chip { padding: 2px 4px; background: var(--p-body); color: var(--p-inv); font: 400 11px/1 var(--f-pix); }
+@media (prefers-reduced-motion: reduce) { .ck.cart .view .px-icon { transition: none; } .ck.ready { animation: none; } }
 .ab-prog { display: flex; gap: 2px; padding: 4px; height: 20px; background: var(--p-body); box-shadow: 0 0 0 2px var(--p-inv); min-width: 160px; }
 .ab-prog i { flex: 1 1 0; }
 .ab-prog i.on { background: var(--p-text-hi); }
@@ -184,6 +253,21 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
   .ab-bar.player .ab-chunk.grow { flex: 1 1 auto; }
   .ab-btns { max-width: none; }
   .ab-btns .sb { --sb-w: 60px; --sb-h: 64px; }
+  .ck { --ck-w: 64px; --ck-h: 76px; }
+  .ck .si { top: 10px; font-size: 18px; }
+  .ck .lbl { top: 32px; font-size: 12px; }
+  .ck .lbl.long { font-size: 10px; }
+  .ck.cart { --ck-w: 76px; --ck-h: 100px; }
+  .ck.cart .view { left: 4px; right: 4px; top: 4px; height: 48px; background-size: 48px 48px; }
+  .ck.cart .view .px-icon { width: 48px !important; height: 48px !important; margin: -24px 0 0 -24px; }
+  .ck.cart .lbl { top: 55px; }
+  .ck.cart .val { left: 4px; bottom: 4px; height: 16px; justify-content: center; }
+  .ck.cart .pips { display: none; }
+  .ck .band { height: 12px; } .ck .band span { font-size: 9px; line-height: 12px; }
+  .ab-btns .ck.cart.esc { --ck-w: 48px; --ck-h: 100px; }
+  .ck.cart.esc .si { top: 30px; } .ck.cart.esc .lbl { top: 58px; }
+  .ck.esc { --ck-w: 48px; } .ck.esc .si { top: 22px; } .ck.esc .lbl { top: 46px; }
+  .ab-head .budget > span:first-child, .ab-head .chip { display: none; }
   .ab-face { width: 64px; height: 64px; }
   .ab-props { max-width: none; min-height: 0; }
   .ab-bar.enemy { bottom: auto; top: 70px; }
@@ -322,7 +406,8 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
   .ab-dock .ab-bar { position: relative; left: auto; right: auto; top: auto; bottom: auto; max-width: none; }
   .ab-bar.enemy .ab-chunk:not(.grow), .ab-bar.enemy .ab-conn { display: none; }
   .ab-bar.enemy .ab-props { display: none; }
-  .ab-bar.enemy .ab-btns .sb { --sb-h: 56px; --sb-w: 64px; }
+  .ab-bar.enemy .ab-btns .ck { --ck-h: 68px; }
+  .ab-bar.enemy .ab-btns .ck .val { display: none; }
   .stage-bridge .raid-alarm { display: none; }
   .stage-name { display: none; }
   .ops { top: 60px; }
@@ -340,8 +425,10 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
   .ab-bar.player .ab-chunk:not(.grow) { display: none; }
   .ab-bar.player .ab-conn { display: none; }
   .ab-props { padding: 4px 8px; font-size: 11px; }
-  .ab-btns .sb { --sb-w: 58px; --sb-h: 60px; font-size: 11px; }
-  .ab-btns .sb small { display: none; }
+  .ab-btns .ck:not(.cart) { --ck-w: 58px; --ck-h: 64px; }
+  .ab-btns .ck:not(.cart) .val { display: none; }
+  .ab-btns .ck:not(.cart) .si { top: 8px; }
+  .ab-btns .ck:not(.cart) .lbl { top: 30px; font-size: 11px; }
   .ops { width: calc(100vw - 16px); }
   .bd-stage .bd-scroll { padding: 56px 0 280px; }
 }
