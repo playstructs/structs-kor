@@ -683,6 +683,16 @@ test('black market: a smuggler docks with three deals, each sold once, then leav
   assert.match(demo.buyBlack('scrap') ?? '', /없습니다/, 'sold once');
   assert.equal(demo.buyBlack('bribe'), null);
   assert.equal(s.nextRaid, 90);
+  // Repairs mend the damaged (not the destroyed); the parts reset every cooldown.
+  s.black!.offers = [{ id: 'patch', price: 4 }, { id: 'cool', price: 10 }];
+  const hurt = s.structs.find((x) => x.hp > 1)!, dead = s.structs.find((x) => x !== hurt)!;
+  hurt.hp = 1; dead.hp = 0;
+  assert.match(demo.buyBlack('cool') ?? '', /없습니다/, 'nothing cooling down');
+  s.cd = { surge: s.height + 30 };
+  assert.equal(demo.buyBlack('cool'), null);
+  assert.equal(demo.abilityLeft('surge'), 0);
+  assert.equal(demo.buyBlack('patch'), null);
+  assert.equal(hurt.hp, hurt.max); assert.equal(dead.hp, 0);
   for (let i = 0; i < 40; i++) demo.step();
   assert.equal(demo.black.offers.length, 0, 'the ship left');
 });
