@@ -124,6 +124,7 @@ interface State {
   /** Bounties collected, all time (survives new eras). */
   bountiesClaimed?: number;
   /** 의뢰 게시판: offers on the board, when it refreshes, and the job in hand. */
+  black?: { next: number; until: number; offers: BlackOffer[]; deals?: number };
   jobs?: { offers: Job[]; next: number; active?: Job & { until: number; count: number; taken?: number } | null; done?: number };
   /** Commander abilities: the block each is ready again; and total mobilisation's end. */
   cd?: Partial<Record<AbilityId, number>>; rallyUntil?: number;
@@ -433,6 +434,7 @@ function blockInner() {
   if (s.streak && s.streak.day !== dayKey()) checkStreak();
   contestStep();
   jobsStep();
+  blackStep();
   raceStep();
   bossStep();
   bountyStep();
@@ -688,6 +690,32 @@ function jobsStep() {
     if (i < 2) { const need = 20 + Math.floor(r() * 6) * 10; return { id: `J${s.height}-${i}`, kind: 'deliver', who, need, reward: Math.round(need * (1.1 + r() * 0.15) * 10) / 10 }; }
     return { id: `J${s.height}-${i}`, kind: 'defend', who, need: 2, reward: 20 + Math.floor(r() * 3) * 5 };
   });
+}
+/* ── 암시장 (black market): a smuggler docks now and then for a few blocks with three one-off deals.
+ * Prices are rolled per visit; each deal sells once. Nothing here undercuts the contract board. ── */
+export type BlackId = 'shield' | 'bribe' | 'scrap' | 'cool' | 'patch';
+export interface BlackOffer { id: BlackId; price: number }
+export const BLACK = { every: 180, stays: 30, scrapRate: 0.9, scrapMax: 40, bribe: 60 };
+export const BLACK_DEALS: Record<BlackId, { name: string; what: string }> = {
+  shield: { name: '방어막 충전기', what: '방어막 즉시 100%' },
+  bribe: { name: '습격 정보 매수', what: `다음 습격 ${BLACK.bribe}블록 지연` },
+  scrap: { name: '광석 처분', what: `광석 최대 ${BLACK.scrapMax}를 개당 ${BLACK.scrapRate} α에 즉시 매각` },
+  cool: { name: '밀수 부품', what: '지휘관 능력 재사용 대기 초기화' },
+  patch: { name: '응급 수리반', what: '손상된 구조체 전부 수리 (파괴된 것 제외)' },
+};
+function blackStep() {
+  s.black ??= { next: s.height + 60, until: 0, offers: [] };
+  const b = s.black;
+  if (b.offers.length && s.height > b.until) { b.offers = []; emit('info', '밀수선이 떠났습니다'); }
+  if (s.height < b.next) return;
+  const r = rngFor(`black:${s.height}`);
+  b.next = s.height + BLACK.every + Math.floor(r() * 60);
+  b.until = s.height + BLACK.stays;
+  const pool: BlackId[] = ['shield', 'bribe', 'scrap', 'cool', 'patch'];
+  for (let i = pool.length - 1; i > 0; i--) { const k = Math.floor(r() * (i + 1)); [pool[i], pool[k]] = [pool[k], pool[i]]; }
+  const base: Record<BlackId, number> = { shield: 5, bribe: 9, scrap: 0, cool: 10, patch: 4 };
+  b.offers = pool.slice(0, 3).map((id) => ({ id, price: Math.round(base[id] * (0.7 + r() * 0.7) * 10) / 10 }));
+  emit('black', `밀수선 입항 · ${BLACK.stays}블록 동안 거래 가능 (거래소)`);
 }
 /** A raid beaten: counts for a defence contract if it fell within the term and began after taking it. */
 function jobRepelled(startedAt?: number) {
@@ -1150,6 +1178,35 @@ export const demo = {
     persist(); for (const f of changeFns) f();
     return null;
   },
+  get black() { const b = s.black; return b && b.offers.length && s.height <= b.until ? { offers: b.offers, left: b.until - s.height, deals: b.deals ?? 0 } : { offers: [] as BlackOffer[], left: 0, next: Math.max(0, (b?.next ?? s.height) - s.height), deals: b?.deals ?? 0 }; },
+  /** Why a black-market deal can't be bought now (null = it can). */
+  blackBlocked(id: BlackId): string | null {
+    const o = s.black?.offers.find((x) => x.id === id);
+    if (!o || s.height > (s.black?.until ?? 0)) return '밀수선이 없습니다';
+    if (s.alpha < o.price) return `알파 ${o.price} 필요`;
+    if (id === 'shield' && s.shield >= 100) return '방어막이 이미 가득합니다';
+    if (id === 'bribe' && s.raid) return '이미 습격이 오고 있습니다';
+    if (id === 'scrap' && s.ore < 1) return '팔 광석이 없습니다';
+    if (id === 'cool' && !Object.values(s.cd ?? {}).some((v) => v > s.height)) return '재사용 대기 중인 능력이 없습니다';
+    if (id === 'patch' && !s.structs.some((x) => x.hp > 0 && x.hp < x.max)) return '손상된 구조체가 없습니다';
+    return null;
+  },
+  buyBlack(id: BlackId): string | null {
+    adoptStored();
+    const why = demo.blackBlocked(id); if (why) return why;
+    const b = s.black!, o = b.offers.find((x) => x.id === id)!;
+    s.alpha -= o.price;
+    let note = '';
+    if (id === 'shield') { s.shield = 100; note = '방어막 100%'; }
+    else if (id === 'bribe') { s.nextRaid += BLACK.bribe; note = `다음 습격 ${s.nextRaid}블록 뒤`; }
+    else if (id === 'scrap') { const n = Math.min(BLACK.scrapMax, Math.floor(s.ore)); s.ore -= n; const got = Math.round(n * BLACK.scrapRate * 10) / 10; s.alpha += got; note = `광석 ${n} → +${got} α`; }
+    else if (id === 'cool') { s.cd = {}; note = '능력 재사용 가능'; }
+    else { for (const x of s.structs) if (x.hp > 0 && x.hp < x.max) x.hp = x.max; note = '구조체 수리 완료'; }
+    b.offers = b.offers.filter((x) => x.id !== id); b.deals = (b.deals ?? 0) + 1;
+    chronicle('hwang', `암시장 · ${BLACK_DEALS[id].name} · ${note}`);
+    persist(); for (const f of changeFns) f();
+    return null;
+  },
   get jobs() { const j = s.jobs; return j ? { offers: j.offers, active: j.active ? { ...j.active, left: Math.max(0, j.active.until - s.height) } : null, next: Math.max(0, j.next - s.height), done: j.done ?? 0 } : null; },
   /** Take a job: a delivery is settled at once; a defence contract starts its clock. */
   takeJob(id: string): string | null {
@@ -1378,7 +1435,7 @@ export const demo = {
     if (s.raid) return '습격을 막아 낸 뒤에 새 시대를 열 수 있습니다';
     if (s.loan) return '청룡 상단 대출을 먼저 갚아야 새 시대를 열 수 있습니다';
     // Running totals survive too (daily orders and medals count from them).
-    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done, active: s.jobs.active } : undefined, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
+    const keep = { era: (s.era ?? 0) + 1, jobs: s.jobs ? { offers: [], next: s.height, done: s.jobs.done, active: s.jobs.active } : undefined, black: s.black ? { next: s.black.next, until: 0, offers: [], deals: s.black.deals } : undefined, cd: s.cd, ally: s.ally, outposts: s.outposts, streak: s.streak, reps: s.reps, voidKills: s.voidKills, race: s.race, raceWins: s.raceWins, chronicle: s.chronicle, decided: s.decided, raidsRepelled: s.raidsRepelled, earned: s.earned, bountiesClaimed: s.bountiesClaimed, tribute: s.tribute, hegemonyBest: Math.max(s.hegemonyBest ?? 0, s.hegemonyTier ?? 0), doctrine: s.doctrine, guild: s.guild, tech: s.tech, height: s.height };
     s = fresh();
     Object.assign(s, keep);
     log('event', `제${keep.era + 1}시대 개막`);

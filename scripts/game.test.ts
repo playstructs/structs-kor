@@ -667,6 +667,26 @@ test('contract board: deliveries pay a premium at once; a defence contract pays 
   assert.ok(demo.jobs!.active, 'contract running');
 });
 
+test('black market: a smuggler docks with three deals, each sold once, then leaves', () => {
+  demo.reset();
+  const s = demo.state;
+  s.black = { next: s.height + 1, until: 0, offers: [] };
+  demo.step();
+  assert.equal(demo.black.offers.length, 3);
+  assert.equal(new Set(demo.black.offers.map((o) => o.id)).size, 3, 'no duplicate deals');
+  s.black!.offers = [{ id: 'scrap', price: 0 }, { id: 'bribe', price: 9 }, { id: 'shield', price: 5 }];
+  s.alpha = 20; s.ore = 50; s.shield = 100; s.raid = null; s.nextRaid = 30;
+  assert.match(demo.buyBlack('shield') ?? '', /가득/);
+  assert.equal(demo.buyBlack('scrap'), null);
+  assert.equal(Math.round(s.ore), 10);
+  assert.equal(s.alpha, 20 + 36);
+  assert.match(demo.buyBlack('scrap') ?? '', /없습니다/, 'sold once');
+  assert.equal(demo.buyBlack('bribe'), null);
+  assert.equal(s.nextRaid, 90);
+  for (let i = 0; i < 40; i++) demo.step();
+  assert.equal(demo.black.offers.length, 0, 'the ship left');
+});
+
 test('raid stance: chosen while the raid approaches, locked once it lands', () => {
   demo.reset();
   assert.match(demo.setStance('entrench') ?? '', /없습니다/);

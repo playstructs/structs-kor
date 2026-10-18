@@ -2,7 +2,7 @@
  * and learn the risk — a sold kilowatt is the first thing a brownout cuts. */
 import { html, mount, n, toast, type Safe } from '../ui/dom';
 import { setTiles } from '../ui/shell';
-import { demo, RATE, LOAN, JOBS } from '../game/demo';
+import { demo, RATE, LOAN, JOBS, BLACK, BLACK_DEALS, type BlackId } from '../game/demo';
 import { sfx } from '../game/sfx';
 import { notify, float } from '../game/fx';
 import { career } from '../game/progress';
@@ -76,11 +76,26 @@ export function demoExchange(root: HTMLElement): () => void {
         <button class="btn danger lg" data-act="buy" ${canBuy ? '' : 'disabled'}>구매 계약 체결 <kbd>Enter</kbd></button>`}
       </aside>
     </div>
+    ${blackCard()}
     ${jobsCard()}
     ${loanCard()}`;
   };
 
   /* 의뢰 게시판: deliveries (ore now, alpha at a premium) and defence contracts. */
+  /* 암시장: a smuggler's three one-off deals while the ship is docked. */
+  const blackCard = (): Safe => {
+    const b = demo.black;
+    if (!b.offers.length) return html`<section class="card game-panel black"><div class="card-head"><h2>암시장</h2><span class="end label c-hwang">BLACK MARKET</span></div><p class="note">밀수선이 없습니다${'next' in b ? ` · 약 ${b.next}블록 뒤 입항` : ''}. 들어오면 ${BLACK.stays}블록 동안 한 번씩만 파는 거래를 엽니다.</p></section>`;
+    return html`<section class="card game-panel black"><div class="card-head"><h2>암시장</h2><span class="end mono c-jeok">${b.left}블록 뒤 출항</span></div>
+      <div class="job-row">${b.offers.map((o) => { const why = demo.blackBlocked(o.id); return html`<article class="job">
+        <span class="label c-hwang">${BLACK_DEALS[o.id].name}</span>
+        <b>${BLACK_DEALS[o.id].what}</b>
+        <small class="dim">${why ?? '한 번만 팝니다'}</small>
+        <button class="btn gold" data-act="black" data-id="${o.id}" ${why ? 'disabled' : ''}>${o.price ? `${o.price} α` : '무료'} · 거래</button>
+      </article>`; })}</div>
+    </section>`;
+  };
+
   const jobsCard = (): Safe => {
     const j = demo.jobs;
     if (!j) return html``;
@@ -126,6 +141,15 @@ export function demoExchange(root: HTMLElement): () => void {
       const e = demo.takeJob(el.dataset.id!);
       if (e) { sfx.play('error'); toast(e); return; }
       sfx.play('coin'); float(el, o?.kind === 'deliver' ? `+${o.reward} α` : '의뢰 수락', 'var(--hwang)', true); paint();
+    },
+    black: (el: HTMLElement) => {
+      const id = el.dataset.id as BlackId, ore = demo.state.ore, alpha = demo.state.alpha;
+      const e = demo.buyBlack(id);
+      if (e) { sfx.play('error'); toast(e); return; }
+      sfx.play('coin');
+      const d = Math.round((demo.state.alpha - alpha) * 10) / 10;
+      float(el, id === 'scrap' ? `광석 −${Math.round(ore - demo.state.ore)} · +${d} α` : `${d} α`, 'var(--hwang)', true);
+      notify('암시장', BLACK_DEALS[id].name, 'hwang', null); paint();
     },
     borrow: (el: HTMLElement) => {
       const e = demo.borrow(Number(el.dataset.g));

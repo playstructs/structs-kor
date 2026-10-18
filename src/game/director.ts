@@ -80,6 +80,9 @@ demo.onEvent((kind, text) => {
     const b = demo.bounty;
     if (b && text.includes('현상금')) setTimeout(() => transmit(b.patron, 'bounty'), 700);
     notify('은하 전황', text, 'hwang', null);
+  } else if (kind === 'black') {
+    sfx.play('coin');
+    notify('암시장', text, 'hwang', null);
   } else if (kind === 'decision') {
     sfx.play('coin');
     notify('결단', `${text}${away ? ' · C로 함교에서 결정' : ''}`, 'hwang', null);

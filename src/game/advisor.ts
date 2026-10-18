@@ -1,6 +1,6 @@
 /* 참모 (the advisor): reads the demo base and the galaxy and names the three moves that matter
  * most right now, most urgent first, each with a button that goes and does something about it. */
-import { demo, DOMINION, ENGINE, OUTPOST, OPS, opOdds, ABILITIES } from './demo';
+import { demo, DOMINION, ENGINE, OUTPOST, OPS, opOdds, ABILITIES, BLACK_DEALS } from './demo';
 import type { Dashboard } from '../api/planned';
 import { STRUCT_TYPE } from '../i18n/ko';
 
@@ -27,6 +27,13 @@ export function advise(rank = 99): Tip[] {
   if (raid && raid.eta > 0 && st.ore >= 20 && refining && cap >= st.ore * 0.5 && ready('surge')) tips.push({ pri: 101, tone: 'hwang', text: `습격 전에 긴급 정제[7]: 광석 ${Math.floor(Math.min(cap, st.ore))} 단위를 지금 알파로 바꿔 약탈을 피하세요.`, go: '/console', cta: '함교' });
   else if (raid && raid.eta <= 2 && st.shield < 60 && ready('overshield')) tips.push({ pri: 96, tone: 'hwang', text: `방어막 ${Math.round(st.shield)}% · 방어막 과충전[8]으로 방어막을 40% 올리고 맞서세요.`, go: '/console', cta: '함교' });
   else if (raid && raid.eta === 0 && ready('rally')) tips.push({ pri: 95, tone: 'hwang', text: `교전 중 · 총동원[9]으로 모든 함포를 사격시키세요.`, go: '/console', cta: '함교' });
+  const bm = demo.black;
+  if (bm.offers.length) {
+    const can = bm.offers.filter((o) => !demo.blackBlocked(o.id));
+    const sh = can.find((o) => o.id === 'shield');
+    if (raid && sh && st.shield < 60) tips.push({ pri: 94, tone: 'hwang', text: `밀수선이 방어막 충전기를 ${sh.price} α에 팝니다 · 방어막 ${Math.round(st.shield)}%를 습격 전에 100%로.`, go: '/market', cta: '암시장' });
+    else if (can.length) tips.push({ pri: 58, tone: 'hwang', text: `밀수선 입항 · ${bm.left}블록 뒤 출항. ${can.map((o) => BLACK_DEALS[o.id].name).join(', ')}.`, go: '/market', cta: '암시장' });
+  }
   if (raid && raid.eta > 0 && st.ore >= 20) tips.push({ pri: 100, tone: 'jeok', text: `${raid.name} 함대 ${raid.eta}블록 후 도착 · 정제되지 않은 광석 ${Math.floor(st.ore)} 단위가 노출되어 있습니다. 정제하거나 팔아 지키세요.`, go: '/market', cta: '거래소' });
   const hurt = st.structs.filter((x) => x.hp > 0 && x.hp < x.max * 0.5).length, dead = st.structs.filter((x) => x.hp <= 0).length;
   if (dead + hurt) tips.push({ pri: raid ? 85 : 60, tone: 'jeok', text: `구조체 ${dead ? `${dead}기 파괴` : ''}${dead && hurt ? ' · ' : ''}${hurt ? `${hurt}기 중파` : ''}. 다음 습격 전에 수리하세요.`, go: '/console', cta: '함교' });
