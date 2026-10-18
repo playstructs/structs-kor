@@ -1,5 +1,5 @@
 /* 지휘 함교 (Command Bridge): the commander's planet on the game's own battle board, with the
- * objectives, threat radar, live feed and a hotkey command bar around it. Live data comes from one
+ * objectives, defence by ambit, live feed and a hotkey command bar around it. Live data comes from one
  * read (REQ-AGG-1) refreshed by GRASS events; the demo base (src/game/demo.ts) feeds the same view
  * block by block, raids included. */
 import type { Screen } from '../router';
@@ -16,8 +16,8 @@ import { wallet } from '../wallet/wallet';
 import { session } from '../api/session';
 import { onGrass, throttled } from '../grass/grass';
 import { AMBIT, STRUCT_TYPE, activityLabel } from '../i18n/ko';
-import { TYPES_BY_ID, STRUCT_TYPES, AMBIT_FLAG, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
-import { Board, type BoardStruct } from '../game/map/board';
+import { TYPES_BY_ID, STRUCT_TYPES, AMBITS, AMBIT_FLAG, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
+import { Board, type BoardStruct, type BoardWork } from '../game/map/board';
 import { demo, DEMO_ID, ENGINE, OC, vetRank, ABILITIES, REFITS, type AbilityId, type RefitId } from '../game/demo';
 import { hegemonyMeter } from '../game/meter';
 import { advise, adviseReal } from '../game/advisor';
@@ -37,15 +37,28 @@ const kw = (mw: unknown) => Number(mw) / 1e6;
 
 type Panel = { kind: 'struct'; id: string } | { kind: 'build'; key: string; ambit: Ambit; cat: 'planet' | 'fleet'; slot: number } | null;
 
+/** A struct's open work (its build, mine or refine proof) as the board draws it: how far the best proof
+ * found has brought the wait for the chain's falling bar, and what's left. */
+function workOf(id: string): BoardWork | null {
+  const t = [...pow.tasks.values()].find((x) => x.objectId === id && x.kind !== 'RAID');
+  if (!t || t.kind === 'RAID') return null;
+  const done = t.status === 'ready' || t.status === 'submitting' || t.status === 'sent';
+  const wait = t.best ? blocksUntil(t, t.best.zeros, pow.height) : Infinity, age = Math.max(0, pow.height - t.blockStart);
+  const label = t.status === 'ready' ? '제출 대기' : t.status === 'submitting' || t.status === 'sent' ? '전송 중' : t.status === 'failed' ? '재시도' : Number.isFinite(wait) ? `${wait}블록` : pow.running ? '탐색 중' : '해시 정지';
+  return { kind: t.kind, label, p: done ? 1 : Number.isFinite(wait) ? age / Math.max(1, age + wait) : null, done };
+}
+
 function toBoard(d: Dashboard): BoardStruct[] {
   return d.structs.map((s) => {
     const t = TYPES_BY_ID[s.type];
+    const demoBuild = d.player.id === DEMO_ID ? demo.buildProgress(s.id) : null;
+    const work = demoBuild != null ? { kind: 'BUILD' as const, label: `${Math.round(demoBuild * 100)}%`, p: demoBuild } : workOf(s.id);
     return {
       id: s.id, typeId: s.type, ambit: (s.operating_ambit || 'land') as Ambit, slot: s.slot ?? 0, side: 'defender',
       category: isFleetType(s.type) ? 'fleet' : 'planet', isCommand: s.type === COMMAND_SHIP_ID,
       health: (s.status & DESTROYED) || s.is_destroyed ? 0 : Number(s.health ?? t?.maxHealth ?? 1), maxHealth: t?.maxHealth ?? 1,
       online: (s.status & ONLINE) !== 0, protects: s.protected_struct_id,
-      building: d.player.id === DEMO_ID ? demo.buildProgress(s.id) : null,
+      building: work?.kind === 'BUILD' ? work.p ?? 0 : null, work,
       hot: d.player.id === DEMO_ID && !!demo.state.structs.find((x) => x.id === s.id)?.oc,
       vet: d.player.id === DEMO_ID ? vetRank(demo.state.structs.find((x) => x.id === s.id)?.kills) : 0,
     } satisfies BoardStruct;
@@ -160,20 +173,39 @@ const screen: Screen = {
       </section>`;
     };
 
-    const radar = (): Safe => {
-      const r = isDemo ? demo.raid : null;
-      const live = d?.active_raid;
-      const blips: Safe[] = [];
-      if (r) {
-        const dist = r.eta === 0 ? 8 : 18 + r.eta * 11;
-        blips.push(html`<i class="blip enemy" style="left:calc(50% + ${dist * 0.8}px);top:calc(50% - ${dist * 0.5}px)"></i><span class="blip-l" style="left:calc(50% + ${dist * 0.8 + 10}px);top:calc(50% - ${dist * 0.5 + 6}px)">${r.fleetId} · ${r.eta ? r.eta + '블록' : '교전'}</span>`);
-      }
-      if (live && !r) blips.push(html`<i class="blip enemy" style="left:calc(50% + 10px);top:calc(50% - 8px)"></i><span class="blip-l" style="left:calc(50% + 20px);top:calc(50% - 14px)">${live.fleet_id} · 습격</span>`);
-      return html`<section class="card game-panel"><div class="card-head"><h2>위협 레이더</h2><span class="end label ${blips.length ? 'c-jeok' : 'c-cheong'}">${blips.length ? `적 ${blips.length}` : '이상 없음'}</span></div>
-        <div class="radar" role="img" aria-label="${blips.length ? '적 함대 접근 중' : '주변에 적 없음'}"><div class="radar-sweep"></div><i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="blip home"></i>${blips}</div>
-        ${isDemo ? html`<a class="btn ghost" href="${href('/galaxy')}" style="justify-content:space-between">은하 지도 · 정찰 <kbd>P</kbd></a>` : ''}
-        ${isDemo && !r ? html`<p class="note">다음 정찰 보고까지 약 ${demo.state.nextRaid}블록. 습격 전에 광석을 정제하세요 — 알파는 약탈되지 않습니다.</p>` : ''}
-        ${r && r.eta > 0 ? html`<p class="note c-jeok">${r.name} · 함대 ${r.structs.length}기 · ${r.eta}블록 후 도착. 정제되지 않은 광석 ${n(Math.floor(demo.state.ore))}이 노출되어 있습니다.</p>` : ''}
+    /* 방어: the field read by ambit. For each, the enemies in it, my online guns that can reach it, and
+     * my structs standing in it. An ambit with enemies and no gun on it is open; one with my structs
+     * and no gun on it is a blind spot to fix before the next raid. */
+    const AMBIT_EN: Record<Ambit, string> = { space: 'SPACE', air: 'AIR', land: 'LAND', water: 'WATER' };
+    const reaches = (type: number, a: Ambit) => {
+      const t = TYPES_BY_ID[type], f = AMBIT_FLAG[a];
+      // A defence cannon answers whatever attacks the planet, from any ambit.
+      return !!t && (t.planetaryDefenses === 'defensiveCannon' || (t.primaryWeaponDamage > 0 && (t.primaryWeaponAmbits & f) !== 0) || (t.secondaryWeaponDamage > 0 && (t.secondaryWeaponAmbits & f) !== 0));
+    };
+    const defence = (): Safe => {
+      const mine = (d?.structs ?? []).filter((s) => !(s.status & DESTROYED) && !s.is_destroyed);
+      const foes: { ambit: Ambit; type: number }[] = isDemo
+        ? (demo.raid?.structs ?? []).filter((x) => x.hp > 0).map((x) => ({ ambit: x.ambit, type: x.type }))
+        : liveRaiders.filter((x) => !(x.status & DESTROYED)).map((x) => ({ ambit: (x.operating_ambit || 'space') as Ambit, type: x.type }));
+      const r = isDemo ? demo.raid : null, live = d?.active_raid, raiding = !!(r || live);
+      const ore = Math.floor(Number(d?.player.ore ?? 0)), sh = d?.shield_health;
+      const rows = AMBITS.map((a) => {
+        const foe = foes.filter((f) => f.ambit === a).length;
+        const guns = mine.filter((s) => (s.status & ONLINE) !== 0 && reaches(s.type, a)).length;
+        const held = mine.filter((s) => s.operating_ambit === a).length;
+        const st = foe ? (guns ? (guns >= foe ? ['even', '대응'] : ['thin', '열세']) : ['open', '무방비']) : held && !guns ? ['blind', '사각'] : guns ? ['ok', '엄호'] : ['none', '—'];
+        return { a, foe, guns, held, st };
+      });
+      const pips = (k: number, cls: string) => html`<span class="dp ${cls}">${Array.from({ length: Math.min(k, 6) }, () => html`<i></i>`)}${k > 6 ? html`<small>+${k - 6}</small>` : ''}${k ? '' : html`<small>0</small>`}</span>`;
+      const open = rows.filter((x) => x.st[0] === 'open'), blind = rows.filter((x) => x.st[0] === 'blind');
+      return html`<section class="card game-panel defence"><div class="card-head"><h2>방어 현황</h2><span class="end label ${raiding ? 'c-jeok' : 'c-cheong'}">${raiding ? `적 ${foes.length}기` : '이상 없음'}</span></div>
+        <div class="def-sum"><span title="행성 보호막">보호막 <b class="${(sh ?? 100) < 35 ? 'bad' : ''}">${sh == null ? '—' : sh + '%'}</b></span><span title="정제되지 않은 광석은 습격에 빼앗깁니다">노출 광석 <b class="${raiding && ore ? 'bad' : ore ? 'warn' : ''}">${n(ore)}</b></span>${r?.eta ? html`<span>도착 <b class="bad">${r.eta}블록</b></span>` : ''}</div>
+        <table class="def-tab"><thead><tr><th scope="col">구역</th><th scope="col">적</th><th scope="col" title="이 구역을 칠 수 있는 가동 중 무기">아군 화력</th><th scope="col"><span class="sr">상태</span></th></tr></thead>
+          <tbody>${rows.map((x) => html`<tr class="${x.st[0]}"><th scope="row"><b>${AMBIT[x.a]}</b><small>${AMBIT_EN[x.a]}</small></th><td>${pips(x.foe, 'foe')}</td><td>${pips(x.guns, 'gun')}</td><td><span class="def-st ${x.st[0]}">${x.st[1]}</span></td></tr>`)}</tbody></table>
+        ${open.length ? html`<p class="note c-jeok">${open.map((x) => AMBIT[x.a]).join('·')}의 적을 칠 무기가 없습니다. 그 구역을 겨누는 구조체를 켜거나 지으세요.</p>`
+          : blind.length ? html`<p class="note">사각지대: ${blind.map((x) => AMBIT[x.a]).join('·')}. 내 구조체가 있지만 그 구역을 칠 무기가 없습니다.</p>`
+          : !raiding && ore ? html`<p class="note">습격 전에 광석을 정제하세요. 알파는 약탈되지 않습니다.</p>` : ''}
+        ${isDemo ? html`<a class="btn ghost" href="${href('/galaxy')}" style="justify-content:space-between">은하 지도 · 정찰 <kbd>P</kbd></a>` : html`<a class="btn ghost" href="${href('/sim')}" style="justify-content:space-between">방어 시뮬레이션 <kbd>B</kbd></a>`}
       </section>`;
     };
 
@@ -273,7 +305,7 @@ const screen: Screen = {
         if (!s) return html``;
         const t = TYPES_BY_ID[s.type], ds = isDemo ? demo.state.structs.find((x) => x.id === s.id) : undefined;
         const online = (s.status & ONLINE) !== 0, dead = (s.status & DESTROYED) !== 0;
-        const building = isDemo ? demo.buildProgress(s.id) : null;
+        const bw = isDemo ? null : workOf(s.id), building = isDemo ? demo.buildProgress(s.id) : bw?.kind === 'BUILD' ? bw.p ?? 0 : null;
         const canSign = isDemo || wallet.state === 'unlocked';
         const max = ds?.max || t?.maxHealth || 1;
         const kills = ds?.kills ?? 0, v = vetRank(kills);
@@ -295,7 +327,8 @@ const screen: Screen = {
               <span title="내구도"><i class="si icon-armour"></i><b class="${dead ? 'bad' : ''}">${dead ? '파괴' : `${s.health}/${max}`}</b></span>
               <span title="전력 소비"><i class="si icon-unpowered"></i>${watts(t?.passiveDraw)}</span>
               ${t?.primaryWeaponDamage ? html`<span title="주무기"><i class="si icon-dmg"></i><b>${t.primaryWeaponDamage}×${t.primaryWeaponShots}</b></span>` : ''}
-              <span class="${building != null ? 'warn' : online ? '' : 'gold'}">${building != null ? `건설 ${Math.round(building * 100)}%` : dead ? '잔해' : online ? '가동' : '꺼짐'}</span>
+              <span class="${building != null ? 'warn' : online ? '' : 'gold'}">${building != null ? (bw ? `건설 · ${bw.label}` : `건설 ${Math.round(building * 100)}%`) : dead ? '잔해' : online ? '가동' : '꺼짐'}</span>
+              ${bw && bw.kind !== 'BUILD' ? html`<span class="${bw.done ? 'gold' : ''}" title="작업 증명"><i class="si icon-${bw.kind === 'MINE' ? 'mine' : 'refine'}"></i>${bw.kind === 'MINE' ? '채굴' : '정제'} · ${bw.label}</span>` : ''}
               ${guard ? html`<span title="방어 중"><i class="si icon-defend"></i>${STRUCT_TYPE[guard.type] ?? guard.id}</span>` : ''}
               ${kills ? html`<span class="gold" title="전과">${v ? '★'.repeat(v) : ''} 격파 ${kills}</span>` : ''}
               ${building != null ? html`<div class="ab-prog" style="width:100%">${Array.from({ length: 10 }, (_, i) => html`<i class="${i < Math.round(building * 10) ? 'on' : ''}"></i>`)}</div>` : ''}
@@ -432,10 +465,10 @@ const screen: Screen = {
     })}</ol>`;
 
     /* Intel dock, right: one tab at a time (or none). */
-    const INTEL: [string, string][] = isDemo ? [['radar', '레이더'], ['power', '세력'], ['engine', '엔진']] : [['radar', '레이더'], ['power', '세력'], ['pow', '증명']];
+    const INTEL: [string, string][] = isDemo ? [['radar', '방어'], ['power', '세력'], ['engine', '엔진']] : [['radar', '방어'], ['power', '세력'], ['pow', '증명']];
     const intel = (): Safe => {
       const threat = !!((isDemo && demo.raid) || d?.active_raid);
-      const body = intelTab === 'radar' ? radar() : intelTab === 'power' ? standings() : intelTab === 'engine' ? engine() : intelTab === 'pow' ? html`<div id="pow-host">${powCard()}</div>` : html``;
+      const body = intelTab === 'radar' ? defence() : intelTab === 'power' ? standings() : intelTab === 'engine' ? engine() : intelTab === 'pow' ? html`<div id="pow-host">${powCard()}</div>` : html``;
       return html`<aside class="intel ${intelTab ? 'open' : ''}" aria-label="정보">
         <div class="intel-tabs" role="toolbar">${INTEL.map(([k, l]) => html`<button type="button" data-act="intel" data-k="${k}" aria-pressed="${intelTab === k}" class="${k === 'radar' && threat && intelTab !== 'radar' ? 'alert' : ''}">${l}</button>`)}<button type="button" data-act="intel" data-k="" title="정보 닫기 (Tab)" aria-label="정보 닫기">${intelTab ? '▸' : '◂'}</button></div>
         <div class="intel-body">${body}</div></aside>`;
@@ -720,7 +753,9 @@ const screen: Screen = {
     // The proof card follows every hash; the advisor's proof tips follow at most every few seconds.
     let advisedAt = 0;
     const repaintAdvisor = () => { const el = root.querySelector('.ops'); if (el && d && Date.now() - advisedAt > 3000) { advisedAt = Date.now(); el.outerHTML = ops().s; } };
-    if (!isDemo) offs.push(pow.onChange(() => { paintPow(); repaintAdvisor(); }));
+    // Work plates on the map follow the proofs too (painted only where a plate changed).
+    let boardAt = 0;
+    if (!isDemo) offs.push(pow.onChange(() => { paintPow(); repaintAdvisor(); if (Date.now() - boardAt > 1000) { boardAt = Date.now(); syncBoard(); } }));
     return () => { offs.forEach((f) => f()); board?.dispose(); setTiles([]); };
   },
 };

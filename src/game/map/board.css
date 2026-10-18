@@ -33,7 +33,6 @@
 .bd-badge.off { color: var(--hwang); border-color: var(--hwang-line); }
 .bd-badge.def { color: var(--cheong-hi); border-color: var(--cheong-mid); }
 .bd-badge.cmd { color: #EFB719; border-color: #785B02; }
-.bd-badge.bld { color: var(--warn); }
 .bd-focus { position: absolute; inset: 0; width: 128px; height: 128px; z-index: 450; pointer-events: none; display: none; }
 .bd-focused .bd-focus { display: block; }
 .bd-target .bd-focus { animation: bd-blink .8s steps(2) infinite; }
@@ -75,3 +74,19 @@
 .bd-stage .bd-zoom { position: absolute; top: auto; bottom: 156px; right: 12px; width: 40px; height: 40px; font-size: 20px; }
 @media (max-width: 900px) { .bd-stage .bd-scroll { padding: 60px 4px 170px; } }
 body.is-map-panning, body.is-map-panning * { cursor: grabbing !important; user-select: none; }
+/* Work plates: what a struct is doing for the chain (build, mine, refine), on a dark SUI plate at the
+ * tile's foot with a pip bar of how far its proof has come. A finished proof blinks until it is sent. */
+.bd-work { --wk: var(--warn); position: absolute; left: -34px; top: 94px; width: 116px; box-sizing: border-box; display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 1px 4px; padding: 3px 5px 4px; background: rgba(14,13,28,.92); box-shadow: 0 0 0 2px #0E0D1C, inset 0 0 0 2px var(--wk); color: #fff; font: 700 11px/1 var(--f-pix, sans-serif); white-space: nowrap; }
+.bd-work .si { color: var(--wk); font-size: 12px; }
+.bd-work em { font: 400 10px/1 var(--f-hud, monospace); font-style: normal; color: var(--wk); text-align: right; overflow: hidden; }
+.bd-work b { grid-column: 1 / -1; height: 3px; background: #2B4655; margin-top: 2px; }
+.bd-work b i { display: block; height: 100%; background: var(--wk); }
+.bd-work.mine { --wk: var(--cheong); }
+.bd-work.refine { --wk: var(--hwang); }
+.bd-work.done { animation: bd-blink 1s steps(2) infinite; }
+.bd-has .bd-badges { margin-top: 78px; }
+/* An empty tile of ours on the home planet: hover says it can be built on. */
+.bd-slot-tip { position: absolute; left: 50%; bottom: 12px; z-index: 620; transform: translateX(-50%); padding: 3px 6px; background: rgba(14,13,28,.88); box-shadow: inset 0 0 0 2px var(--cheong); color: var(--cheong-hi); font: 700 12px/1 var(--f-pix, sans-serif); white-space: nowrap; pointer-events: none; opacity: 0; }
+.bd-cell:not(.bd-has):hover .bd-slot-tip, .bd-cell.bd-cursor:not(.bd-has) .bd-slot-tip { opacity: 1; }
+.bd-attract .bd-slot-tip { display: none; }
+@media (prefers-reduced-motion: reduce) { .bd-work.done { animation: none; } }

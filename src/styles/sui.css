@@ -311,7 +311,7 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
 .msgs li .t { color: var(--text-faint); font-family: var(--f-hud); margin-right: 4px; }
 .msgs li.bad { color: var(--jeok-hi); } .msgs li.gold { color: var(--hwang); } .msgs li.good { color: var(--cheong-hi); }
 
-/* Intel dock, right edge: radar, standings, engine, proof of work — one tab open at a time. */
+/* Intel dock, right edge: defence, standings, engine, proof of work — one tab open at a time. */
 .intel { position: absolute; z-index: 55; top: 104px; right: 8px; width: 300px; max-height: calc(100vh - 240px); display: flex; flex-direction: column; font-family: var(--f-pix); }
 .intel-tabs { display: flex; gap: 2px; justify-content: flex-end; }
 .intel-tabs button { min-height: 30px; padding: 0 10px; background: #0E0D1CD9; border: 2px solid var(--line); border-bottom: 0; color: var(--text-dim); cursor: pointer; font: 700 12px var(--f-pix); }
@@ -322,7 +322,29 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
 .intel-body .card { background: transparent; border: 0; padding: 0; box-shadow: none; gap: 8px; }
 .intel-body .card::before, .intel-body .card::after { display: none; }
 .intel-body .card-head h2 { font: 700 14px var(--f-pix); color: var(--p-text-hi); }
-.intel-body .radar { height: 150px; }
+/* 방어: one row per ambit, top to bottom as on the map. Enemy pips red, my reaching guns teal, and a
+ * status chip; an open ambit (enemies, no gun) lights the whole row. */
+.def-sum { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 6px 8px; background: var(--p-body); box-shadow: inset 0 0 0 2px #0E0D1C; color: var(--p-text); font: 400 12px var(--f-pix); }
+.def-sum b { font: 400 13px var(--f-hud); color: var(--p-text-hi); }
+.def-sum b.bad { color: var(--e-text-hi); } .def-sum b.warn { color: var(--warn); }
+.def-tab { width: 100%; border-collapse: separate; border-spacing: 0 3px; font: 400 12px var(--f-pix); }
+.def-tab thead th { padding: 0 6px 2px; text-align: left; color: var(--text-faint); font: 400 11px var(--f-pix); }
+.def-tab tbody th, .def-tab td { padding: 5px 6px; background: #133546B3; vertical-align: middle; }
+.def-tab tbody th { width: 64px; box-shadow: inset 3px 0 0 var(--p-hi); }
+.def-tab tbody th b { display: block; font: 700 12px/1.1 var(--f-pix); color: var(--p-text-hi); }
+.def-tab tbody th small { font: 400 9px var(--f-hud); color: var(--text-faint); letter-spacing: 1px; }
+.def-tab td:last-child { text-align: right; }
+.dp { display: inline-flex; align-items: center; gap: 2px; }
+.dp i { width: 6px; height: 10px; box-shadow: 0 0 0 1px #0E0D1C; }
+.dp.foe i { background: var(--e-inv); } .dp.gun i { background: var(--p-inv); }
+.dp small { margin-left: 2px; font: 400 11px var(--f-hud); color: var(--text-faint); }
+.def-st { display: inline-block; min-width: 40px; padding: 2px 5px; text-align: center; font: 700 11px/1.2 var(--f-pix); background: #0E0D1C; color: var(--text-faint); }
+.def-st.ok, .def-st.even { color: var(--p-text-hi); box-shadow: inset 0 0 0 1px var(--p-hi); }
+.def-st.thin, .def-st.blind { color: var(--warn); box-shadow: inset 0 0 0 1px var(--hwang-line); }
+.def-st.open { color: #fff; background: var(--e-hi); box-shadow: inset 0 0 0 1px var(--e-inv); animation: alert-pulse 1s steps(2) infinite; }
+.def-tab tr.open th, .def-tab tr.open td { background: #5D0C1599; }
+.def-tab tr.open th { box-shadow: inset 3px 0 0 var(--e-inv); }
+@media (prefers-reduced-motion: reduce) { .def-st.open { animation: none; } }
 @media (max-width: 1100px) { .intel { width: 260px; } .ops { width: 250px; } }
 @media (max-width: 900px) { .intel, .msgs { display: none; } .ops { top: 64px; width: 220px; max-height: 40vh; } .intel.open { display: flex; top: 64px; left: 8px; right: 8px; width: auto; z-index: 70; } }
 
