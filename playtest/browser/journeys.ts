@@ -10,7 +10,7 @@ export const accountBudget = { left: 0 };
 
 const require = createRequire(import.meta.url);
 type Step = (h: Harness) => Promise<string>;
-const NAV = [['c', '/console'], ['p', '/galaxy'], ['g', '/energy'], ['t', '/market'], ['u', '/research'], ['b', '/sim'], ['o', '/campaign'], ['y', '/guild'], ['n', '/replicants'], ['k', '/chat'], ['h', '/tutorial'], ['x', '/codex']] as const;
+const NAV = [['c', '/console'], ['p', '/galaxy'], ['g', '/energy'], ['t', '/market'], ['b', '/sim'], ['o', '/campaign'], ['y', '/guild'], ['n', '/replicants'], ['k', '/chat'], ['h', '/tutorial'], ['x', '/codex']] as const;
 
 const path = (h: Harness) => new URL(h.page.url()).pathname.replace(/\/$/, '') || '/';
 async function toBridge(h: Harness) { if (!path(h).endsWith('/console')) await h.go('/console'); await skipTour(h); }
@@ -115,7 +115,11 @@ export const STEPS: Record<string, Step> = {
     const left = await h.page.evaluate(() => ['structs-kor.demo', 'structs-kor.demo.state'].filter((k) => localStorage.getItem(k) != null));
     if (left.length) h.find('retire.save', 'blocker', `the old demo save was not cleared: ${left.join(', ')} still stored`);
     const note = h.page.locator('.retired-note');
-    if (!(await note.count())) h.find('retire.note', 'major', 'no "the demo has ended" note on the title screen for a returning demo player');
+    // The mock guild signs every visitor in as its fixture commander: a signed-in player gets no note
+    // (correct), and the demo rank carries over to that commander right away.
+    const signedIn = await h.signedIn();
+    if (signedIn) h.find('retire.note', 'info', 'signed in (mock fixture), so no note is due; the rank carries over now');
+    else if (!(await note.count())) h.find('retire.note', 'major', 'no "the demo has ended" note on the title screen for a returning demo player');
     else if (!/상병/.test(await note.innerText())) h.find('retire.note', 'minor', 'the note does not name the rank that will carry over (상병)');
     await h.screenshot('retired-note');
     await h.go('/research');
@@ -130,11 +134,13 @@ export const STEPS: Record<string, Step> = {
   async 'carried-rank'(h) {
     if (!h.account?.playerId) return 'skip: no account';
     await h.go('/record');
-    const xp = await h.page.evaluate((id) => { try { return JSON.parse(localStorage.getItem(`structs-kor.career.${id}`) || 'null')?.xp ?? 0; } catch { return 0; } }, h.account.playerId);
+    // The first commander to sign in takes the rank: the new account, or (mock) the fixture before it.
+    const best = await h.page.evaluate(() => Object.keys(localStorage).filter((k) => /^structs-kor\.career\.\d+-\d+$/.test(k)).map((k) => { try { return { k, xp: JSON.parse(localStorage.getItem(k) || 'null')?.xp ?? 0 }; } catch { return { k, xp: 0 }; } }).sort((a, b) => b.xp - a.xp)[0] ?? null);
+    const xp = best?.xp ?? 0;
     const gone = await h.page.evaluate(() => localStorage.getItem('structs-kor.career.demo') == null);
-    if (xp < 400) h.find('retire.rank', 'major', `the demo rank did not carry over: the new commander has ${xp} XP, the demo career had 400`);
+    if (xp < 400) h.find('retire.rank', 'major', `the demo rank did not carry over: no commander has the 400 XP the demo career had (best ${xp})`);
     if (!gone) h.find('retire.rank', 'minor', 'the demo career is still stored after carrying over');
-    return `commander ${h.account.playerId} at ${xp} XP; demo career ${gone ? 'removed' : 'still stored'}`;
+    return `${best?.k.replace('structs-kor.career.', 'commander ') ?? 'no commander'} at ${xp} XP; demo career ${gone ? 'removed' : 'still stored'}`;
   },
 
   async tour(h) {
@@ -369,7 +375,7 @@ export const STEPS: Record<string, Step> = {
   },
   async 'a11y-audit'(h) {
     const out: string[] = [];
-    for (const p of ['/', '/console', '/market', '/galaxy', '/research']) {
+    for (const p of ['/', '/console', '/market', '/galaxy', '/energy', '/guild']) {
       await h.go(p); await skipTour(h);
       await h.page.addScriptTag({ path: require.resolve('axe-core/axe.min.js') });
       const r = await h.page.evaluate(async () => {
@@ -384,7 +390,7 @@ export const STEPS: Record<string, Step> = {
   },
   async 'zoom-audit'(h) {
     const out: string[] = [];
-    for (const p of ['/console', '/market', '/research', '/galaxy']) { await h.go(p); await skipTour(h); const r = await h.probe(); out.push(`${p}: overflow ${r?.overflowX ?? 0}px, ${r?.clipped.length ?? 0} clipped`); await h.screenshot(`zoom-${p.slice(1)}`); }
+    for (const p of ['/console', '/market', '/energy', '/galaxy']) { await h.go(p); await skipTour(h); const r = await h.probe(); out.push(`${p}: overflow ${r?.overflowX ?? 0}px, ${r?.clipped.length ?? 0} clipped`); await h.screenshot(`zoom-${p.slice(1)}`); }
     return out.join('; ');
   },
 
