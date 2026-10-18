@@ -879,6 +879,9 @@ function decide(i: number): string | null {
 }
 
 /* ── Raids: a fleet appears, closes in, and fights the base until one side breaks. ── */
+/** A new commander's grace: the first three raids are small and come further apart. */
+const rookie = () => s.raidsRepelled + s.raidsLost < 3;
+const raidGap = () => (rookie() ? RATE.raidEvery + 15 : RATE.raidEvery);
 function raidStep() {
   if (!s.raid) {
     if ((s.nextRaid -= ev('pirates') ? 2 : 1) > 0) return;
@@ -894,7 +897,8 @@ function raidStep() {
     const [name, owner] = rv ? [rv.name, rv.id] : ['떠돌이 해적', '1-9'];
     const fid = `9-${300 + Math.floor(rnd() * 600)}`;
     const R = (i: number, type: number, ambit: Ambit, slot: number): DemoStruct => ({ id: `5-r${s.height}${i}`, type, ambit, slot, cat: 'fleet', online: true, hp: TYPES_BY_ID[type].maxHealth, max: TYPES_BY_ID[type].maxHealth, building: null, buildBlocks: 0, protects: null });
-    const size = 2 + Math.min(3, Math.floor(s.raidsRepelled / 2));
+    // The first raids are a lesson, not a beating: one escort each until three have come and gone.
+    const size = rookie() ? 1 : 2 + Math.min(3, Math.floor(s.raidsRepelled / 3));
     const pool: [number, Ambit][] = [[3, 'space'], [5, 'air'], [9, 'land'], [12, 'water'], [8, 'land'], [4, 'space']];
     s.raid = { fleetId: fid, owner, name, eta: RATE.raidEta, seized: 0, startedAt: s.height, structs: [R(0, 1, 'space', 0), ...pool.slice(0, size).map(([t, a], i) => R(i + 1, t, a, i % 2))] };
     log('fleet_depart', `${fid} → ${PLANET}`);
@@ -934,7 +938,7 @@ function raidStep() {
   }
   const cmdDown = r.structs.find((x) => x.type === 1)!.hp <= 0;
   if (cmdDown || r.structs.every((x) => x.hp <= 0)) {
-    s.raid = null; s.nextRaid = RATE.raidEvery; s.raidsRepelled++; raceAdd(15); jobRepelled(r.startedAt);
+    s.raid = null; s.nextRaid = raidGap(); s.raidsRepelled++; raceAdd(15); jobRepelled(r.startedAt);
     // A broken raid costs its owner a ship.
     const owner = rivals().find((x) => x.id === r.owner);
     if (owner) owner.fleet = Math.max(2, owner.fleet - 1);
@@ -946,7 +950,7 @@ function raidStep() {
   if (s.height - r.startedAt > RATE.raidEta + 8 || !s.structs.some((x) => x.cat === 'fleet' && x.hp > 0)) {
     // The raiders break through and take every gram of unrefined ore.
     r.seized = Math.floor(s.ore * (1 - 0.25 * lv('bunker')) * (inGuild('blue') ? 0.85 : 1)); s.ore -= r.seized; s.shield = 0;
-    s.raid = null; s.nextRaid = RATE.raidEvery; s.raidsLost++;
+    s.raid = null; s.nextRaid = raidGap(); s.raidsLost++;
     log('raid_status', 'raidSuccessful');
     emit('defeat', `습격 성공 · 광석 ${r.seized} 약탈당함`);
   }
