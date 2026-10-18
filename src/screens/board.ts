@@ -17,6 +17,7 @@ import { dutyLog, roster } from '../game/orders';
 import { watchlist } from '../social/actions';
 import { share } from '../social/share';
 import { setTiles } from '../ui/shell';
+import { txLog, onTx } from '../api/txlog';
 import { sfx } from '../game/sfx';
 
 import { KINDS, encodeBoard, decodeBoard, type Kind, type Card, type Board } from '../social/boardcode';
@@ -26,7 +27,7 @@ const PRESETS: Record<string, Board> = {
   트레이더: { name: '트레이더', cards: [{ k: 'market', w: 2 }, { k: 'banks', w: 1 }, { k: 'me', w: 1 }, { k: 'comms', w: 1 }, { k: 'leaders', w: 1 }] },
   '길드 운영': { name: '길드 운영', cards: [{ k: 'banks', w: 1 }, { k: 'leaders', w: 1 }, { k: 'comms', w: 1 }, { k: 'armada', w: 1 }, { k: 'feed', w: 2 }] },
   레이더: { name: '레이더', cards: [{ k: 'raids', w: 1 }, { k: 'leaders', w: 1 }, { k: 'me', w: 1 }, { k: 'feed', w: 3 }] },
-  '봇 운영': { name: '봇 운영', cards: [{ k: 'armada', w: 1 }, { k: 'duty', w: 2 }, { k: 'me', w: 1 }, { k: 'market', w: 2 }] },
+  '봇 운영': { name: '봇 운영', cards: [{ k: 'armada', w: 1 }, { k: 'duty', w: 2 }, { k: 'tx', w: 1 }, { k: 'me', w: 1 }, { k: 'market', w: 2 }] },
 };
 const KEY = 'structs-kor.boards';
 const load = (): Store => { try { const s = JSON.parse(localStorage.getItem(KEY) || 'null') as Store | null; if (s?.boards?.length) return s; } catch { /* fresh */ } return { at: 0, boards: [structuredClone(PRESETS['지휘관'])] }; };
@@ -66,6 +67,7 @@ const screen: Screen = {
         case 'feed': return feed.length ? html`<ol class="newswire bw-feed">${feed.slice(0, 8).map((r) => html`<li><span class="mono faint">${r.block_height ? '#' + n(r.block_height) : ''}</span> <b>${activityLabel(r.category)}</b> ${typeof r.detail === 'string' ? r.detail : ''}</li>`)}</ol>` : html`<p class="faint">기록이 없습니다.</p>`;
         case 'leaders': return html`<ol class="bw-list num">${leaders.slice(0, 6).map((l) => html`<li class="${l.player_id === pid ? 'me' : ''}"><a href="${href(`/o/${l.player_id}`)}">${l.username || l.player_id}</a><span class="mono c-hwang">${micro(l.alpha_value_p ?? l.alpha_balance_p, 0)} g</span></li>`)}</ol>`;
         case 'duty': { const log = dutyLog().slice(0, 6); return log.length ? html`<ol class="newswire duty">${log.map((x) => html`<li class="${x.tone ?? ''}"><span class="mono faint">${new Date(x.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span> ${x.text}</li>`)}</ol>` : html`<p class="faint">복무 규칙이 아직 아무것도 하지 않았습니다.</p>`; }
+        case 'tx': { const t = txLog().slice(0, 8); return t.length ? html`<ul class="bw-list">${t.map((x) => html`<li><b>${({ pending: '대기', ok: '완료', failed: '실패', unknown: '?', refused: '거부' } as Record<string, string>)[x.status]}</b><small>${x.name.replace(/^Msg/, '')}</small><span class="mono faint">${new Date(x.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span></li>`)}</ul>` : html`<p class="faint">이번 세션에 보낸 거래가 없습니다.</p>`; }
         case 'watch': { const w = watchlist(); return w.length ? html`<div class="bw-watch">${w.slice(0, 9).map((id) => raw(refSlot(id, { base: href(''), compact: true, me: pid })))}</div>` : html`<p class="faint">카드의 ☆ 감시나 팔레트의 <b>감시 ID</b>로 추가하세요.</p>`; }
       }
     };
@@ -150,7 +152,8 @@ const screen: Screen = {
     await refresh();
     const t = window.setInterval(() => { if (!document.hidden && root.isConnected && !editing) void refresh(); }, 30_000);
     const offChat = matrix.onChange(() => { if (need('comms') && !editing && root.isConnected) paint(); });
-    return () => { clearInterval(t); offChat(); root.removeEventListener('keydown', onKey); setTiles([]); };
+    const offTx = onTx(() => { if (need('tx') && !editing && root.isConnected) paint(); });
+    return () => { clearInterval(t); offChat(); offTx(); root.removeEventListener('keydown', onKey); setTiles([]); };
   },
 };
 export default screen;
