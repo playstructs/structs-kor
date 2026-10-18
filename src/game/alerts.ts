@@ -10,6 +10,7 @@ import { banner, flash, notify, shake } from './fx';
 import { music } from './music';
 import { career } from './progress';
 import { pushNative } from './native';
+import { watchlist, onWatch } from '../social/actions';
 
 let off: (() => void) | null = null, watching: string | null = null, last = '';
 
@@ -54,3 +55,26 @@ async function watch() {
 }
 
 session.onChange(() => void watch());
+
+/* Watched planets (☆ on any card, or the palette's 감시): a raid on one is news wherever you are. */
+const watchOffs = new Map<string, () => void>();
+function syncWatch() {
+  const want = session.status.state === 'in' ? new Set(watchlist().filter((w) => w.startsWith('2-'))) : new Set<string>();
+  for (const [id, off] of watchOffs) if (!want.has(id)) { off(); watchOffs.delete(id); }
+  for (const id of want) {
+    if (watchOffs.has(id)) continue;
+    let lastKey = '';
+    watchOffs.set(id, onGrass(`structs.planet.${id}.>`, (e) => {
+      if (e.category !== 'raid_status') return;
+      const d = (e.data.detail ?? {}) as Record<string, unknown>;
+      const status = String(e.data.status ?? d.status ?? ''), fleet = String(e.data.fleet_id ?? d.fleet_id ?? '');
+      if (`${fleet}:${status}` === lastKey) return;
+      lastKey = `${fleet}:${status}`;
+      if (status === 'ongoing' || status === 'initiated') { notify('감시 경보', `감시 중인 행성 ${id}이(가) 습격받고 있습니다 · 함대 ${fleet}`, 'jeok', 'alarm'); pushNative('raid', '감시 행성 습격', `${id} · 함대 ${fleet}`); }
+      else if (status === 'raidSuccessful') notify('감시 행성 약탈', `${id}이(가) 약탈당했습니다`, 'jeok', null);
+      else if (status === 'attackerDefeated' || status === 'attackerRetreated') notify('감시 행성 방어', `${id}이(가) 습격을 막아냈습니다`, 'hwang', null);
+    }));
+  }
+}
+session.onChange(syncWatch);
+onWatch(syncWatch);

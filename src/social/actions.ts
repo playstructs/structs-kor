@@ -45,9 +45,12 @@ export function openRent(p: ProviderRow) {
 /* ── Watchlist: objects this commander keeps an eye on (the /o pages and the palette). ── */
 const WATCH = 'structs-kor.watch';
 export const watchlist = (): string[] => { try { return JSON.parse(localStorage.getItem(WATCH) || '[]'); } catch { return []; } };
+let watchFns: (() => void)[] = [];
+export const onWatch = (f: () => void) => { watchFns.push(f); return () => { watchFns = watchFns.filter((x) => x !== f); }; };
 export function toggleWatch(id: string): boolean {
   const w = watchlist(), on = !w.includes(id);
   try { localStorage.setItem(WATCH, JSON.stringify(on ? [id, ...w].slice(0, 40) : w.filter((x) => x !== id))); } catch { /* fine */ }
+  for (const f of watchFns) f();
   return on;
 }
 
