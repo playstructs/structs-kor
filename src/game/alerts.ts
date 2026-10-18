@@ -9,6 +9,7 @@ import { sfx } from './sfx';
 import { banner, flash, notify, shake } from './fx';
 import { music } from './music';
 import { career } from './progress';
+import { pushNative } from './native';
 
 let off: (() => void) | null = null, watching: string | null = null, last = '';
 
@@ -21,6 +22,7 @@ function onStatus(status: string, fleet: string) {
     music.setMode('battle');
     sfx.play('alarm'); flash();
     notify('경보', `함대 ${fleet}이(가) 행성을 습격합니다${away ? ' · C로 함교 복귀' : ''}`, 'jeok', null);
+    pushNative('raid', '습격 경보', `함대 ${fleet}이(가) 내 행성을 습격합니다`);
     if (!away) { shake('lg'); banner({ kicker: '습격', title: '적 함대 도착', sub: `함대 ${fleet}`, tone: 'jeok', ms: 2000 }); }
   } else if (status === 'attackerDefeated' || status === 'attackerRetreated') {
     music.setMode('calm');
@@ -28,10 +30,12 @@ function onStatus(status: string, fleet: string) {
     career.award(40, '습격 격퇴');
     sfx.play('victory');
     const title = status === 'attackerRetreated' ? '적 함대 철수' : '습격 격퇴';
+    pushNative('raid', '방어 성공', title);
     if (away) notify('방어 성공', title, 'hwang', null); else banner({ kicker: '방어 성공', title, sub: `함대 ${fleet}`, tone: 'gold', ms: 2600 });
   } else if (status === 'raidSuccessful') {
     music.setMode('calm');
     sfx.play('defeat');
+    pushNative('raid', '방어 실패', '광석을 약탈당했습니다');
     if (away) notify('방어 실패', '광석을 약탈당했습니다', 'jeok', null); else { shake('lg'); banner({ kicker: '방어 실패', title: '약탈당함', sub: `함대 ${fleet}`, tone: 'jeok' }); }
   }
 }

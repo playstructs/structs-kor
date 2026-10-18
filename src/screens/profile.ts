@@ -10,6 +10,7 @@ import { GUILD_ID } from '../config';
 import { simulate } from '../api/actions';
 import { guildApi } from '../api/guild';
 import { MOCK } from '../api/http';
+import { CHANNELS, prefs, setPrefs, enable, supported, permission, type Channel } from '../game/native';
 
 const SHOW_FOR_MS = 60_000;
 
@@ -43,6 +44,14 @@ const screen: Screen = {
             <button class="btn gold" data-act="check" ${check.running || wallet.state !== 'unlocked' || !c.playerId || MOCK ? 'disabled' : ''}>${check.running ? '점검 중…' : '체인 점검 실행'}</button>
             ${wallet.state !== 'unlocked' ? html`<small class="dim">지갑 잠금을 해제해야 서명할 수 있습니다.</small>` : MOCK ? html`<small class="dim">모의 모드에서는 꺼져 있습니다.</small>` : ''}
           </section>
+          <section class="chain-check">
+            <div class="card-head"><h2 style="font-size:20px">시스템 알림</h2><span class="end note">${!supported() ? '이 환경은 지원하지 않음' : permission() === 'denied' ? '브라우저에서 차단됨' : prefs().on ? '켜짐' : '꺼짐'}</span></div>
+            <p class="note">탭이 뒤에 있을 때 운영체제 알림으로 알려줍니다. 채널마다 끌 수 있습니다.</p>
+            ${prefs().on ? html`<div class="notify-list">${CHANNELS.map((c) => html`<div class="order-row"><div><b class="c-white">${c.label}</b><br><span class="dim" style="font-size:12px">${c.hint}</span></div><button class="sw" aria-pressed="${prefs().channels[c.id]}" aria-label="${c.label} 알림" data-act="chan" data-id="${c.id}"></button></div>`)}
+              <div class="order-row"><div><b class="c-white">게임 화면을 보고 있을 때도</b><br><span class="dim" style="font-size:12px">끄면 탭이 뒤에 있을 때만</span></div><button class="sw" aria-pressed="${prefs().always}" aria-label="항상 알림" data-act="always"></button></div></div>
+              <button class="btn ghost" data-act="notifyOff">알림 끄기</button>`
+            : html`<button class="btn gold" data-act="notifyOn" ${supported() && permission() !== 'denied' ? '' : 'disabled'}>알림 켜기</button>`}
+          </section>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
             ${wallet.deviceSealed ? '' : wallet.state === 'unlocked' ? html`<button class="btn ghost" data-act="lock">지갑 잠그기</button>` : html`<a class="btn ghost" href="${href('/login')}">지갑 잠금 해제</a>`}
             ${s.state === 'in' ? html`<button class="btn ghost" data-act="signout">길드 로그아웃</button>` : ''}
@@ -71,6 +80,10 @@ const screen: Screen = {
     };
     const paint = () => { if (root.isConnected) mount(root, view(), handlers); };
     const handlers = {
+      notifyOn: () => { void enable().then((ok) => { toast(ok ? '알림을 켰습니다.' : '브라우저가 알림을 허용하지 않았습니다.'); paint(); }); },
+      notifyOff: () => { setPrefs({ on: false }); paint(); },
+      chan: (el: HTMLElement) => { const id = el.dataset.id as Channel; const p = prefs(); setPrefs({ channels: { ...p.channels, [id]: !p.channels[id] } }); paint(); },
+      always: () => { setPrefs({ always: !prefs().always }); paint(); },
       check: () => {
         const pid = wallet.commander?.playerId;
         if (!pid || check.running) return;

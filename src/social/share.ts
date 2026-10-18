@@ -12,6 +12,7 @@ import { session } from '../api/session';
 import { refSlot, resolveRef, idsIn, linkIds, type RefCard } from './refs';
 import { entityOf } from '../i18n/ko';
 import { sfx } from '../game/sfx';
+import { webRoot } from '../core/desktop';
 import { encodeSituation, decodeSituation, type Situation, type SituationKind } from './situation-code';
 export { encodeSituation, decodeSituation, type Situation, type SituationKind };
 
@@ -20,9 +21,9 @@ const KIND: Record<SituationKind, [string, string]> = {
   replay: ['전투 기록', 'icon-combat-log'], daily: ['일일 교전', 'icon-success'], guild: ['길드 소식', 'icon-guild'], alert: ['경보', 'icon-alert'], fleet: ['함대 이동', 'icon-fleet-tile'],
 };
 
-const origin = () => (typeof location === 'undefined' ? '' : location.origin);
-export const objectLink = (id: string) => origin() + href(`/o/${id}`);
-export const situationLink = (s: Situation) => origin() + href(`/s/${encodeSituation(s)}`);
+/** Links are for other people: the website's address, even inside the desktop app (tauri://…). */
+export const objectLink = (id: string) => webRoot() + `/o/${id}`;
+export const situationLink = (s: Situation) => webRoot() + `/s/${encodeSituation(s)}`;
 /** Codes of the situation links in a text (chat unfurls them). */
 export function situationsIn(text: string): Situation[] {
   const out: Situation[] = [];

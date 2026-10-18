@@ -27,6 +27,7 @@ import { openRent } from '../social/actions';
 import { baseSituation } from '../social/situations';
 import { ask } from '../ui/sheet';
 import { sfx } from '../game/sfx';
+import { webRoot } from '../core/desktop';
 
 const PINNED = ['#sn-corp', '#help', '#infrastructure'];
 const GUESS = ['#sn-corp', '#help', '#infrastructure', '#raid', '#trade', '#market', '#recruit', '#korea', '#kr', '#general', '#announcements'];
@@ -159,7 +160,7 @@ const screen: Screen = {
           <button class="hud-btn" data-act="shareroom" title="이 방 링크 복사" aria-label="방 링크"><i class="si icon-link-out"></i></button>
         </div>`, {
         side: (el) => { const s = el.dataset.s as typeof side; side = side === s ? null : s; if (side === 'people') void matrix.members(r.id); paintHead(); paintSide(); },
-        shareroom: () => { void navigator.clipboard?.writeText(location.origin + href(`/chat?room=${encodeURIComponent(r.alias ?? r.id)}`)).then(() => toast('대화방 링크를 복사했습니다.')); },
+        shareroom: () => { void navigator.clipboard?.writeText(webRoot() + (`/chat?room=${encodeURIComponent(r.alias ?? r.id)}`)).then(() => toast('대화방 링크를 복사했습니다.')); },
       });
       const top = r.pinned[0] ? r.events.find((m) => m.id === r.pinned[0]) : null;
       pinsEl.innerHTML = top ? `<button class="comms-pinbar" data-pinjump="${esc(top.id)}"><i class="si icon-key"></i><b>${esc(matrix.displayName(r.id, top.sender))}</b> ${messageHtml(top.body, base)}</button>` : '';

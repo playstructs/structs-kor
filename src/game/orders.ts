@@ -10,6 +10,7 @@ import { guildApi } from '../api/guild';
 import { replicants as listReplicants, energy as energyOf, type Replicant } from '../api/planned';
 import { actions } from '../api/actions';
 import { GUILD_ID } from '../config';
+import { pushNative } from './native';
 
 export type Role = 'productive' | 'bait' | 'raider';
 export interface Doctrine {
@@ -31,7 +32,7 @@ const emit = () => { for (const f of fns) f(); };
 export function doctrine(): Doctrine { try { return { ...DEFAULT, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { ...DEFAULT }; } }
 export function setDoctrine(patch: Partial<Doctrine>) { try { localStorage.setItem(KEY, JSON.stringify({ ...doctrine(), ...patch })); } catch { /* fine */ } emit(); }
 export function dutyLog(): DutyEntry[] { try { return JSON.parse(localStorage.getItem(LOG) || '[]'); } catch { return []; } }
-export function duty(text: string, tone?: DutyEntry['tone']) { try { localStorage.setItem(LOG, JSON.stringify([{ at: Date.now(), text, tone }, ...dutyLog()].slice(0, 60))); } catch { /* fine */ } emit(); }
+export function duty(text: string, tone?: DutyEntry['tone']) { pushNative('orders', '복무 규칙', text); try { localStorage.setItem(LOG, JSON.stringify([{ at: Date.now(), text, tone }, ...dutyLog()].slice(0, 60))); } catch { /* fine */ } emit(); }
 
 /** Addresses HD index 1…SCAN (needs the phrase). */
 export const derived = () => (wallet.state === 'unlocked' ? Array.from({ length: SCAN }, (_, i) => ({ index: i + 1, address: wallet.key(i + 1).address })) : []);

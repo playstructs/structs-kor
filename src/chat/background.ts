@@ -5,6 +5,8 @@ import { matrix, localpart } from './matrix';
 import { session } from '../api/session';
 import { current, go } from '../router';
 import { notify } from '../game/fx';
+import { pushNative } from '../game/native';
+import { href } from '../router';
 
 const seen = new Set<string>();
 let primed = false;
@@ -27,7 +29,9 @@ export function startBackgroundComms() {
         // The first sync is history, not news.
         if (!primed || m.mine || m.notice) continue;
         const named = m.body.includes(me);
-        if (!(r.direct || named) || current() === '/chat') continue;
+        if (!(r.direct || named)) continue;
+        pushNative(r.direct ? 'dm' : 'mention', r.direct ? `${matrix.displayName(r.id, m.sender)} 님의 메시지` : `${r.name.replace(/^#/, '')}에서 언급`, m.body.slice(0, 120), href(`/chat?room=${encodeURIComponent(r.alias ?? r.id)}`));
+        if (current() === '/chat') continue;
         notify(r.direct ? `${matrix.displayName(r.id, m.sender)} 님의 메시지` : `${r.name.replace(/^#/, '')}에서 나를 언급`, m.body.slice(0, 90), 'hwang', 'tick');
       }
     }
