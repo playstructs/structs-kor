@@ -30,6 +30,8 @@ demo.onEvent((kind, text) => {
     sfx.play('alarm'); flash();
     notify('경보', text + (away ? ' · C로 함교 복귀' : ''), 'jeok', null);
     if (demo.raid?.eta === 0 && !away) { shake('lg'); banner({ kicker: '습격', title: '적 함대 도착', sub: text, tone: 'jeok', ms: 2000 }); }
+    // The galaxy closing ranks gets its own moment, as the fleets set out.
+    else if (demo.raid?.partner && demo.raid.eta > 0 && text.startsWith('연합 전선') && !away) { shake('lg'); banner({ kicker: '연합 전선', title: '은하가 뭉쳤다', sub: demo.raid.name, tone: 'jeok', ms: 2600 }); }
   } else if (kind === 'victory') {
     guildSay(mates(), 'victory', 3800);
     if (raider) { const who = raider; setTimeout(() => transmit(who, 'repelled'), away ? 600 : 3400); }
