@@ -165,3 +165,4 @@
 .chal-side { display: flex; flex-wrap: wrap; gap: 2px; flex: 1 1 0; }
 .chal-side.foe { justify-content: flex-end; transform: scaleX(-1); }
 .chal-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.cm-link { color: var(--cheong-hi); overflow-wrap: anywhere; }

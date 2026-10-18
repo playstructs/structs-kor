@@ -93,3 +93,15 @@ test('amounts parse the way players type them', () => {
   assert.equal(parseGrams('-3'), null);
   assert.equal(parseGrams('lots'), null);
 });
+
+test('messages: links linked, ids chipped, nothing injected', async () => {
+  const { messageText } = await import('../src/social/text');
+  const out = messageText('see https://playstructs.com/docs. also javascript:alert(1) and https://beta.playstructs.com/planet/2-15361 then 1-61 <b>', '');
+  assert.match(out, /<a class="cm-link" href="https:\/\/playstructs.com\/docs" target="_blank" rel="noopener noreferrer">https:\/\/playstructs.com\/docs<\/a>\./);
+  assert.match(out, /href="https:\/\/beta.playstructs.com\/planet\/2-15361"/);
+  assert.ok(!out.includes('href="javascript'));
+  assert.match(out, /data-ref-id="1-61"/);
+  assert.equal((out.match(/data-ref-id="2-15361"/g) ?? []).length, 0, 'an id inside a URL stays part of the URL');
+  assert.ok(out.includes('&lt;b&gt;'));
+  assert.equal(messageText('look https://x.kr/o/2-14', '').trim(), 'look');
+});

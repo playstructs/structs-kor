@@ -23,11 +23,12 @@ export function startBackgroundComms() {
     for (const f of fns) f();
     const me = localpart(matrix.me);
     for (const r of matrix.rooms.values()) {
+      const muted = matrix.muted.has(r.id);
       for (const m of r.events.slice(-12)) {
         if (seen.has(m.id) || m.pending) continue;
         seen.add(m.id);
         // The first sync is history, not news.
-        if (!primed || m.mine || m.notice) continue;
+        if (!primed || m.mine || m.notice || muted) continue;
         const named = m.body.includes(me);
         if (!(r.direct || named)) continue;
         pushNative(r.direct ? 'dm' : 'mention', r.direct ? `${matrix.displayName(r.id, m.sender)} 님의 메시지` : `${r.name.replace(/^#/, '')}에서 언급`, m.body.slice(0, 120), href(`/chat?room=${encodeURIComponent(r.alias ?? r.id)}`));

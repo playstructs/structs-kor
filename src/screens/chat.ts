@@ -112,7 +112,7 @@ const screen: Screen = {
     const railItem = (r: Room) => html`<button class="comms-item ${r.id === active ? 'on' : ''} ${r.highlight ? 'hi' : ''}" data-act="open" data-id="${r.id}">
       <span class="comms-ico">${r.direct ? face([...r.memberList.keys()].find((u) => u !== matrix.me) ?? r.id, 24) : raw(`<span class="hash">#</span>`)}</span>
       <span class="comms-nm">${r.name.replace(/^#/, '').split(':')[0]}</span>
-      ${r.unread ? html`<span class="comms-n ${r.highlight ? 'hi' : ''}">${r.unread > 99 ? '99+' : r.unread}</span>` : ''}</button>`;
+      ${matrix.muted.has(r.id) ? html`<i class="si icon-disabled faint" title="알림 꺼짐"></i>` : ''}${r.unread ? html`<span class="comms-n ${r.highlight && !matrix.muted.has(r.id) ? 'hi' : ''}">${r.unread > 99 ? '99+' : r.unread}</span>` : ''}</button>`;
     const paintRail = () => {
       const all = sorted().filter((r) => !filter || r.name.toLowerCase().includes(filter.toLowerCase()) || (r.alias ?? '').includes(filter));
       const pinned = all.filter(isPinnedRoom), rest = all.filter((r) => !isPinnedRoom(r));
@@ -158,9 +158,13 @@ const screen: Screen = {
           ${r.pinned.length ? html`<button class="hud-btn ${side === 'pins' ? 'on' : ''}" data-act="side" data-s="pins" title="고정 메시지" aria-label="고정 메시지 ${r.pinned.length}"><i class="si icon-key"></i><span class="tool-n">${r.pinned.length}</span></button>` : ''}
           <button class="hud-btn ${side === 'search' ? 'on' : ''}" data-act="side" data-s="search" title="검색 (Ctrl+F)" aria-label="검색"><i class="si icon-detected"></i></button>
           <button class="hud-btn ${side === 'people' ? 'on' : ''}" data-act="side" data-s="people" title="참여자" aria-label="참여자"><i class="si icon-member"></i></button>
+          <button class="hud-btn ${matrix.muted.has(r.id) ? 'on' : ''}" data-act="mute" title="${matrix.muted.has(r.id) ? '알림 켜기' : '알림 끄기 (이 기기)'}" aria-label="알림 끄기" aria-pressed="${matrix.muted.has(r.id)}"><i class="si ${matrix.muted.has(r.id) ? 'icon-disabled' : 'icon-signal-jam'}"></i></button>
           <button class="hud-btn" data-act="shareroom" title="이 방 링크 복사" aria-label="방 링크"><i class="si icon-link-out"></i></button>
+          <button class="hud-btn" data-act="leave" title="대화방 나가기" aria-label="대화방 나가기"><i class="si icon-close"></i></button>
         </div>`, {
         side: (el) => { const s = el.dataset.s as typeof side; side = side === s ? null : s; if (side === 'people') void matrix.members(r.id); paintHead(); paintSide(); },
+        mute: () => { toast(matrix.toggleMute(r.id) ? '이 대화방 알림을 껐습니다.' : '알림을 다시 켰습니다.'); paintHead(); paintRail(); },
+        leave: () => void command('leave', [], ''),
         rooms: () => { if (active) drafts.set(active, input.value); active = null; paintAll(); },
         shareroom: () => { void navigator.clipboard?.writeText(webRoot() + (`/chat?room=${encodeURIComponent(r.alias ?? r.id)}`)).then(() => toast('대화방 링크를 복사했습니다.')); },
       });

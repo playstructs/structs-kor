@@ -49,8 +49,11 @@ export class Matrix {
   private emit() { for (const f of this.fns) f(); }
   get server() { return this.grant?.user_id.split(':').slice(1).join(':') ?? ''; }
   get me() { return this.grant?.user_id ?? ''; }
-  /** Unread across rooms, and whether any of it names me. */
-  get unread() { let n = 0, hi = 0; for (const r of this.rooms.values()) { n += r.unread; hi += r.highlight; } return { n: n + this.invites.size, hi }; }
+  /** Rooms muted on this device: no badge, no notices. */
+  muted = new Set<string>((() => { try { return JSON.parse(localStorage.getItem('structs-kor.chat.muted') || '[]') as string[]; } catch { return []; } })());
+  toggleMute(id: string) { if (this.muted.has(id)) this.muted.delete(id); else this.muted.add(id); try { localStorage.setItem('structs-kor.chat.muted', JSON.stringify([...this.muted])); } catch { /* fine */ } this.emit(); return this.muted.has(id); }
+  /** Unread across rooms (muted ones aside), and whether any of it names me. */
+  get unread() { let n = 0, hi = 0; for (const r of this.rooms.values()) { if (this.muted.has(r.id)) continue; n += r.unread; hi += r.highlight; } return { n: n + this.invites.size, hi }; }
 
   async signIn() {
     if (this.grant) return;
@@ -70,7 +73,7 @@ export class Matrix {
 
   private async req<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (!this.grant) throw new Error('채팅에 로그인하지 않았습니다.');
-    if (MOCK) return (await import('./mockserver')).mockMatrix<T>(path, init, this.grant.user_id);
+    if (import.meta.env.DEV && MOCK) return (await import('./mockserver')).mockMatrix<T>(path, init, this.grant.user_id);
     const r = await fetch(endpoints.matrix + '/_matrix/client' + path, { ...init, headers: { authorization: 'Bearer ' + this.grant.access_token, 'content-type': 'application/json', ...(init.headers || {}) } });
     if (r.status === 401) { this.grant = null; this.state = 'expired'; try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* fine */ } throw new Error('채팅 세션이 만료되었습니다.'); }
     if (!r.ok) { const b = await r.json().catch(() => null) as { error?: string } | null; throw new Error(b?.error || `Matrix ${r.status}`); }
