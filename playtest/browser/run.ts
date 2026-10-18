@@ -78,7 +78,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const target = a.target ?? process.env.PLAYTEST_TARGET ?? DEFAULT_TARGET;
   const out = reportDir(a);
   const personas = pick(a.personas);
-  const allow: Allow = a.mock === 'true' ? { mock: true } : GUEST;
+  const allow: Allow = { ...GUEST, mock: a.mock === 'true', signup: a.signup === 'true', chain: a['chain-actions'] === 'true' };
   accountBudget.left = personas.length; // at most one account per profile
   const results: BrowserResult[] = [];
   console.log(`playtest:browser · ${personas.length} personas → ${target}`);

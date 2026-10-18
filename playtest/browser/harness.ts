@@ -30,13 +30,18 @@ export interface StepResult {
   step: string; status: 'ok' | 'skip' | 'fail'; note: string; ms: number; url: string;
   screenshot?: string; blocks?: number;
 }
-/** What this run lets an agent do. Enlisting is limited to the mock Guild API on the local dev
- * server (src/api/mock.ts): no real account is created and nothing reaches a chain. */
+/** What this run lets an agent do (the testnet owner opts in per run; see playtest/README.md). */
 export interface Allow {
   /** Answer the Guild API from src/api/mock.ts (?mock=1; dev server only) and enlist against it. */
   mock: boolean;
+  /** Enlist account profiles as real commanders on the target's guild (testnet), via /start. */
+  signup?: boolean;
+  /** Accept confirmations that sign chain transactions (fleet launch, struct attack, contracts). */
+  chain?: boolean;
 }
 export const GUEST: Allow = { mock: false };
+/** May this profile hold an account in this run? */
+export const canEnlist = (a: Allow, p: { account?: boolean }) => !!p.account && (a.mock || !!a.signup);
 /** A commander a profile enlisted against the mock (or reused). Public facts only, never the phrase. */
 export interface Account { persona: string; playerId: string | null; address: string | null; callsign: string | null; created: boolean; at: string }
 export interface DialogSeen { step: string; type: string; message: string; answer: 'accepted' | 'dismissed'; why: string }
@@ -76,6 +81,7 @@ export class Harness {
   readonly findings: Finding[] = [];
   readonly dialogs: DialogSeen[] = [];
   account: Account | null = null;
+  private signupBody: { callsign: string | null } | null = null;
   /** Feature id → what this profile found (see features.ts). */
   readonly coverage = new Map<string, { status: 'touched' | 'passed' | 'failed' | 'blocked' | 'guarded'; note: string; by: string }>();
   readonly steps: StepResult[] = [];
@@ -141,14 +147,18 @@ export class Harness {
     page.on('dialog', (d) => {
       const msg = d.message();
       if (msg.includes('pt-xss')) { this.find('security.xss', 'blocker', `typed markup ran as script on ${new URL(page.url()).pathname}`); void d.dismiss().catch(() => {}); return; }
-      // Anything that would sign a chain transaction, change a contract or wipe the wallet is declined.
-      const refuse = /체인에 서명|계약을 해지|지갑을 지울|지갑을 삭제/.test(msg);
-      const accept = d.type() === 'confirm' && !refuse;
-      this.dialogs.push({ step: this.step, type: d.type(), message: msg.slice(0, 160), answer: accept ? 'accepted' : 'dismissed', why: refuse ? 'chain, contract or wallet action: always declined' : 'game confirmation' });
+      // Chain transactions and contract changes go through only with --chain-actions; the wallet is never wiped.
+      const chain = /체인에 서명|계약을 해지/.test(msg), wipe = /지갑을 지울|지갑을 삭제/.test(msg);
+      const accept = d.type() === 'confirm' && !wipe && (!chain || !!this.allow.chain);
+      this.dialogs.push({ step: this.step, type: d.type(), message: msg.slice(0, 160), answer: accept ? 'accepted' : 'dismissed', why: wipe ? 'wallet wipe: never' : chain ? (this.allow.chain ? 'chain action (--chain-actions)' : 'chain action: declined without --chain-actions') : 'game confirmation' });
       if (d.type() === 'alert') this.find('ui.native-dialog', 'minor', `a native browser alert interrupted play: "${msg.slice(0, 80)}"`);
       void (accept ? d.accept() : d.dismiss()).catch(() => {});
     });
-    page.on('request', () => this.requests.total++);
+    page.on('request', (r) => {
+      this.requests.total++;
+      // The callsign the guild was asked for. Only the username is read from the body.
+      if (r.method() === 'POST' && /\/auth\/signup\b/.test(r.url())) { try { this.signupBody = { callsign: JSON.parse(r.postData() || '{}').username ?? null }; } catch { /* not JSON */ } }
+    });
     page.on('requestfailed', (r) => { const f = r.failure()?.errorText ?? 'failed'; if (f !== 'net::ERR_BLOCKED_BY_CLIENT' && f !== 'net::ERR_ABORTED') this.requests.failed.push({ url: r.url(), status: f, step: this.step }); });
     page.on('response', (r) => { if (r.status() >= 400) this.requests.failed.push({ url: r.url(), status: r.status(), step: this.step }); });
     page.on('framenavigated', (f) => { if (f === page.mainFrame() && FORBIDDEN.test(new URL(f.url()).pathname)) this.find('safety', 'info', `navigated to a guarded screen (${new URL(f.url()).pathname}); leaving it`); });
@@ -281,7 +291,7 @@ export class Harness {
   /** Enlist through the app's own /start flow against the mock Guild API, or sign back in with the
    * commander this profile already holds. One account per profile directory, so reruns reuse it. */
   async enlist(budget: { left: number }): Promise<Account> {
-    if (!this.allow.mock || !this.p.account) throw new Error('enlisting runs only for account profiles against the mock Guild API (--mock, local dev server)');
+    if (!canEnlist(this.allow, this.p)) throw new Error('enlisting needs an account profile and --mock (dev server) or --signup (testnet)');
     await this.go('/');
     const had = await this.vaultCommander();
     let created = false;
@@ -296,12 +306,12 @@ export class Harness {
         if (await this.page.getByText('입대가 멈췄습니다').count()) throw new Error(`enlist stopped: ${(await this.page.locator('.notice.err').first().innerText().catch(() => '')).slice(0, 160)}`);
         const c = await this.vaultCommander();
         return !!c?.playerId && !new URL(this.page.url()).pathname.endsWith('/start');
-      }, 60_000);
-      if (!ok) throw new Error('enlist did not finish within 60 s');
+      }, this.allow.mock ? 60_000 : 240_000); // a real guild waits for the chain to record the join
+      if (!ok) throw new Error('enlist did not finish in time');
     }
     const c = await this.vaultCommander();
     const callsign = await this.page.evaluate((a) => { try { return (JSON.parse(localStorage.getItem('structs-kor.mock.accounts') || '{}') as Record<string, { name: string }>)[a ?? '']?.name ?? null; } catch { return null; } }, c?.address ?? null);
-    this.account = { persona: this.p.id, playerId: c?.playerId ?? null, address: c?.address ?? null, callsign, created, at: new Date().toISOString() };
+    this.account = { persona: this.p.id, playerId: c?.playerId ?? null, address: c?.address ?? null, callsign: callsign ?? this.signupBody?.callsign ?? null, created, at: new Date().toISOString() };
     return this.account;
   }
   /** Poll `cond` while game and wall time pass (enlist polls the guild every 3 s). */

@@ -31,7 +31,7 @@ const target = a.target ?? process.env.PLAYTEST_TARGET ?? DEFAULT_TARGET;
 const personas = pick(a.profiles ?? a.personas);
 const steps = Number(a.steps ?? 120), par = Math.max(1, Number(a.parallel ?? 4));
 const effort = (a.effort ?? 'medium') as Effort;
-const opts = { steps, effort, allow: { mock: a.mock === 'true' }, contextEditing: a['no-context-editing'] !== 'true' };
+const opts = { steps, effort, allow: { mock: a.mock === 'true', signup: a.signup === 'true', chain: a['chain-actions'] === 'true' }, contextEditing: a['no-context-editing'] !== 'true' };
 accountBudget.left = personas.length; // never more accounts than profiles
 const client = agent === 'claude' ? new Anthropic() : null;
 console.log(`playtest:ai · ${personas.length} ${agent === 'claude' ? `Claude playtesters (${MODEL}, effort ${effort}, ${steps} actions each)` : 'scripted stand-ins (no API)'} → ${target}${opts.allow.mock ? ' · mock Guild API, specialists enlist' : ' · guest/demo'}`);

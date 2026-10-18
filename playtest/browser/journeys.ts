@@ -2,7 +2,7 @@
  * Each returns a short note; throwing or returning `skip:` marks the step. Steps play the game the
  * way a person would — buttons and hotkeys, never the demo API — and check what they see. */
 import { createRequire } from 'node:module';
-import { BLOCK_MS, DEMO_KEY, FORBIDDEN, type Harness } from './harness';
+import { BLOCK_MS, DEMO_KEY, FORBIDDEN, canEnlist, type Harness } from './harness';
 import { feature, type Feature } from '../features';
 
 /** Accounts this run may still enlist (the runner sets it to the profile count: one each). */
@@ -31,7 +31,7 @@ export async function exercise(h: Harness, f: Feature): Promise<string> {
   const present = await h.waitFor(async () => (re ? (await h.page.getByText(new RegExp(re[1])).count()) > 0 : await h.has(f.expect)), 10_000);
   if (!present) { h.mark(f.id, 'failed', `not found on ${f.path}: ${f.expect}`); h.find('feature.missing', 'major', `${f.name}: expected ${f.expect} on ${f.path}`); return `${f.id}: missing`; }
   if (f.guarded) { h.mark(f.id, 'guarded', 'present; completing it is blocked by the harness'); return `${f.id}: present (guarded)`; }
-  if (f.chain) { h.mark(f.id, 'guarded', 'present; the harness never signs or sends a chain transaction'); return `${f.id}: present (chain, not sent)`; }
+  if (f.chain && !h.allow.chain) { h.mark(f.id, 'guarded', 'present; chain transactions need --chain-actions'); return `${f.id}: present (chain, not sent)`; }
   if (f.act) {
     const errs = h.findings.length;
     const pressed = await h.click(f.act, { force: true });
@@ -46,7 +46,7 @@ export async function exercise(h: Harness, f: Feature): Promise<string> {
 
 export const STEPS: Record<string, Step> = {
   async enlist(h) {
-    if (!h.allow.mock || !h.p.account) return 'skip: enlisting runs only for account profiles against the mock Guild API (--mock); playing guest';
+    if (!canEnlist(h.allow, h.p)) return 'skip: no account for this profile in this run (needs --mock or --signup); playing guest';
     const a = await h.enlist(accountBudget);
     h.mark('enlist', a.playerId ? 'passed' : 'failed', a.created ? `enlisted ${a.playerId}` : `reused ${a.playerId}`);
     return `${a.created ? 'enlisted' : 'signed back in as'} ${a.callsign ?? '?'} (${a.playerId})`;

@@ -7,7 +7,7 @@
  * Context editing clears old tool results (and their screenshots) server-side so a 120-step session
  * stays affordable; the history itself is append-only (every assistant turn goes back as returned). */
 import Anthropic from '@anthropic-ai/sdk';
-import { Harness, FORBIDDEN, type Allow, type Account } from '../browser/harness';
+import { Harness, FORBIDDEN, canEnlist, type Allow, type Account } from '../browser/harness';
 import { STEPS, accountBudget } from '../browser/journeys';
 import { FEATURES, feature } from '../features';
 import type { Profile } from '../profiles';
@@ -20,7 +20,7 @@ export interface Review { fun: number; clarity: number; difficulty: number; woul
 export interface TurnUsage { input: number; cacheRead: number; cacheWrite: number; output: number }
 export interface Coverage { status: 'touched' | 'passed' | 'failed' | 'blocked' | 'guarded'; note: string; by: string }
 export interface AiResult {
-  persona: string; model: string; agent: 'claude' | 'scripted'; steps: number;
+  persona: string; model: string; agent: 'claude' | 'scripted' | 'subagent'; steps: number;
   account: Account | null; coverage: Record<string, Coverage>; notes: Note[]; review: Review | null; actions: string[];
   usage: { input: number; output: number; cacheRead: number; cacheWrite: number }; turns: TurnUsage[];
   /** Size of what each observation sends (scripted runs measure this for the cost estimate). */
@@ -50,12 +50,12 @@ const TOOLS: Anthropic.Beta.BetaToolUnion[] = [
   },
 ];
 
-function system(p: Profile, steps: number, account: Account | null) {
+export function system(p: Profile, steps: number, account: Account | null, allow: Allow = { mock: false }) {
   const mine = p.slice.map((id) => feature(id)!).map((f) => `- ${f.id} · ${f.name} (${f.path}${f.chain ? ', signs a chain transaction' : ''}${f.guarded ? ', guarded' : ''}): ${f.try}`).join('\n');
   const rest = FEATURES.filter((f) => !p.slice.includes(f.id)).map((f) => `${f.id} (${f.path})`).join(', ');
   return `You are a playtester for 구조체 STRUCTS, a Korean-language space strategy game played in the browser, doing a deep dive into its features.
 
-${account ? `You are signed in as a newly enlisted commander, ${account.callsign ?? 'a new recruit'} (player ${account.playerId}). This run uses a mock Guild API on a local dev server: no real chain, no real account.` : 'You are playing as a guest in the demo base, a pretend base that runs in the browser; nothing touches a real chain or account.'}
+${account ? `You are signed in as a newly enlisted commander, ${account.callsign ?? 'a new recruit'} (player ${account.playerId}). ${allow.mock ? 'This run uses a mock Guild API on a local dev server: no real chain.' : 'This is a real account on the Structs testnet; breaking things is fine, that is what testing is for.'}` : 'You are playing as a guest in the demo base, a pretend base that runs in the browser; nothing touches a real chain or account.'}
 
 You play as this person, and judge the game through their eyes:
 - Who: ${p.name}, ${p.archetype}. ${p.bio}
@@ -74,13 +74,13 @@ Rules:
 - Each turn you get a screenshot and a numbered list of the controls on screen. Act with click, press, type, go or wait.
 - Log with note whenever something confuses, frustrates, breaks or delights this person. Be concrete (what you did, what you expected, what happened), so a developer can reproduce it.
 - Never try to reveal, copy, type or export a recovery phrase or password. The harness blocks those controls; if one is blocked, report the feature as blocked and move on.
-- Confirmation dialogs that would sign a chain transaction, change a contract or wipe the wallet are always declined by the harness. Report such features from what you could see up to the confirmation.
+- ${allow.chain ? 'Chain transactions are allowed in this run: confirmation dialogs for them are accepted, so try them for real. Wiping the wallet is always declined.' : 'Confirmation dialogs that would sign a chain transaction, change a contract or wipe the wallet are declined by the harness in this run. Report such features from what you could see up to the confirmation.'}
 - You have about ${steps} actions. Call finish with your review before they run out.
 - Write notes and the review in English, quoting Korean UI text where it matters.`;
 }
 
 /** Number the visible controls and return a compact text list (refs live in data-pt-ref). */
-async function snapshot(h: Harness) {
+export async function snapshot(h: Harness) {
   return h.page.evaluate(() => {
     document.querySelectorAll('[data-pt-ref]').forEach((el) => el.removeAttribute('data-pt-ref'));
     const vis = (el: Element) => { const b = el.getBoundingClientRect(); const cs = getComputedStyle(el); return b.width > 0 && b.height > 0 && b.bottom > 0 && b.top < innerHeight && cs.visibility !== 'hidden' && cs.display !== 'none'; };
@@ -120,9 +120,9 @@ export function blank(p: Profile, agent: AiResult['agent']): AiResult {
 }
 
 /** Enlist (against the mock) when this persona plays an account; otherwise open the demo. */
-async function start(h: Harness, p: Profile) {
+export async function start(h: Harness, p: Profile) {
   await h.go('/');
-  if (p.account && h.allow.mock) await STEPS.enlist(h); // mock only: no real account is ever created
+  if (canEnlist(h.allow, p)) await STEPS.enlist(h);
   else await STEPS.demo(h).catch(() => '');
 }
 
@@ -140,7 +140,7 @@ export async function playAi(client: Anthropic, p: Profile, target: string, out:
         model: MODEL, max_tokens: 16000,
         betas: ['server-side-fallback-2026-07-01', ...(editing ? ['context-management-2025-06-27' as const] : [])], fallbacks: 'default',
         thinking: { type: 'adaptive' }, output_config: { effort: o.effort },
-        system: [{ type: 'text', text: system(p, o.steps, h.account), cache_control: { type: 'ephemeral' } }],
+        system: [{ type: 'text', text: system(p, o.steps, h.account, o.allow), cache_control: { type: 'ephemeral' } }],
         tools: TOOLS, tool_choice: { type: 'auto' },
         cache_control: { type: 'ephemeral' },
         ...(editing ? { context_management: { edits: [{ type: 'clear_tool_uses_20250919' as const, trigger: { type: 'input_tokens' as const, value: 100_000 }, keep: { type: 'tool_uses' as const, value: 8 }, clear_at_least: { type: 'input_tokens' as const, value: 30_000 } }] } } : {}),

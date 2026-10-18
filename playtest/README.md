@@ -57,13 +57,26 @@ Each profile carries its sim policy (`sim/policies.ts`), browser journey (`brows
 
 ## Accounts
 
-Signed-in accounts exist only against the **mock Guild API** (`src/api/mock.ts`, `--mock`, which needs the local dev server).
-- Each account profile enlists through the app's own `/start` flow. A key is sealed in that profile's browser, and the mock registers the commander with its own player id and callsign.
-- The profile directory (`playtest/.profiles/<id>`) keeps that commander, so reruns sign back in instead of enlisting again.
-- A run never makes more accounts than it has profiles.
-- Each account's player id and callsign go into `ai.json` and the report. The recovery phrase is never recorded.
+Account profiles (the nine signed-in specialists) enlist through the app's own `/start` flow. A key is sealed in that profile's browser (`playtest/.profiles/<id>`), and the guild registers the commander.
+- The profile keeps that commander, so reruns sign back in instead of enlisting again. A run never makes more accounts than it has profiles.
+- Each account's player id and callsign go into `ai.json` and the report. The recovery phrase never does.
 
-Live signup on the real guild, and accepting chain-transaction confirmations, are **not implemented**. Creating real accounts and signing real transactions are real-world actions the harness owner has to authorize explicitly, so these modes were left out. Against a live target every profile plays guest/demo.
+Enlisting needs one of two flags:
+- **`--mock`:** against the dev server's mock Guild API (`src/api/mock.ts`). No chain is involved.
+- **`--signup`:** real commanders on the target's guild, meant for the testnet. Without either flag every profile plays guest/demo.
+
+**`--chain-actions`** lets agents accept confirmations that sign chain transactions, such as fleet launch, struct attack and contract changes. It's off by default. A wallet wipe is always declined.
+
+## Playtesters on a Claude subscription (no API key)
+
+`playtest/ai/drive.ts` holds one profile's browser open behind a local HTTP API (`/observe`, `/click`, `/press`, `/type`, `/go`, `/wait`, `/feature`, `/note`, `/finish`). It also writes that profile's brief to `<run>/ai/<id>.brief.md`. Any agent that can run `curl` and read an image can then play. For example, Claude Code subagents on `model: sonnet`: start one driver per profile, start one subagent per driver pointed at its brief, then merge the results.
+
+```bash
+npx tsx playtest/ai/drive.ts --profile admiral --port 7414 --target http://localhost:5196/ --mock --chain-actions --out playtest/reports/deep-1
+# …one per profile; each subagent reads its brief and drives its port with curl…
+npx tsx playtest/ai/collect.ts --out playtest/reports/deep-1 --triage triage.json
+pnpm playtest:report --out playtest/reports/deep-1
+```
 
 ## Safety
 
