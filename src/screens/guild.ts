@@ -24,6 +24,8 @@ import { banner } from '../game/fx';
 import { ask } from '../ui/sheet';
 import { share } from '../social/share';
 import { guildSituation } from '../social/situations';
+import { matrix } from '../chat/matrix';
+import { messageHtml } from '../social/share';
 import { openTransfer } from '../social/transfer';
 
 type Tab = 'home' | 'members' | 'apps' | 'find' | 'admin';
@@ -34,6 +36,7 @@ const screen: Screen = {
     if (!pid) return;
     mount(root, loading('길드 불러오는 중…'));
     let me: PlayerRow | null = null, guild: GuildRow | null = null, roster: RosterRow[] = [], bank: BankRow[] = [], count = 0, power: Record<string, unknown> | null = null;
+    let notice: { alias: string | null; items: { who: string; body: string; ts: number }[] } | null = null;
     let dir: DirectoryRow[] = [], apps: Application[] = [], myApps: Application[] = [];
     let tab: Tab = (params.get('tab') as Tab) || 'home', q = '', sort: 'alpha' | 'name' = 'alpha', busy = false;
     const viewing = () => params.get('id');
@@ -89,6 +92,8 @@ const screen: Screen = {
           <ol class="standings">${top.map((m, i) => html`<li class="${m.id === pid ? 'me' : ''}"><span class="rk mono">${i + 1}</span>${raw(portraitHtml(m.pfp || seededPfp(m.id), 32))}<div><a href="${href(`/o/${m.id}`)}"><b>${m.username || m.id}</b></a><small class="mono">알파 ${micro(m.alpha_p ?? m.alpha, 1)} g</small></div>${m.id === pid ? html`<span class="chip cheong">나</span>` : ''}</li>`)}</ol>
           ${top.length ? '' : html`<p class="empty">길드원 정보가 없습니다.</p>`}
         </section>
+        ${mine() ? html`<section class="card game-panel"><div class="card-head"><h2>길드 공지</h2><a class="btn ghost sm end" href="${href(`/chat?room=${encodeURIComponent(notice?.alias ?? '#sn-corp')}`)}">통신방</a></div>
+          ${notice === null ? html`<p class="note">${matrix.possible ? '공지를 불러오는 중…' : '통신에 연결하면 길드 대화방의 고정 공지가 여기에 보입니다.'}</p>` : notice.items.length ? html`<ol class="newswire">${notice.items.map((x) => html`<li><b>${x.who}</b> ${raw(messageHtml(x.body))} <span class="mono faint">${new Date(x.ts).toLocaleDateString('ko-KR')}</span></li>`)}</ol>` : html`<p class="note">고정된 공지가 없습니다. 통신에서 메시지를 고정하면 여기에 보입니다.</p>`}</section>` : ''}
         ${myApps.length ? html`<section class="card warn game-panel"><h2>나에게 온 초대 · 내 신청</h2>${myApps.map((a) => html`<div class="app-row"><span>${a.joinType === 'invite' ? html`<b>${a.guildId}</b> 길드가 초대했습니다` : html`<b>${a.guildId}</b> 길드에 가입 신청 중`}</span><span class="app-acts">${a.joinType === 'invite'
           ? html`<button class="btn primary sm" data-act="inviteAccept" data-g="${a.guildId}" ${unlocked() ? '' : 'disabled'}>수락</button><button class="btn ghost sm" data-act="inviteDeny" data-g="${a.guildId}" ${unlocked() ? '' : 'disabled'}>거절</button>`
           : html`<button class="btn ghost sm" data-act="requestRevoke" data-g="${a.guildId}" ${unlocked() ? '' : 'disabled'}>신청 취소</button>`}</span></div>`)}</section>` : ''}
@@ -193,6 +198,13 @@ const screen: Screen = {
     try { await load(); } catch (e) { mount(root, errorCard(e)); return () => undefined; }
     if (params.get('join') === '1' && !mine()) tab = 'home';
     paint();
+    // The guild room's pinned messages are its notice board.
+    if (mine() && matrix.possible) void matrix.ensure().then(async () => {
+      const r = matrix.guildRoom(guild!.id);
+      if (!r) { notice = { alias: null, items: [] }; paint(); return; }
+      const items = (await Promise.all(r.pinned.slice(0, 5).map((id) => matrix.event(r.id, id)))).filter((x): x is { sender: string; body: string; ts: number } => !!x).map((x) => ({ who: matrix.displayName(r.id, x.sender), body: x.body, ts: x.ts }));
+      notice = { alias: r.alias, items }; paint();
+    }).catch(() => { notice = { alias: null, items: [] }; paint(); });
     return () => setTiles([]);
   },
 };

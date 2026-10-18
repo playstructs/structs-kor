@@ -159,6 +159,7 @@ export async function mockMatrix<T>(path: string, init: RequestInit, user: strin
       case 'receipt': return ok({});
       case 'leave': r.members = r.members.filter((m) => m !== me); invites.delete(roomId); return ok({});
       case 'members': return ok({ chunk: stateOf(r).filter((e) => e.type === 'm.room.member') });
+      case 'event': { const ev = r.history.find((e) => e.event_id === seg[5]); if (!ev) throw new Error('M_NOT_FOUND'); return ok(ev); }
       case 'messages': {
         const from = Number((q.get('from') ?? 'p0').slice(1)), limit = Number(q.get('limit') ?? 30);
         const start = Math.max(0, from - limit);

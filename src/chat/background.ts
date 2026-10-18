@@ -42,3 +42,11 @@ export function startBackgroundComms() {
 }
 
 export const openChat = () => go('/chat');
+
+/* Once, a few seconds after a commander first signs in with this version: what's new to try. */
+const HINT = 'structs-kor.hint.social';
+session.onChange((s) => {
+  if (s.state !== 'in') return;
+  try { if (localStorage.getItem(HINT)) return; localStorage.setItem(HINT, '1'); } catch { return; }
+  setTimeout(() => notify('새 기능', 'Ctrl+K 명령 팔레트 · 통신에 2-14 같은 ID를 쓰면 카드가 됩니다 · 메뉴의 작전 보드와 상황실', 'cheong', null), 6000);
+});

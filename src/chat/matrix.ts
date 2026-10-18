@@ -309,6 +309,18 @@ export class Matrix {
   async group(name: string, playerIds: string[]) {
     return (await this.req<{ room_id: string }>('/v3/createRoom', { method: 'POST', body: JSON.stringify({ preset: 'private_chat', name, invite: playerIds.map((p) => `@${p}:${this.server}`) }) })).room_id;
   }
+  /** One event by id (a pinned announcement that isn't in the loaded timeline). */
+  async event(roomId: string, eventId: string): Promise<{ sender: string; body: string; ts: number } | null> {
+    const have = this.rooms.get(roomId)?.events.find((m) => m.id === eventId);
+    if (have) return { sender: have.sender, body: have.body, ts: have.ts };
+    const ev = await this.req<Ev>(`/v3/rooms/${encodeURIComponent(roomId)}/event/${encodeURIComponent(eventId)}`).catch(() => null);
+    return ev && typeof ev.content?.body === 'string' ? { sender: ev.sender, body: String(ev.content.body), ts: ev.origin_server_ts } : null;
+  }
+  /** The guild's own room: #guild-<id>, else the guild's pinned channel. */
+  guildRoom(guildId: string): Room | null {
+    const rs = [...this.rooms.values()];
+    return rs.find((r) => r.alias?.startsWith(`#guild-${guildId}:`)) ?? rs.find((r) => r.alias?.startsWith('#sn-corp:')) ?? null;
+  }
   /** Older messages for a room (scrolling up). */
   async backfill(roomId: string, limit = 30) {
     const room = this.rooms.get(roomId);
