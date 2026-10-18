@@ -6,9 +6,9 @@ import { Ai } from '../sim/ai';
 import { CPU, YOU, chainSetup, layout } from '../sim/fleets';
 import { COMMAND_SHIP_ID } from '../data/catalogue';
 
-export function attract(host: HTMLElement, maxHeight = 340): () => void {
+export function attract(host: HTMLElement, maxHeight = 340, stage = false): () => void {
   let alive = true;
-  const board = new Board({ quiet: true, speed: 1.8, maxHeight: () => maxHeight, zoom: 'close', label: '실시간 교전 미리보기' });
+  const board = new Board({ quiet: true, speed: 1.8, maxHeight: () => maxHeight, zoom: 'close', stage, label: '실시간 교전 미리보기' });
   board.el.classList.add('bd-attract');
   host.appendChild(board.el);
   const round = async () => {

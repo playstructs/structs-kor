@@ -43,6 +43,20 @@ The build writes `404.html` and `_redirects`, so every screen path (`/console`, 
 - The requirements for the Guild API team are in [docs/guild-api-requirements.md](docs/guild-api-requirements.md) (ids match `src/api/requirements.ts`).
 - Chain transactions try the guild first (REQ-TX) and fall back to the LCD (`src/api/actions.ts`).
 
+## The game frame
+
+The client plays like structs-webapp's in-game UI, not like a website:
+
+- **Map.** `/console` is the battle board filling the screen. It drags to pan, and Z switches between a close-up and the whole field.
+- **HUD.** SUI status bars sit in the top corners.
+- **Action bar.** It sits bottom-left: portrait, power battery, and what is selected. That is either the base's command card, a struct's power switch, properties and orders, or the build options for an empty slot.
+- **Targeting.** 공격 and 방어 arm a targeting mode: the header inverts and you pick the tile. Esc cancels.
+- **Enemy bar.** The enemy's bar sits bottom-right and carries the raid stance orders.
+- **Windows.** Every other screen opens as an in-game window over the field. F10 (or the portrait) opens the menu, and Esc goes back.
+- **Title screen.** `/` is a title screen with the live battle running behind it.
+
+SUI art (`public/img/sui/`), the Structicons icon font, and DirectiveZero/ExtremeHazard come from structs-webapp (Apache-2.0). Panels are 9-sliced at 2× so they stretch to fit Korean labels. Hangul is set in Galmuri (`public/fonts/Galmuri*.woff2`, SIL OFL 1.1), a Korean pixel font, because webapp's fonts are Latin-only.
+
 ## Screens
 
 | Path | Screen | Data |

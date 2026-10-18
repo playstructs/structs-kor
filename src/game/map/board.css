@@ -65,3 +65,11 @@
 @keyframes bd-heat { to { filter: drop-shadow(0 0 12px rgba(255,120,60,.95)) saturate(1.5) brightness(1.08); } }
 @media (prefers-reduced-motion: reduce) { .bd-hot { animation: none; } }
 .bd-badge.vet { color: #F3C878; border-color: #785B02; letter-spacing: -1px; }
+/* Stage mode: the board is the screen. The scroll box clears the HUD bars top and bottom. */
+.bd-stage { height: 100%; background: transparent; }
+.bd-stage .bd-scroll { height: 100%; overflow: auto; display: flex; box-sizing: border-box; padding: 64px 8px 148px; background: transparent; scrollbar-width: none; }
+.bd-stage .bd-scroll::-webkit-scrollbar { display: none; }
+.bd-stage .bd-map { margin: auto; flex: 0 0 auto; box-shadow: 0 0 0 4px #0E0D1C, 0 0 0 8px #394958, 0 0 60px 20px #0E0D1C; }
+.bd-stage .bd-zoom { position: absolute; top: auto; bottom: 156px; right: 12px; width: 40px; height: 40px; font-size: 20px; }
+@media (max-width: 900px) { .bd-stage .bd-scroll { padding: 60px 4px 170px; } }
+body.is-map-panning, body.is-map-panning * { cursor: grabbing !important; user-select: none; }

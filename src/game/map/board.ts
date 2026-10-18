@@ -41,6 +41,8 @@ export interface BoardOpts {
   zoom?: 'full' | 'close';
   /** No sound, words or screen shake (attract mode). */
   quiet?: boolean;
+  /** The board is the whole screen: it fills its host's height too, and drags to pan. */
+  stage?: boolean;
 }
 
 type Col = 'DC' | 'DP' | 'DF' | 'X' | 'AF' | 'AC';
@@ -84,6 +86,7 @@ export class Board {
   private painted = new Map<string, string>();
   private ro: ResizeObserver;
   private disposed = false;
+  private framed = false;
   speed: number;
   /** 'full' fits the whole field; 'close' fills the width and scrolls. */
   zoom: 'full' | 'close' = 'full';
@@ -106,6 +109,7 @@ export class Board {
       // Focus moved somewhere else on purpose (not lost to a re-render detaching us).
       if (e.relatedTarget || (this.el.isConnected && document.activeElement !== document.body)) this.wantFocus = false;
     });
+    if (opts.stage) { this.el.classList.add('bd-stage'); this.pan(); }
     this.ro = new ResizeObserver(() => this.fit());
     addEventListener('resize', this.onResize);
     this.ro.observe(this.el);
@@ -186,7 +190,12 @@ export class Board {
 
   /** Put the board into a freshly rendered host, keeping keyboard focus if it had it. */
   attach(host: Element) {
-    if (this.el.parentElement !== host) host.appendChild(this.el);
+    if (this.el.parentElement !== host) {
+      // Moving the board resets its scroll box: keep the camera where the player left it.
+      const sc = this.el.querySelector<HTMLElement>('.bd-scroll')!, l = sc.scrollLeft, t = sc.scrollTop;
+      host.appendChild(this.el);
+      sc.scrollLeft = l; sc.scrollTop = t;
+    }
     this.fit();
     if (this.wantFocus && document.activeElement !== this.map) { this.map.focus({ preventScroll: true }); this.cursor?.classList.add('bd-cursor'); }
   }
@@ -199,12 +208,43 @@ export class Board {
     let z = w / mapW;
     const maxH = this.opts.maxHeight?.();
     const scroll = this.el.querySelector<HTMLElement>('.bd-scroll')!;
+    if (this.opts.stage) {
+      // Full: the whole field between the HUD bars, like a chessboard. Close: fill the screen and pan.
+      const cs = getComputedStyle(scroll), h = scroll.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom), ww = scroll.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const fitZ = Math.min(ww / mapW, h / mapH);
+      z = this.zoom === 'full' ? fitZ : Math.max(1, Math.min(2, w / mapW));
+      if (this.zoom === 'close') z = Math.floor(z * 2) / 2;
+      this.el.querySelector('.bd-zoom')!.innerHTML = this.zoom === 'full' ? '<i class="si icon-add"></i>' : '<i class="si icon-subtract"></i>';
+      this.map.style.setProperty('zoom', String(z));
+      this.el.style.setProperty('--bd-zoom', String(z));
+      // The camera opens on the middle of the field (air/land), not the edge of space.
+      if (!this.framed && scroll.scrollHeight > scroll.clientHeight) { this.framed = true; scroll.scrollTop = (scroll.scrollHeight - scroll.clientHeight) * 0.4; }
+      return;
+    }
     if (this.zoom === 'close' && maxH) { z = Math.min(2, z); scroll.style.maxHeight = `${Math.max(240, maxH)}px`; scroll.style.overflowY = 'auto'; }
     else { scroll.style.maxHeight = ''; scroll.style.overflowY = ''; if (maxH) z = Math.min(z, Math.max(240, maxH) / mapH); }
     this.el.querySelector('.bd-zoom')!.innerHTML = this.zoom === 'full' ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M14.5 14.5L21 21M10 7v6M7 10h6"/></svg>' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M14.5 14.5L21 21M7 10h6"/></svg>';
     if (z >= 2) z = Math.floor(z);
     this.map.style.setProperty('zoom', String(z));
     this.el.style.setProperty('--bd-zoom', String(z));
+  }
+
+  /** Drag the field to pan it (webapp's MapPanController): past 5 px a press is a pan, not a click. */
+  private pan() {
+    const sc = this.el.querySelector<HTMLElement>('.bd-scroll')!;
+    let from: { x: number; y: number; l: number; t: number } | null = null, moved = false;
+    sc.addEventListener('pointerdown', (e) => { if (e.button !== 0 || e.pointerType === 'touch') return; from = { x: e.clientX, y: e.clientY, l: sc.scrollLeft, t: sc.scrollTop }; moved = false; });
+    addEventListener('pointermove', (e) => {
+      if (!from) return;
+      const dx = e.clientX - from.x, dy = e.clientY - from.y;
+      if (!moved && Math.hypot(dx, dy) < 5) return;
+      if (!moved && sc.scrollWidth <= sc.clientWidth && sc.scrollHeight <= sc.clientHeight) return;
+      moved = true; document.body.classList.add('is-map-panning');
+      sc.scrollLeft = from.l - dx; sc.scrollTop = from.t - dy;
+    });
+    addEventListener('pointerup', () => { from = null; document.body.classList.remove('is-map-panning'); });
+    // The click that ends a drag is not a tile pick.
+    sc.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
   }
 
   toggleZoom() { this.zoom = this.zoom === 'full' ? 'close' : 'full'; this.fit(); }

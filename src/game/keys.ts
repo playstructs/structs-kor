@@ -38,7 +38,7 @@ function help() {
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-label', '단축키');
   const local = scopes.length ? Object.keys(scopes[scopes.length - 1]).filter((k) => k.length <= 6) : [];
-  el.innerHTML = `<div class="keys-in"><h2>단축키</h2><div class="keys-grid">${NAV_KEYS.map((k) => `<kbd>${k.key.toUpperCase()}</kbd><span>${k.label}</span>`).join('')}<kbd>M</kbd><span>소리 켜기/끄기</span><kbd>J</kbd><span>음악 켜기/끄기</span><kbd>?</kbd><span>이 도움말</span></div>${local.length ? `<p>이 화면: ${local.map((k) => `<kbd>${k === ' ' ? 'Space' : k.length === 1 ? k.toUpperCase() : k}</kbd>`).join(' ')}</p>` : ''}<div style="display:flex;gap:8px;justify-content:flex-end">${location.pathname.endsWith('/console') || (location.pathname.endsWith('/galaxy') && document.querySelector('.gx-node.home') && document.querySelector('.hegemony')) ? '<button class="btn gold" type="button" data-tour>안내 다시 보기</button>' : ''}<button class="btn ghost" type="button">닫기</button></div></div>`;
+  el.innerHTML = `<div class="keys-in"><h2>단축키</h2><div class="keys-grid">${NAV_KEYS.map((k) => `<kbd>${k.key.toUpperCase()}</kbd><span>${k.label}</span>`).join('')}<kbd>F10</kbd><span>메뉴</span><kbd>Esc</kbd><span>선택 해제 · 창 닫기</span><kbd>M</kbd><span>소리 켜기/끄기</span><kbd>J</kbd><span>음악 켜기/끄기</span><kbd>?</kbd><span>이 도움말</span></div>${local.length ? `<p>이 화면: ${local.map((k) => `<kbd>${k === ' ' ? 'Space' : k.length === 1 ? k.toUpperCase() : k}</kbd>`).join(' ')}</p>` : ''}<div style="display:flex;gap:8px;justify-content:flex-end">${location.pathname.endsWith('/console') || (location.pathname.endsWith('/galaxy') && document.querySelector('.gx-node.home') && document.querySelector('.hegemony')) ? '<button class="btn gold" type="button" data-tour>안내 다시 보기</button>' : ''}<button class="btn ghost" type="button">닫기</button></div></div>`;
   el.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     if (t.closest('[data-tour]')) { el.remove(); void import('./tour').then((m) => (location.pathname.endsWith('/galaxy') ? m.runTour('galaxy', m.GALAXY_TOUR) : m.runTour('bridge', m.BRIDGE_TOUR))); return; }
@@ -61,7 +61,8 @@ document.addEventListener('keydown', (e) => {
     const f = scopes[i][k] ?? scopes[i][e.key];
     if (f && f(e) !== false) { e.preventDefault(); return; }
   }
-  if (k === 'Escape') { document.getElementById('keys-help')?.remove(); return; }
+  // In a menu window, Esc closes it back to the bridge (the screen's own Esc, above, wins first).
+  if (k === 'Escape') { if (document.documentElement.dataset.mode === 'window') go('/console'); return; }
   if (k === '?' || (k === '/' && e.shiftKey)) { e.preventDefault(); help(); return; }
   if (k === 'm') { sfx.toggle(); return; }
   if (k === 'j') { music.toggle(); return; }

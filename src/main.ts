@@ -1,5 +1,7 @@
 import './styles/app.css';
 import './styles/game.css';
+import './styles/structicons.css';
+import './styles/sui.css';
 import './game/sfx';
 import './game/keys';
 import './game/music';

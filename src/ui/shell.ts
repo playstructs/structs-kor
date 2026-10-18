@@ -49,38 +49,68 @@ export function insignia(i: number, size = 30): string {
   return `<svg class="pix insignia" width="${size}" height="${size}" viewBox="0 0 11 11" aria-hidden="true"><rect width="11" height="11" fill="${bg}"/><rect x=".5" y=".5" width="10" height="10" fill="none" stroke="${fg}" stroke-width=".6" opacity=".6"/>${marks}</svg>`;
 }
 
+/** Which frame a route plays in: the battle stage (the map is the screen), a title screen, or an
+ * in-game menu window opened over the stage. */
+const MODE = (p: string) => (p === '/console' ? 'stage' : p === '/' || p === '/login' || p === '/start' || p === '/404' ? 'title' : 'window');
+
 export function shell(root: HTMLElement) {
   root.innerHTML = `
   <div class="app">
-    <header class="topbar">
-      <a class="brand" href="${href('/')}">${LOGO}<b>구조체</b><span>STRUCTS</span></a>
-      <a class="plate" id="plate" href="${href('/record')}" aria-label="전적 · 사령관 계급"></a>
-      <div class="tiles" id="tiles"></div>
-      <div class="hud-tools">
+    <main class="main" id="outlet" tabindex="-1"></main>
+    <div class="hud" id="hud">
+      <div class="sui-bar hud-tl">
+        <a class="brand" href="${href('/')}" aria-label="구조체 타이틀">${LOGO}</a>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div class="sui-bar hud-tr">
+        <a class="plate" id="plate" href="${href('/record')}" aria-label="전적 · 사령관 계급"></a>
         <button class="hud-btn" id="snd" type="button" data-silent aria-label="소리"></button>
         <button class="hud-btn" id="mus" type="button" aria-label="음악"></button>
         <button class="hud-btn bell" id="bell" type="button" aria-label="알림 기록" aria-expanded="false"></button>
-        <button class="hud-btn" id="kbd" type="button" aria-label="단축키 (?)"><span class="mono">?</span></button>
-        <div id="who" style="display:flex;gap:8px;align-items:center"></div>
+        <span id="who" class="hud-who"></span>
+        <button class="hud-btn menu-btn" id="menu-btn" type="button" aria-label="메뉴 (F10)" aria-expanded="false" title="메뉴 (F10)"><i class="si icon-menu"></i></button>
       </div>
-    </header>
-    <div class="dc-strip"></div>
-    <div id="demo-bar"></div>
-    <div class="body">
-      <nav class="rail" id="rail" aria-label="주 메뉴">
-        ${NAV.map((n) => `<a href="${href(n.path)}" data-path="${n.path}">${n.icon}<span>${n.label}</span><kbd class="rail-key">${keyOf(n.path)}</kbd></a>`).join('')}
-      </nav>
-      <main class="main" id="outlet" tabindex="-1"></main>
+      <div id="demo-bar" class="hud-tc"></div>
     </div>
-    <footer id="foot" class="foot"></footer>
+    <div class="win-bar" id="win-bar">
+      <a class="win-back" href="${href('/console')}"><i class="si icon-arrow" style="transform:scaleX(-1)"></i> 함교 <kbd>C</kbd></a>
+      <b class="win-title" id="win-title"></b>
+      <span class="win-keys"><kbd>Esc</kbd> 닫기</span>
+    </div>
+    <nav class="rail game-menu" id="rail" aria-label="주 메뉴" hidden>
+      <div class="menu-in">
+        <div class="menu-head"><span class="label c-cheong">구조체 · 지휘 메뉴</span><button class="hud-btn" type="button" data-close aria-label="메뉴 닫기"><i class="si icon-close"></i></button></div>
+        <div class="menu-grid">${NAV.map((n) => `<a href="${href(n.path)}" data-path="${n.path}">${n.icon}<span>${n.label}</span><kbd class="rail-key">${keyOf(n.path)}</kbd></a>`).join('')}</div>
+        <div class="menu-tools"><button class="btn ghost" id="kbd" type="button">단축키 <kbd>?</kbd></button><a class="btn ghost" href="${href('/profile')}">내 정보</a><a class="btn ghost" href="${href('/')}">타이틀 화면</a></div>
+        <footer id="foot" class="foot"></footer>
+      </div>
+    </nav>
   </div>`;
 
   const rail = root.querySelector<HTMLElement>('#rail')!;
+  const menuBtn = root.querySelector<HTMLButtonElement>('#menu-btn')!;
+  const winTitle = root.querySelector<HTMLElement>('#win-title')!;
+  /* The menu: every screen as a tile with its hotkey, over a dimmed field (F10, or the ≡ button). */
+  const setMenu = (open: boolean) => {
+    rail.hidden = !open;
+    menuBtn.setAttribute('aria-expanded', String(open));
+    document.documentElement.classList.toggle('menu-open', open);
+    if (open) { sfx.play('click'); rail.querySelector<HTMLElement>('a.on, a')?.focus(); }
+  };
+  menuBtn.addEventListener('click', () => setMenu(rail.hidden !== false));
+  rail.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t === rail || t.closest('[data-close], a')) setMenu(false); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'F10') { e.preventDefault(); setMenu(rail.hidden !== false); return; }
+    if (e.key === 'Escape' && !rail.hidden) { e.stopImmediatePropagation(); setMenu(false); }
+  }, true);
+  addEventListener('structs:menu', () => setMenu(true));
   onRoute((p) => {
-    const bare = p === '/' || p === '/login' || p === '/start';
-    rail.style.display = bare ? 'none' : '';
+    const mode = MODE(p);
     document.documentElement.dataset.route = p.slice(1) || 'home';
-    for (const a of rail.querySelectorAll<HTMLAnchorElement>('a')) a.classList.toggle('on', a.dataset.path === p);
+    document.documentElement.dataset.mode = mode;
+    setMenu(false);
+    winTitle.textContent = NAV.find((n) => n.path === p)?.label ?? NAV_KEYS.find((n) => n.path === p)?.label ?? ({ '/record': '전적', '/profile': '내 정보' } as Record<string, string>)[p] ?? '';
+    for (const a of rail.querySelectorAll<HTMLAnchorElement>('a[data-path]')) a.classList.toggle('on', a.dataset.path === p);
   });
 
   /* Commander plate: insignia, rank, XP to the next one. */
@@ -153,7 +183,7 @@ export function shell(root: HTMLElement) {
   const paintDemo = () => {
     // A signed-in commander is on the real chain: the demo base stays out of sight.
     const ev = demo.event, bm = demo.on ? demo.black : null;
-    demoBar.innerHTML = demo.on && session.status.state !== 'in' ? `<div class="demo-bar"><b>데모 함교</b>${ev ? `<span class="ev-chip ${ev.tone}" title="${esc(ev.text)}">${esc(ev.name)} · ${ev.left}블록</span>` : ''}${bm?.offers.length ? `<a class="ev-chip hwang" href="${href('/market')}" title="거래소에서 한 번씩만 파는 거래">밀수선 입항 · ${bm.left}블록</a>` : ''}<span>가상의 기지가 실시간으로 돌아갑니다. 실제 체인과 무관합니다.</span><a class="btn primary" href="${href('/start')}" style="min-height:32px">진짜 사령관으로 입대</a><button class="btn ghost" style="min-height:32px" type="button" id="demo-off">데모 종료</button></div>` : '';
+    demoBar.innerHTML = demo.on && session.status.state !== 'in' ? `<div class="demo-bar"><b>데모</b>${ev ? `<span class="ev-chip ${ev.tone}" title="${esc(ev.text)}">${esc(ev.name)} · ${ev.left}블록</span>` : ''}${bm?.offers.length ? `<a class="ev-chip hwang" href="${href('/market')}" title="거래소에서 한 번씩만 파는 거래">밀수선 입항 · ${bm.left}블록</a>` : ''}<a class="btn primary" href="${href('/start')}" title="가상의 기지입니다. 실제 체인과 무관합니다.">실전 입대</a><button class="btn ghost" type="button" id="demo-off">데모 종료</button></div>` : '';
     demoBar.querySelector('#demo-off')?.addEventListener('click', () => { demo.stop(); location.assign(href('/')); });
   };
   demo.onChange(paintDemo);
