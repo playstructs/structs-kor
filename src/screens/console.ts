@@ -136,7 +136,7 @@ const screen: Screen = {
     const decision = (): Safe => {
       const dc = isDemo ? demo.decision : null;
       if (!dc) return html``;
-      return html`<section class="card game-panel decision" aria-live="polite"><div class="card-head"><span class="label c-hwang">결단</span><span class="end mono ${dc.left <= 8 ? 'c-jeok' : 'dim'}">${dc.left}블록 남음</span></div>
+      return html`<section class="card game-panel decision"><div class="card-head"><span class="label c-hwang">결단</span><span class="end mono ${dc.left <= 8 ? 'c-jeok' : 'dim'}">${dc.left}블록 남음</span></div>
         <h2>${dc.title}</h2><p class="note">${dc.text}</p>
         <div class="choices">${dc.choices.map((c, i) => html`<button class="btn ${i === 0 ? 'gold' : 'ghost'} choice" data-act="decide" data-i="${i}" ${c.ok === false ? 'disabled' : ''}><b>${c.label} <kbd>${i + 1}</kbd></b><small>${c.effect}</small></button>`)}</div></section>`;
     };
@@ -312,7 +312,7 @@ const screen: Screen = {
       const live = d?.active_raid;
       if (!r && !live) return html``;
       const eta = r?.eta ?? 0;
-      return html`<section class="raid-alarm ${eta ? '' : 'live'}" role="alert">
+      return html`<section class="raid-alarm ${eta ? '' : 'live'}" role="region" aria-label="습격 경보">
         <strong>${eta ? `▲ 적 함대 접근 · ${eta}블록` : '▲ 행성 습격 진행 중'}</strong>
         <span>${r ? `${r.name} 함대 ${r.fleetId} · ${r.structs.length}기` : `함대 ${live!.fleet_id}${live!.fleet_owner ? ` (${live!.fleet_owner})` : ''}`} · 노출된 광석 <b class="mono">${n(Math.floor(Number(d?.player.ore ?? 0)))}</b></span>
         ${r && eta ? html`<span class="stance" role="group" aria-label="대응 태세"><button class="btn ${r.stance === 'intercept' ? 'danger' : 'ghost'}" data-act="stance" data-v="intercept" aria-pressed="${r.stance === 'intercept'}" title="함포 추가 피해 확률 +30%p · 강타당할 확률도 늘어남">요격 <kbd>A</kbd></button><button class="btn ${r.stance === 'entrench' ? 'primary' : 'ghost'}" data-act="stance" data-v="entrench" aria-pressed="${r.stance === 'entrench'}" title="방어막 차단 확률 1.6배 · 강타 확률 절반 · 함포 추가 피해 확률 −10%p · 시한까지 방어막 ${demo.entrenchHold()}% 이상이면 적이 철수">참호 <kbd>S</kbd></button></span>` : r?.stance ? html`<span class="chip ${r.stance === 'intercept' ? 'jeok' : 'cheong'}">${r.stance === 'intercept' ? '요격 태세' : `참호 태세 · 버팀선 ${demo.entrenchHold()}%`}</span>` : ''}
