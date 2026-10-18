@@ -32,6 +32,8 @@ export function advise(rank = 99): Tip[] {
   else if (raid && raid.eta <= 2 && st.shield < 60 && ready('overshield')) tips.push({ pri: 96, tone: 'hwang', text: `방어막 ${Math.round(st.shield)}% · 방어막 과충전[8]으로 방어막을 40% 올리고 맞서세요.`, go: '/console', cta: '함교' });
   else if (raid && raid.eta === 0 && ready('rally')) tips.push({ pri: 95, tone: 'hwang', text: `교전 중 · 총동원[9]으로 모든 함포를 사격시키세요.`, go: '/console', cta: '함교' });
   if (raid?.partner && raid.eta > 0) tips.push({ pri: 99, tone: 'jeok', text: `연합 전선 · ${raid.name} 함대 ${raid.structs.length}기. 평소보다 ${COALITION.extra}척 많습니다 · 방어막 과충전과 총동원을 아끼지 마세요.`, go: '/console', cta: '함교' });
+  const sore = demo.rivals().filter((x) => (x.grudge ?? 0) >= 3 && x.vassal == null && demo.ally?.id !== x.id).sort((a, z) => (z.grudge ?? 0) - (a.grudge ?? 0))[0];
+  if (sore && !raid) tips.push({ pri: 52, tone: 'jeok', text: `${sore.name}의 원한 ${sore.grudge} · 다음 습격은 이 세력일 가능성이 큽니다. 광석을 정제해 두거나, 동맹·복속으로 달래세요.`, go: '/galaxy', cta: '은하 지도' });
   const rv = demo.revenge;
   if (rv && !raid && demo.ally?.id !== rv.rival) tips.push({ pri: 90, tone: 'hwang', text: `${rv.name} 함대가 방금 무너졌습니다 · ${rv.left}블록 안에 보복 출격하면 노획 +${Math.round((REVENGE.bonus - 1) * 100)}%.`, go: `/sim?raid=${rv.rival}`, cta: '보복' });
   const bm = demo.black;
