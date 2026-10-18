@@ -1330,7 +1330,8 @@ export const demo = {
     const rebel = s.rebel ? ws.find(([x]) => x.id === s.rebel) : undefined;
     const total = ws.reduce((a, [, w]) => a + w, 0);
     const [x, w] = rebel ?? [...ws].sort((a, z) => z[1] - a[1])[0] ?? [];
-    return x ? { id: x.id, name: x.name, p: rebel ? 1 : w! / Math.max(1e-9, total), in: Math.max(0, s.nextRaid) } : null;
+    // In blocks: the countdown runs double while pirates are about.
+    return x ? { id: x.id, name: x.name, p: rebel ? 1 : w! / Math.max(1e-9, total), in: Math.max(0, Math.ceil(s.nextRaid / (ev('pirates') ? 2 : 1))) } : null;
   },
   /** The last defence's report while it's fresh (60 blocks), unless dismissed. */
   get report() { const p = s.report; return p && s.height - p.h <= 60 ? p : null; },
