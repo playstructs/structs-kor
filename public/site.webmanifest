@@ -1,0 +1,23 @@
+{
+  "name": "구조체 STRUCTS — 우주는 구조체가 지배한다",
+  "short_name": "구조체",
+  "description": "Structs 한국 서버. 행성을 채굴하고, 알파 매터를 정제하고, 길드와 함께 함대를 지휘하는 블록체인 전략 게임.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#16142A",
+  "theme_color": "#16142A",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/og.png", "sizes": "1200x630", "type": "image/png", "form_factor": "wide", "label": "구조체 STRUCTS" }
+  ]
+}

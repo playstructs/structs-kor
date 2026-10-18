@@ -28,6 +28,11 @@ Dev only: open any page with `?mock=1` to sign in as a fixture commander against
 
 The build writes `404.html` and `_redirects`, so every screen path (`/console`, `/energy`…) serves the app shell on GitHub Pages, Netlify and Cloudflare Pages.
 
+## Search and sharing
+
+- `src/seo.ts` holds every screen's title and description. The build writes one HTML file per screen (`console.html` → `/console`) with its own title, description, canonical, Open Graph/Twitter tags and JSON-LD (`WebSite`, `VideoGame`, `WebPage`), plus `sitemap.xml` and a fully permissive `robots.txt`; all absolute URLs use `VITE_SITE_URL`. In the browser the same tags follow the router.
+- `public/og.png` (1200×630) is rendered from `scripts/og/og.html`: `node scripts/og/render.mjs` (headless Chrome). App icons: `python3 scripts/og/icons.py`. Manifest: `public/site.webmanifest`.
+
 ## Guild API first
 
 - `src/api/guild.ts` holds the endpoints that exist today, from structs-webapp's controllers plus `/auth/matrix`.

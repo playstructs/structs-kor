@@ -11,7 +11,7 @@ import { banner, float } from '../game/fx';
 import { spriteHtml } from '../game/map/art';
 
 const pixel = (type: number, size = 64): Safe => raw(spriteHtml(type, size));
-const BRANCH: [string, TechId[]][] = [['경제', ['mine', 'refine', 'trade']], ['전력', ['grid']], ['방어', ['shield', 'guns', 'bunker']]];
+const BRANCH: [string, TechId[]][] = [['경제', ['mine', 'refine', 'trade']], ['전력', ['grid']], ['방어', ['shield', 'guns', 'bunker']], ['패권', ['spy', 'fort', 'diplo']]];
 
 const screen: Screen = {
   render(root) {

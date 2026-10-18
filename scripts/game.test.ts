@@ -535,3 +535,17 @@ test('outposts: a strong fleet takes one, it pays its perk, and it can be fortif
   assert.equal(demo.fortify('asteroid'), null);
   assert.match(demo.claimOutpost('asteroid') as string, /이미/);
 });
+
+test('dominion research: the arts of empire lift tribute, ops and outposts', () => {
+  demo.reset();
+  demo.state.alpha = 5000;
+  const r = demo.rivals()[0];
+  for (let i = 0; i < 3; i++) demo.settleRaid(r.id, true, {});
+  assert.equal(demo.subjugate(r.id), null);
+  const t0 = demo.tributeOf(r), odds0 = demo.outposts.find((o) => o.id === 'asteroid')!.odds;
+  assert.equal(demo.research('diplo', 17), null);
+  assert.equal(demo.research('fort', 17), null);
+  assert.ok(demo.tributeOf(r) > t0 * 1.14, 'tribute +15%');
+  assert.ok(demo.outposts.find((o) => o.id === 'asteroid')!.odds > odds0, 'outpost odds up');
+  assert.match(demo.research('spy', 0) ?? '', /계급/, 'officers only');
+});

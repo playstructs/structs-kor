@@ -46,6 +46,7 @@ function seo(siteUrl: string, base: string): Plugin {
   const swap = (html: string, path: string) => html.replace(/<!--seo-->[\s\S]*?<!--\/seo-->/, () => block(path));
   return {
     name: 'structs-seo',
+    enforce: 'post', // after vite:build-html has put index.html in the bundle
     transformIndexHtml(html) {
       return html
         .replace(/<!-- seo:[^>]*-->/, () => block('/'))

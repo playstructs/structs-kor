@@ -32,7 +32,7 @@ export const EVENTS: Record<EventId, { name: string; text: string; tone: 'jeok' 
 };
 /* ── Research: alpha buys permanent edges; the deeper ones wait for rank. ── */
 export interface Tech { id: TechId; name: string; desc: (lv: number) => string; max: number; cost: number[]; rank: number; icon: number }
-export type TechId = 'mine' | 'refine' | 'grid' | 'shield' | 'guns' | 'trade' | 'bunker';
+export type TechId = 'mine' | 'refine' | 'grid' | 'shield' | 'guns' | 'trade' | 'bunker' | 'spy' | 'fort' | 'diplo';
 export const TECH: Tech[] = [
   { id: 'mine', name: '채굴 드릴 개량', desc: (l) => `채굴 속도 +${l * 25}%`, max: 3, cost: [4, 18, 60], rank: 0, icon: 14 },
   { id: 'refine', name: '정제 촉매', desc: (l) => `정제 속도 +${l * 25}%`, max: 3, cost: [5, 20, 70], rank: 0, icon: 15 },
@@ -41,6 +41,10 @@ export const TECH: Tech[] = [
   { id: 'shield', name: '궤도 방어막 증폭', desc: (l) => `보호막 회복 +${l}/블록 · 차단률 +${l * 30}%`, max: 3, cost: [15, 45, 110], rank: 4, icon: 16 },
   { id: 'guns', name: '함포 조준 체계', desc: (l) => `방어 사격 추가 피해 확률 ${l * 25}%`, max: 3, cost: [20, 55, 130], rank: 5, icon: 19 },
   { id: 'bunker', name: '광석 은닉고', desc: (l) => `약탈당하는 광석 −${l * 25}%`, max: 2, cost: [25, 80], rank: 6, icon: 18 },
+  // 패권: the arts of empire, for officers.
+  { id: 'spy', name: '첩보망', desc: (l) => `공작 성공률 +${l * 8}%p`, max: 2, cost: [30, 90], rank: 7, icon: 6 },
+  { id: 'fort', name: '거점 공병', desc: (l) => `거점 공략·방어에 전함 ${l * 2}척 몫`, max: 2, cost: [35, 100], rank: 8, icon: 10 },
+  { id: 'diplo', name: '제국 관료제', desc: (l) => `공물 +${l * 15}% · 반란 확률 −${l * 30}%`, max: 2, cost: [40, 120], rank: 9, icon: 1 },
 ];
 
 export interface Rival { id: string; name: string; tag: string; alpha: number; ore: number; fleet: number; growth: number; raided: number; /** Height it bent the knee, while it pays tribute. */ vassal?: number | null; /** Sabotaged: growth halved until this height. */ sabotaged?: number; /** No covert operation against it before this height. */ opUntil?: number }
@@ -58,7 +62,7 @@ export const DOMINION = { raidsToSubjugate: 3, cost: 10, tribute: 0.3, disarmCos
 /** How many vassals a commander can hold: one, plus one per hegemony title. */
 const vassalCap = () => 1 + (s.hegemonyTier ?? 0);
 /** A vassal's expected tribute a block: its average growth (era included) × the share. */
-const tributeOf = (r: Rival) => r.growth * 0.7 * (1 + 0.2 * (s.era ?? 0)) * DOMINION.tribute * (doc('trade') ? 1.25 : 1);
+const tributeOf = (r: Rival) => r.growth * 0.7 * (1 + 0.2 * (s.era ?? 0)) * DOMINION.tribute * (doc('trade') ? 1.25 : 1) * (1 + 0.15 * lv('diplo'));
 const RIVALS = (): Rival[] => [
   { id: '1-666', name: '붉은 연합', tag: 'RED', alpha: 18, ore: 40, fleet: 4, growth: 0.32, raided: 0 },
   { id: '1-313', name: '검은 별 길드', tag: 'BLK', alpha: 34, ore: 25, fleet: 6, growth: 0.45, raided: 0 },
@@ -378,11 +382,11 @@ function blockInner() {
     if (s.height % 150 === 0 && r.fleet < 10) r.fleet++;
     if (r.vassal == null) continue;
     // A vassal's tribute comes out of its own growth, every block.
-    const t = gain * DOMINION.tribute * (doc('trade') ? 1.25 : 1);
+    const t = gain * DOMINION.tribute * (doc('trade') ? 1.25 : 1) * (1 + 0.15 * lv('diplo'));
     r.alpha -= t; s.alpha += t; s.tribute = (s.tribute ?? 0) + t;
     // A rearmed vassal remembers it was beaten by force.
     // Its own random stream: whether a vassal exists mustn't shift the economy's draws.
-    if (r.fleet >= DOMINION.rebelFleet && rngFor(`rebel:${s.height}:${r.id}`)() < 0.003 * (r.fleet - DOMINION.rebelFleet + 1)) {
+    if (r.fleet >= DOMINION.rebelFleet && rngFor(`rebel:${s.height}:${r.id}`)() < 0.003 * (r.fleet - DOMINION.rebelFleet + 1) * (1 - 0.3 * lv('diplo'))) {
       r.vassal = null; r.raided = 0; s.rebel = r.id; s.nextRaid = Math.min(s.nextRaid, 3);
       if (catching) awayRebels.push(r.name);
       log('raid_status', `${r.name} 반란`);
@@ -529,7 +533,7 @@ function covert(id: string, op: OpId): { ok: boolean; text: string } | string {
   if (s.alpha < o.cost) return `공작 자금 ${o.cost} g 필요`;
   s.alpha -= o.cost;
   s.ops = (s.ops ?? 0) + 1;
-  const hit = rngFor(`op:${s.height}:${id}:${s.ops}`)() < o.odds;
+  const hit = rngFor(`op:${s.height}:${id}:${s.ops}`)() < Math.min(0.95, o.odds + 0.08 * lv('spy'));
   // Either way, the target tightens its guard for a while (longer if it caught you).
   r.opUntil = s.height + (hit ? 30 : 90);
   let text: string;
@@ -569,7 +573,8 @@ function claimOdds(id: OutpostId) {
   const o = outposts()[id], def = OUTPOSTS.find((x) => x.id === id)!;
   const holder = o.owner && o.owner !== DEMO_ID ? rivals().find((r) => r.id === o.owner) : null;
   const guard = def.garrison + o.garrison * 2 + (holder ? holder.fleet / 2 : 0);
-  return Math.max(0.05, Math.min(0.95, warships() / (warships() + guard)));
+  const mine = warships() + 2 * lv('fort');
+  return Math.max(0.05, Math.min(0.95, mine / (mine + guard)));
 }
 function contestStep() {
   s.nextContest ??= s.height + OUTPOST.contestEvery;
@@ -581,7 +586,8 @@ function contestStep() {
   const r = rngFor(`contest:${s.height}`);
   const target = mine[Math.floor(r() * mine.length)], attacker = free[Math.floor(r() * free.length)];
   const o = outposts()[target.id];
-  const hold = (warships() + o.garrison * 2 + target.garrison) / (warships() + o.garrison * 2 + target.garrison + attacker.fleet);
+  const def = warships() + 2 * lv('fort') + o.garrison * 2 + target.garrison;
+  const hold = def / (def + attacker.fleet);
   if (r() < hold) { emit('cheong', `${attacker.name}의 ${target.name} 공격을 막아 냈습니다`); return; }
   o.owner = attacker.id; o.garrison = 0;
   chronicle('jeok', `${attacker.name}에게 ${target.name}을(를) 빼앗겼다`);
@@ -1022,7 +1028,7 @@ export const demo = {
   get outposts() {
     const o = outposts(), strongest = Math.max(1, ...rivals().filter((r) => r.vassal == null).map((r) => r.fleet));
     // For a site you hold, `odds` is its chance to hold against the strongest free rival's attempt.
-    return OUTPOSTS.map((d) => { const mine = o[d.id].owner === DEMO_ID, guard = warships() + o[d.id].garrison * 2 + d.garrison; return { ...d, ...o[d.id], mine, odds: mine ? guard / (guard + strongest) : claimOdds(d.id) }; });
+    return OUTPOSTS.map((d) => { const mine = o[d.id].owner === DEMO_ID, guard = warships() + 2 * lv('fort') + o[d.id].garrison * 2 + d.garrison; return { ...d, ...o[d.id], mine, odds: mine ? guard / (guard + strongest) : claimOdds(d.id) }; });
   },
   /** Send the fleet at an outpost: pay the sortie, roll against its defenders. */
   claimOutpost(id: OutpostId): { ok: boolean; text: string } | string {

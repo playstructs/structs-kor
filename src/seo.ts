@@ -9,7 +9,7 @@
 export interface PageSeo {
   title: string;
   description: string;
-  /** Left out of the sitemap and marked noindex (private or duplicate screens). */
+  /** Left out of the sitemap; noindex too unless it names a canonical (private or duplicate screens). */
   hidden?: boolean;
   /** The path this one duplicates, for rel=canonical. */
   canonical?: string;
@@ -54,6 +54,8 @@ export const fullTitle = (path: string, p = pageFor(path)) => (path === '/' ? p.
 export const absUrl = (siteUrl: string, base: string, path: string) => siteUrl + base + path;
 const ROBOTS_INDEX = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 const ROBOTS_HIDDEN = 'noindex, follow';
+/** A duplicate keeps index so its canonical is honoured; private screens are noindex. */
+const robotsFor = (p: PageSeo) => (p.hidden && !p.canonical ? ROBOTS_HIDDEN : ROBOTS_INDEX);
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** The <head> tags for one path, written into the static HTML at build time. */
@@ -79,8 +81,8 @@ export function headFor(path: string, siteUrl: string, base: string): string {
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(p.description)}">`,
     `<meta name="keywords" content="${esc(KEYWORDS)}">`,
-    `<meta name="robots" content="${p.hidden ? ROBOTS_HIDDEN : ROBOTS_INDEX}">`,
-    `<meta name="googlebot" content="${p.hidden ? ROBOTS_HIDDEN : ROBOTS_INDEX}">`,
+    `<meta name="robots" content="${robotsFor(p)}">`,
+    `<meta name="googlebot" content="${robotsFor(p)}">`,
     `<meta name="application-name" content="${SITE_NAME}">`,
     `<meta name="apple-mobile-web-app-title" content="구조체">`,
     `<meta name="apple-mobile-web-app-capable" content="yes">`,
@@ -136,8 +138,8 @@ export function applySeo(path: string, siteUrl: string, base: string) {
   document.title = fullTitle(path, p);
   const set = (sel: string, attr: string, value: string) => document.head.querySelector(sel)?.setAttribute(attr, value);
   set('meta[name="description"]', 'content', p.description);
-  set('meta[name="robots"]', 'content', p.hidden ? ROBOTS_HIDDEN : ROBOTS_INDEX);
-  set('meta[name="googlebot"]', 'content', p.hidden ? ROBOTS_HIDDEN : ROBOTS_INDEX);
+  set('meta[name="robots"]', 'content', robotsFor(p));
+  set('meta[name="googlebot"]', 'content', robotsFor(p));
   set('link[rel="canonical"]', 'href', url);
   for (const el of document.head.querySelectorAll('link[rel="alternate"][hreflang]')) el.setAttribute('href', url);
   set('meta[property="og:url"]', 'content', url);

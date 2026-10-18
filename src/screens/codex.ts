@@ -32,7 +32,7 @@ const SECTIONS: [string, string, Entry[]][] = [
     { icon: 19, title: '방어', body: html`습격 함대는 ${RATE.raidEta}블록 전에 경보가 울립니다. 함대와 방어포가 반격하고, 방어막이 공격을 막습니다. 무너지면 정제되지 않은 광석을 모두 잃습니다.`, go: ['/console', '함교'] },
   ]],
   ['성장', '오래 버틴 제국이 강하다.', [
-    { icon: 15, title: '연구와 교리', body: html`연구는 영구 강화. 교리는 하나만: ${DOCTRINES.map((d) => `${d.name}(${d.perks.join(', ')})`).join(' · ')}. 첫 선택은 무료, 전환 ${DOCTRINE_SWITCH} g.`, go: ['/research', '연구소'] },
+    { icon: 15, title: '연구와 교리', body: html`연구는 영구 강화: 경제·전력·방어, 그리고 장교에게 열리는 패권(첩보망·거점 공병·제국 관료제). 교리는 하나만: ${DOCTRINES.map((d) => `${d.name}(${d.perks.join(', ')})`).join(' · ')}. 첫 선택은 무료, 전환 ${DOCTRINE_SWITCH} g.`, go: ['/research', '연구소'] },
     { icon: 8, title: '레플리칸트', body: html`${REPS.map((r) => `${r.role}(${r.hire} g, 급여 ${r.upkeep} α/블록)`).join(' · ')}. 급여를 못 주면 떠납니다.`, go: ['/replicants', '레플리칸트'] },
     { icon: 18, title: '길드 전', body: html`세 길드가 ${RACE.season}블록 시즌으로 겨룹니다. 기부·격퇴·현상금이 점수. 시즌 시작 전부터 있던 우승 길드원은 ${RACE.prize} α.`, go: ['/guild', '길드'] },
     { icon: 20, title: '패권과 시대', body: html`패권 지수 = 은하 전체 세력 중 내 몫. 칭호: ${HEGEMONY.map((h) => `${h.title} ${pct(h.at)}`).join(' → ')}. 월드 엔진(${ENGINE.map((e) => e.cost).join(' / ')} α)을 완공하면 새 시대를 열어 생산 +15%로 다시 시작합니다. 연구·교리·길드·거점·레플리칸트는 그대로 남습니다.`, go: ['/record', '전적'] },
