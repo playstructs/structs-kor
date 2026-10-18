@@ -136,6 +136,7 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
     { action: 'mined', denom: 'ore', amount_p: '6420' }])],
   // Replicants (planned REQ-REP-1, answered here so the roster can be driven without a wallet).
   [/^player\/(1-\d+)\/replicants$/, () => REPLICANTS],
+  [/^guild-bank\/(0-\d+)\/history$/, () => Array.from({ length: 12 }, (_, i) => [{ bucket: new Date(Date.now() - (11 - i) * 864e5).toISOString().slice(0, 10), action: 'mint', denom: 'uguild.0-5', volume: String(Math.round((3 + Math.sin(i) * 2 + i * 0.4) * 1e8)) }, { bucket: new Date(Date.now() - (11 - i) * 864e5).toISOString().slice(0, 10), action: 'redeem', denom: 'uguild.0-5', volume: String(Math.round((1 + (i % 3)) * 6e7)) }]).flat()],
   [/^guild-bank$/, () => [{ guild_id: '0-5', denom: 'uguild.0-5', collateral: 40e9, supply: 38e9, ratio: 1.05 }, { guild_id: '0-1', denom: 'uguild.0-1', collateral: 9e9, supply: 10e9, ratio: 0.9 }]],
 ];
 

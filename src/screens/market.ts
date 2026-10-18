@@ -5,9 +5,9 @@
  * collateral ratio). Korean market colours: ▲ red up, ▼ blue down. Every offer can be shared. */
 import type { Screen } from '../router';
 import { href } from '../router';
-import { html, mount, n, micro, toast, type Safe } from '../ui/dom';
+import { html, mount, n, micro, toast, raw, type Safe } from '../ui/dom';
 import { needSession, errorCard, loading } from '../ui/gate';
-import { guildApi, type AgreementRow, type BankRow, type ProviderRow, type PlayerRow } from '../api/guild';
+import { guildApi, type AgreementRow, type BankRow, type ProviderRow, type PlayerRow, type BucketVolume } from '../api/guild';
 import { marketStats, quote, quoteLocal, type MarketStat, type Quote } from '../api/planned';
 import { actions } from '../api/actions';
 import { balances, denomLabel, type Coin } from '../api/chain';
@@ -29,7 +29,7 @@ const POLICY: Record<string, string> = { openMarket: '공개', 'open-market': '�
 interface State {
   tab: Tab; me: PlayerRow | null; providers: ProviderRow[]; mineProv: ProviderRow[]; stats: Map<string, MarketStat>; agreements: AgreementRow[]; bank: BankRow[];
   coins: Coin[]; sel: number; capKw: number; days: number; q: Quote | null; busy: boolean; sort: 'price' | 'cap' | 'alpha'; policy: '' | 'open' | 'guild';
-  bankGuild: string; bankAmount: string;
+  bankGuild: string; bankAmount: string; hist: Map<string, BucketVolume[] | null>;
 }
 /** An offer in comparable alpha per kW·day: guild tokens at their bank's collateral ratio. */
 function alphaEq(s: State, p: ProviderRow): number | null {
@@ -132,6 +132,27 @@ function sell(s: State): Safe {
   </section></div>`;
 }
 
+const ACTION_KO: Record<string, string> = { mint: '발행', redeem: '상환', convert: '교환', burn: '소각', confiscate: '몰수' };
+/** Daily token volume for one guild bank: one bar per day, the per-action split in each bar's tooltip. */
+function bankChart(rows: BucketVolume[] | null | undefined): Safe {
+  if (rows === undefined) return html`<p class="note">거래량 불러오는 중…</p>`;
+  if (!rows || !rows.length) return html`<p class="note">이 은행의 거래 기록이 아직 없습니다.</p>`;
+  const by = new Map<string, Map<string, number>>();
+  for (const r of rows) { const b = by.get(r.bucket) ?? new Map(); b.set(r.action, (b.get(r.action) ?? 0) + Number(r.volume) / 1e6); by.set(r.bucket, b); }
+  const days = [...by.keys()].sort().slice(-14);
+  const total = (d: string) => [...by.get(d)!.values()].reduce((a, b) => a + b, 0);
+  const max = Math.max(1, ...days.map(total));
+  const W = 560, H = 140, gap = 2, bw = (W - gap * (days.length - 1)) / days.length;
+  const label = (d: string) => new Date(d).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });
+  return html`<figure class="bank-chart"><svg viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="최근 ${days.length}일 토큰 거래량">
+    <line x1="0" x2="${W}" y1="${H}" y2="${H}" class="bc-axis"/>
+    ${days.map((d, i) => { const v = total(d), h = Math.max(2, (v / max) * (H - 8)), x = i * (bw + gap);
+      return raw(`<g class="bc-bar"><rect x="${x}" y="0" width="${bw}" height="${H}" class="bc-hit"/><rect x="${x}" y="${H - h}" width="${bw}" height="${h}" rx="2" class="bc-fill"/><title>${label(d)} · ${n(v, 2)}
+${[...by.get(d)!].map(([a, x2]) => `${ACTION_KO[a] ?? a} ${n(x2, 2)}`).join('\n')}</title>${i % Math.ceil(days.length / 7) === 0 ? `<text x="${x + bw / 2}" y="${H + 18}" class="bc-x">${label(d)}</text>` : ''}</g>`); })}
+  </svg><figcaption class="note">최근 ${days.length}일 · 일별 토큰 거래량 (최대 ${n(max, 1)}) · 막대에 마우스를 올리면 발행·상환 내역</figcaption>
+  <table class="sr"><caption>일별 토큰 거래량</caption><thead><tr><th>날짜</th><th>거래량</th></tr></thead><tbody>${days.map((d) => html`<tr><td>${label(d)}</td><td>${n(total(d), 2)}</td></tr>`)}</tbody></table></figure>`;
+}
+
 function bank(s: State): Safe {
   const mineCoin = (d: string) => s.coins.find((c) => c.denom === d);
   const g = s.bank.find((b) => b.guild_id === s.bankGuild) ?? s.bank[0];
@@ -144,7 +165,8 @@ function bank(s: State): Safe {
     <div class="scroll-x"><table class="t" style="min-width:640px"><thead><tr><th>길드</th><th>토큰</th><th class="r">담보 (알파)</th><th class="r">발행량</th><th class="r">담보율</th><th class="r">내 보유</th></tr></thead><tbody>
     ${s.bank.length ? s.bank.map((b) => html`<tr style="cursor:pointer;background:${b === g ? 'var(--cheong-bg)' : 'transparent'}" data-act="bankPick" data-g="${b.guild_id}"><td><a class="c-white" href="${href(`/o/${b.guild_id}`)}">${b.guild_id}</a></td><td class="mono">${b.denom}</td><td class="r mono c-hwang">${micro(b.collateral)} g</td><td class="r mono">${micro(b.supply)}</td>
       <td class="r mono" style="color:${Number(b.ratio) >= 1 ? 'var(--cheong)' : 'var(--jeok)'}">${n(b.ratio, 4)}</td><td class="r mono">${micro(mineCoin(b.denom)?.amount ?? 0, 2)}</td></tr>`) : html`<tr><td colspan="6" class="empty">은행 정보가 없습니다.</td></tr>`}
-    </tbody></table></div></section>
+    </tbody></table></div>
+    <div style="padding:14px 16px">${g ? html`<h3 class="sub-h">${g.guild_id} 거래량</h3>${bankChart(s.hist.get(g.guild_id))}` : ''}</div></section>
     <section class="card accent game-panel"><h2>토큰 교환</h2>
       ${g ? html`<p class="mono" style="margin:0">${g.denom} · 담보율 ${n(ratio, 4)} · 1 토큰 ≈ ${n(ratio, 4)} α</p>
         <label class="field"><span>수량 (g / 토큰)</span><input class="input mono" name="bankAmount" value="${s.bankAmount}" data-act="bankAmount" placeholder="0" inputmode="decimal"></label>
@@ -178,7 +200,7 @@ const screen: Screen = {
     if (!pid) return;
     mount(root, loading());
     const startTab = (params.get('tab') as Tab) || 'buy';
-    const s: State = { tab: TABS.some(([t]) => t === startTab) ? startTab : 'buy', me: null, providers: [], mineProv: [], stats: new Map(), agreements: [], bank: [], coins: [], sel: 0, capKw: 10, days: 7, q: null, busy: false, sort: 'price', policy: '', bankGuild: '', bankAmount: '' };
+    const s: State = { tab: TABS.some(([t]) => t === startTab) ? startTab : 'buy', me: null, providers: [], mineProv: [], stats: new Map(), agreements: [], bank: [], coins: [], sel: 0, capKw: 10, days: 7, q: null, busy: false, sort: 'price', policy: '', bankGuild: '', bankAmount: '', hist: new Map() };
     const requote = () => {
       const p = s.providers[s.sel];
       if (!p) { s.q = null; return; }
@@ -192,8 +214,15 @@ const screen: Screen = {
       s.sel = Math.max(0, s.providers.findIndex((p) => p.id === cur));
     };
     const tabs = (): Safe => html`<div class="tabs" role="tablist">${TABS.map(([t, l]) => html`<button class="tab ${s.tab === t ? 'on' : ''}" role="tab" aria-selected="${s.tab === t}" data-act="tab" data-t="${t}">${l}</button>`)}</div>`;
+    const histPending = new Set<string>();
+    const loadHist = (gid: string) => {
+      if (!gid || s.hist.has(gid) || histPending.has(gid)) return;
+      histPending.add(gid);
+      void guildApi.bankHistory(gid, '1d').then((r) => { s.hist.set(gid, r); paint(); }).catch(() => { s.hist.set(gid, null); paint(); });
+    };
     const paint = () => {
       if (!root.isConnected) return;
+      if (s.tab === 'bank') loadHist(s.bankGuild || s.bank[0]?.guild_id || '');
       mount(root, html`<div class="card-head"><h1 style="font-size:28px">알파 거래소</h1><span class="label c-cheong">ALPHA EXCHANGE</span></div>${tabs()}${s.tab === 'buy' ? buy(s) : s.tab === 'mine' ? mine(s) : s.tab === 'sell' ? sell(s) : s.tab === 'bank' ? bank(s) : walletTab(s)}`, handlers);
       const alpha = s.coins.find((c) => c.denom === 'ualpha')?.amount ?? s.me?.alpha;
       setTiles([{ label: '알파 매터', value: alpha != null ? micro(alpha, 2) + ' g' : '—', tone: 'var(--hwang)' }, { label: '계약', value: n(s.agreements.length) }, { label: '판매 제안', value: n(s.providers.length) }]);

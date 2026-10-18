@@ -295,3 +295,10 @@ tr.me td { background: var(--cheong-bg); }
 .ribbon.t6 { border-color: var(--hwang-line); box-shadow: inset 0 0 18px rgba(235,170,73,.15); }
 .ribbon.t0 { opacity: .7; }
 .ribbon.raid.t0 .rb-bar, .ribbon.def .rb-bar { --rb: var(--jeok-deep); }
+.bank-chart { margin: 0; }
+.bank-chart svg { width: 100%; height: auto; display: block; }
+.bc-axis { stroke: var(--line); stroke-width: 1; }
+.bc-fill { fill: var(--cheong); }
+.bc-hit { fill: transparent; }
+.bc-bar:hover .bc-fill { fill: var(--cheong-hi); }
+.bc-x { fill: var(--text-dim); font: 15px var(--f-mono); text-anchor: middle; }
