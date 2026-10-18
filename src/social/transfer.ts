@@ -25,7 +25,7 @@ export async function openTransfer(o: PayOpts = {}) {
   const me = session.playerId;
   let step: 'form' | 'review' | 'sent' = 'form', busy = false, err = '', hash = '';
   let toQuery = o.to ?? '', to: PlayerRow | null = null, toAddr = '', amountText = o.amount ? String(o.amount) : '', denom = o.denom ?? 'ualpha', from = o.from ?? 0;
-  let tokens: BankRow[] = [], fromRow: PlayerRow | null = null;
+  let tokens: BankRow[] = [], fromRow: PlayerRow | null = null, matches: { id: string; username: string; guild_id: string }[] = [];
   const accounts = wallet.accounts.length ? wallet.accounts : [{ index: 0, address: '', label: '사령관', playerId: me ?? undefined }];
   const selfAddr = () => accounts.find((a) => a.index === from)?.address ?? '';
 
@@ -34,8 +34,14 @@ export async function openTransfer(o: PayOpts = {}) {
     const q = toQuery.trim();
     if (!q) return;
     if (/^structs1[0-9a-z]{20,80}$/.test(q)) { toAddr = q; return; }
-    const id = /^\d+$/.test(q) ? '1-' + q : q;
-    if (!/^1-\d+$/.test(id)) { err = '플레이어 ID(1-42) 또는 structs1… 주소를 입력하세요.'; return; }
+    let id = /^\d+$/.test(q) ? '1-' + q : q;
+    if (!/^1-\d+$/.test(id)) {
+      // A name: ask the guild who matches.
+      matches = await guildApi.playerSearch(q).catch(() => []);
+      if (matches.length === 1) id = matches[0].id;
+      else { err = matches.length ? '' : `"${q}"와(과) 맞는 사령관이 없습니다.`; return; }
+    }
+    matches = [];
     try { to = await guildApi.player(id); toAddr = to?.primary_address ?? ''; if (!to) err = `${id} 플레이어가 없습니다.`; } catch { err = '받는 사람을 찾지 못했습니다.'; }
   };
   const loadFrom = async () => {
@@ -61,7 +67,8 @@ export async function openTransfer(o: PayOpts = {}) {
     const bal = balance();
     return html`
       <label class="field"><span>보내는 계정</span><select class="input" name="from" data-act="from" data-on="change">${accounts.map((a) => html`<option value="${a.index}" ${a.index === from ? 'selected' : ''}>${a.index === 0 ? '사령관' : `레플리칸트 #${a.index}`} · ${a.playerId ?? a.address.slice(0, 12) + '…'}</option>`)}</select></label>
-      <label class="field"><span>받는 사람 (플레이어 ID 또는 주소)</span><input class="input mono" name="to" value="${toQuery}" placeholder="1-42" data-act="to" data-on="change" autocomplete="off"></label>
+      <label class="field"><span>받는 사람 (이름, 플레이어 ID 또는 주소)</span><input class="input mono" name="to" value="${toQuery}" placeholder="은하수 · 1-42" data-act="to" data-on="change" autocomplete="off"></label>
+      ${matches.length > 1 ? html`<div class="pay-recent">${matches.slice(0, 8).map((m) => html`<button class="pill" data-act="pick" data-id="${m.id}">${m.username || m.id} <small class="mono faint">${m.id}</small></button>`)}</div>` : ''}
       ${recent().length ? html`<div class="pay-recent">${recent().filter((r) => r.id !== me).map((r) => html`<button class="pill" data-act="pick" data-id="${r.id}">${r.name}</button>`)}</div>` : ''}
       ${to || toAddr ? face(to, toAddr, '받는 사람') : ''}
       <div class="g2" style="gap:10px">

@@ -126,6 +126,7 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
     const n = (m.input ?? '').length % 5; return n < 2 ? { player_id: `1-${300 + n}` } : null;
   }],
   [/^resolve$/, () => []],
+  [/^player\/transfer\/search$/, (_m, q) => { const t = (q.get('search_string') ?? '').toLowerCase(); return Object.values(PLAYERS).filter((p) => p.username.toLowerCase().includes(t) || p.id.includes(t)).map((p) => ({ id: p.id, username: p.username, guild_id: p.guild_id, pfp: '' })); }],
   // Stat history: a week of hourly points, a gentle walk per object and metric.
   [/^stat\/([a-z_]+)\/object\/([0-9-]+)\/range\/page\/1$/, (m) => { const base = m[1] === 'ore' ? 60 : m[1] === 'capacity' ? 9e6 : 5e6; let v = base; return Array.from({ length: 168 }, (_, i) => { v = Math.max(0, v + (Math.sin(i / 7 + m[2].length) + (m[1] === 'ore' ? 0.15 : 0)) * base * 0.04); return { time: new Date(Date.now() - (167 - i) * 3_600_000).toISOString(), value: String(Math.round(v)) }; }); }],
   [/^player\/(1-\d+)\/ore\/stats$/, (m) => ({ mined: m[1] === ME ? 6_420 : 18_000, seized: m[1] === '1-9' ? 2_400 : 310, forfeited: 120 })],

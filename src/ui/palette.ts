@@ -13,6 +13,7 @@ import { openRent, watchlist, toggleWatch } from '../social/actions';
 import { baseSituation } from '../social/situations';
 import { session } from '../api/session';
 import { matrix } from '../chat/matrix';
+import { guildApi } from '../api/guild';
 import { sfx } from '../game/sfx';
 import { toast } from './dom';
 
@@ -81,7 +82,18 @@ function itemsFor(q: string): Item[] {
   for (const v of VERBS) { const s = Math.max(matches(v.word, q2), matches(v.label, q2), ...v.aliases.map((a) => matches(a, q2))); if (s && v !== verb) scored.push([s - 0.5, { label: v.label, hint: v.hint, icon: v.icon, run: () => v.run('', []) }]); }
   for (const r of matrix.rooms.values()) { const s = matches(r.name, q2.replace(/^#/, '')); if (s) scored.push([s - 1, { label: `${r.direct ? '@' : '#'}${r.name.replace(/^#/, '')}`, hint: '대화방', icon: 'icon-phone', run: () => go(`/chat?room=${encodeURIComponent(r.alias ?? r.id)}`) }]); }
   out.push(...scored.sort((a, b) => b[0] - a[0]).map(([, i]) => i));
+  // Commanders by name (from the last search, filled in as you type).
+  for (const p of found.filter((x) => matches(x.username, q2))) out.push({ label: `${p.username} · ${p.id}`, hint: '사령관', icon: 'icon-member', run: () => go(`/o/${p.id}`) });
   return out.slice(0, 12);
+}
+let found: { id: string; username: string }[] = [];
+let searchT = 0, lastQ = '';
+/** Names are looked up as you type (debounced), then the list repaints. */
+function searchPlayers(q: string, again: () => void) {
+  const t = q.trim();
+  if (t.length < 2 || /^\d|^[ㄱ-ㅎ]+$/.test(t) || t === lastQ) return;
+  clearTimeout(searchT);
+  searchT = window.setTimeout(() => { lastQ = t; void guildApi.playerSearch(t).then((r) => { found = r.slice(0, 6); again(); }).catch(() => null); }, 300);
 }
 
 let el: HTMLElement | null = null;
@@ -101,7 +113,7 @@ export function openPalette(initial = '') {
     list.innerHTML = items.length ? items.map((it, i) => `<li role="option" aria-selected="${i === at}" class="${i === at ? 'on' : ''}" data-i="${i}"><i class="si ${it.icon}"></i><b>${esc(it.label)}</b><small>${esc(it.hint)}</small>${it.key ? `<kbd>${esc(it.key)}</kbd>` : ''}</li>`).join('') : '<li class="none">맞는 명령이 없습니다. <b>도움말</b>을 입력해 보세요.</li>';
   };
   const run = (i: number) => { const it = items[i]; if (!it) return; close(); void it.run(); };
-  input.addEventListener('input', () => { at = 0; paint(); });
+  input.addEventListener('input', () => { at = 0; paint(); if (session.status.state === 'in') searchPlayers(input.value, paint); });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); at = Math.min(items.length - 1, at + 1); paint(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); at = Math.max(0, at - 1); paint(); }

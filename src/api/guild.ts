@@ -106,6 +106,8 @@ export const guildApi = {
   permissionsTo: (playerId: string) => page<PermissionRow>(`permission/player/${enc(playerId)}`),
 
   leaderboard: <T = LeaderPlayer>(kind: LeaderKind, limit = 10) => cached(`lb/${kind}/${limit}`, 120_000, () => get<T[]>(`leaderboard/${kind}`, { limit })),
+  /** Players whose name or id matches (the guild's transfer-recipient search). */
+  playerSearch: (q: string) => get<Record<string, unknown>[]>('player/transfer/search', { search_string: q }).then((r) => (r ?? []).map((x) => ({ id: String(x.id ?? x.player_id ?? ''), username: String(x.username ?? ''), guild_id: String(x.guild_id ?? ''), pfp: String(x.pfp ?? x.pfp_attrs ?? '') })).filter((x) => /^1-\d+$/.test(x.id))),
   objects: (ids: string[]) => ids.length ? get<ObjectRow[]>('objects', { ids: ids.slice(0, 200).join(',') }) : Promise.resolve([] as ObjectRow[]),
   resolve: (q: string) => get<Record<string, unknown>[]>('resolve', { q }),
   /** [tutorial branch] mini-game scores; used for the tutorial grade. */
