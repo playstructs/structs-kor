@@ -73,7 +73,7 @@ const screen: Screen = {
         <span class="end" style="display:flex;gap:6px">${kind === 'planet' || kind === 'fleet' ? html`<a class="btn ghost" href="${href(`/chat?room=${encodeURIComponent(`#${kind}-${id}`)}`)}" title="이 ${kind === 'planet' ? '행성' : '함대'}의 통신방">통신방</a>` : ''}<button class="btn ghost" data-act="watch">${watchlist().includes(id) ? '★ 감시 중' : '☆ 감시'}</button><button class="btn primary" data-act="share">공유</button></span></div>
       <div class="obj-wrap">
         <div class="obj-main">
-          ${kind === 'planet' ? html`<section class="card flush game-panel obj-board"><div id="obj-board"></div></section>` : ''}
+          ${kind === 'planet' || kind === 'fleet' ? html`<section class="card flush game-panel obj-board"><div id="obj-board"></div></section>` : ''}
           ${extra}
           ${log.length || kind === 'planet' || kind === 'player' ? html`<section class="card game-panel"><h2>${kind === 'planet' ? '전투 기록' : '최근 활동'}</h2>${activityList(log)}</section>` : ''}
         </div>
@@ -113,6 +113,20 @@ const screen: Screen = {
       extra = html`${mineP ? html`<form class="invite-form planet-name" data-act="rename" data-on="submit"><input class="input" name="name" maxlength="24" value="${p.name}" placeholder="행성 이름" aria-label="행성 이름"><button class="btn ghost sm" ${wallet.state === 'unlocked' && !MOCK ? '' : 'disabled'}>행성 이름 변경</button></form>` : ''}${hOre.length ? html`<section class="card game-panel">${raw(sparkHtml(hOre, { label: '행성 광석 (7일)', unit: '', tone: 'var(--hwang)' }))}</section>` : ''}<section class="card game-panel"><div class="card-head"><h2>구조체</h2><span class="end mono dim">${n(here.length)} 아군${attackers.length ? ` · ${n(attackers.length)} 습격` : ''}</span></div>
         <div class="obj-structs">${[...here, ...attackers].slice(0, 24).map((s) => html`<a class="obj-struct ${attackers.includes(s) ? 'enemy' : ''}" href="${href(`/o/${s.id}`)}"><b>${STRUCT_TYPE[s.type] ?? s.type}</b><small class="mono">${s.id} · ♥${s.health}</small></a>`)}</div></section>`;
     };
+    const loadFleet = async () => {
+      const owner = card?.owner;
+      if (!owner) return;
+      const ships = (await guildApi.structsOf(owner).catch(() => [] as StructRow[])).filter((s) => s.location_id === id && !s.is_destroyed);
+      const host = root.querySelector('#obj-board');
+      if (!board && host) {
+        board = new Board({ fog: true, label: `함대 ${id}`, zoom: 'full', quiet: true, maxHeight: () => Math.min(460, innerHeight * 0.5) });
+        board.attach(host);
+      }
+      board?.setStructs(toBoard(ships, 'defender'));
+      extra = html`<section class="card game-panel"><div class="card-head"><h2>함대 구성</h2><span class="end mono dim">${n(ships.length)}척</span></div>
+        <div class="obj-structs">${ships.map((s) => html`<a class="obj-struct" href="${href(`/o/${s.id}`)}"><b>${STRUCT_TYPE[s.type] ?? s.type}</b><small class="mono">${s.id} · ♥${s.health}</small></a>`)}</div>
+        ${me && owner !== me ? html`<a class="btn ghost sm" href="${href(`/sim?vs=${owner}`)}">이 함대와 실전 예측</a>` : ''}</section>`;
+    };
     const loadPlayer = async () => {
       const [stats, structs, rib, hOre, hLoad, hCap] = await Promise.all([guildApi.oreStats(id).catch(() => null), guildApi.structsOf(id).catch(() => [] as StructRow[]), serviceRecord(id).catch(() => [] as Ribbon[]), history('ore', id), history('load', id), history('capacity', id)]);
       ribbonsNow = rib;
@@ -141,6 +155,7 @@ const screen: Screen = {
         if (kind === 'planet') await loadPlanet();
         else if (kind === 'player') await loadPlayer();
         else if (kind === 'guild') await loadGuild();
+        else if (kind === 'fleet') await loadFleet();
         log = planetId ? await guildApi.activity(planetId, 1, 30).catch(() => []) : kind === 'player' ? await guildApi.playerActivity(id, 1, 25).catch(() => []) : [];
       } catch { /* the card still stands */ }
       paint();
