@@ -710,7 +710,7 @@ export type RefitId = 'armor' | 'guns' | 'evade';
 export const REFITS: Record<RefitId, { name: string; what: string; cost: number }> = {
   armor: { name: '증가 장갑', what: '최대 내구도 +2', cost: 8 },
   guns: { name: '포 개량', what: '기지 방어 사격 피해 +1', cost: 10 },
-  evade: { name: '회피 추진기', what: '피격 회피 확률 +20%p', cost: 8 },
+  evade: { name: '회피 추진기', what: '기지 방어 피격 회피 +20%p', cost: 8 },
 };
 
 /** 연합 전선: past this hegemony, some raids come under two banners with two more escorts. */

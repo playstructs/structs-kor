@@ -57,7 +57,7 @@ interface GxRoute { from: number; to: number; t: number; label: string }
 /** Where the map is looking: centre and zoom (1 = the whole galaxy). */
 interface Cam { x: number; y: number; z: number }
 const viewBox = (c: Cam) => { const w = 300 / c.z; return `${(c.x - w / 2).toFixed(1)} ${(c.y - w / 2).toFixed(1)} ${w.toFixed(1)} ${w.toFixed(1)}`; };
-function drawGalaxy(nodes: GxNode[], route: GxRoute | null, sel: string | null, ref = REF, stars = 420, war: { from: number; to: number } | null = null, cam: Cam = { x: 0, y: 0, z: 1 }): Safe {
+function drawGalaxy(nodes: GxNode[], routes: GxRoute | GxRoute[] | null, sel: string | null, ref = REF, stars = 420, war: { from: number; to: number } | null = null, cam: Cam = { x: 0, y: 0, z: 1 }): Safe {
   const maxW = Math.max(1, ...nodes.map((x) => x.weight));
   const P = (i: number) => pos(i, ref).map((v) => +v.toFixed(1)) as [number, number];
   const dots = Array.from({ length: stars }, (_, i) => { const [x, y] = pos(i * 3 + 1, Math.max(ref, stars * 3)); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${i % 9 === 0 ? 0.9 : 0.45}" fill="${i % 7 === 0 ? '#86DFC6' : '#C5D7D9'}" opacity="${(0.25 + (i % 5) * 0.12).toFixed(2)}"/>`; }).join('');
@@ -69,7 +69,8 @@ function drawGalaxy(nodes: GxNode[], route: GxRoute | null, sel: string | null, 
     const [ax, ay] = P(war.from), [bx, by] = P(war.to);
     path += `<path d="M${ax},${ay} Q${(ax + bx) / 2 - 18},${(ay + by) / 2 + 18} ${bx},${by}" class="gx-war"/><circle cx="${bx}" cy="${by}" r="6" class="gx-burst"/>`;
   }
-  if (route) {
+  // A coalition comes down two lanes at once.
+  for (const route of Array.isArray(routes) ? routes : routes ? [routes] : []) {
     const [rx, ry] = P(route.from), [hx, hy] = P(route.to);
     const fx = rx + (hx - rx) * route.t, fy = ry + (hy - ry) * route.t;
     path += `<path d="M${rx},${ry} Q${(rx + hx) / 2 + 20},${(ry + hy) / 2 - 20} ${hx},${hy}" class="gx-route"/><circle cx="${fx}" cy="${fy}" r="2.4" class="gx-fleet"/><text x="${fx + 4}" y="${fy - 3}" class="gx-eta">${esc(route.label)}</text>`;
@@ -139,7 +140,9 @@ const screen: Screen = {
       ];
       const from = raid ? demo.rivals().find((r) => r.id === raid.owner) : null;
       const w = demo.war;
-      return drawGalaxy(nodes, raid && from ? { from: planetIx(from.id), to: HOME, t: raid.eta === 0 ? 1 : 1 - raid.eta / 6, label: raid.eta ? raid.eta + '블록' : '교전' } : null, sel, REF, 420, w ? { from: planetIx(w.from), to: planetIx(w.to) } : null, cam);
+      const partner = raid?.partner ? demo.rivals().find((r) => r.id === raid.partner) : null;
+      const lane = (id: string, label: string): GxRoute => ({ from: planetIx(id), to: HOME, t: raid!.eta === 0 ? 1 : 1 - raid!.eta / 6, label });
+      return drawGalaxy(nodes, raid && from ? [lane(from.id, raid.eta ? raid.eta + '블록' : '교전'), ...(partner ? [lane(partner.id, '연합')] : [])] : null, sel, REF, 420, w ? { from: planetIx(w.from), to: planetIx(w.to) } : null, cam);
     };
 
     /* Scouted rivals get a war-room estimate: 12 autopilot play-outs, cached until either fleet changes. */
