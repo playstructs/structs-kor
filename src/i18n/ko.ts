@@ -24,7 +24,8 @@ export const ALLOCATION_TYPE: Record<string, string> = { static: '정적', dynam
 export const ACTIVITY: Record<string, string> = {
   struct_attack: '공격', struct_defense_add: '방어 지정', struct_defense_remove: '방어 해제', struct_status: '구조체 상태',
   struct_move: '구조체 이동', struct_block_build_start: '건설 시작', struct_block_ore_mine_start: '채굴 시작', struct_block_ore_refine_start: '정제 시작',
-  struct_health: '내구도 변화', raid_status: '습격', fleet_arrive: '함대 도착', fleet_depart: '함대 출발', fleet_advance: '함대 전진',
+  struct_health: '내구도 변화', raid_status: '습격', struct_block_ore_mine_complete: '채굴', struct_block_ore_refine_complete: '정제', struct_block_build_complete: '건설 완료',
+  allocation_cut: '할당 차단', research: '연구', away: '부재 중 생산', event: '은하 소식', guild: '길드', engine: '월드 엔진', infusion: '주입', agreement_open: '계약 체결', fleet_arrive: '함대 도착', fleet_depart: '함대 출발', fleet_advance: '함대 전진',
 };
 export const activityLabel = (c: string) => ACTIVITY[c] ?? c.replace(/_/g, ' ');
 

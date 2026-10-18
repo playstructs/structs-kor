@@ -10,6 +10,36 @@ import { ApiError } from '../api/http';
 import { guildApi } from '../api/guild';
 import { session } from '../api/session';
 import { fellBack, isMissing, markMissing } from '../api/requirements';
+import { Board, type BoardStruct } from '../game/map/board';
+import type { AttackDetail, ShotRow, CounterRow } from '../sim/chain';
+import { career } from '../game/progress';
+import { sfx } from '../game/sfx';
+import { banner } from '../game/fx';
+import { keys } from '../game/keys';
+import type { Ambit } from '../data/catalogue';
+
+/* The training field on the real battle board: your base on the left, the raiders on the right. */
+type Who = 'cmd' | 'bomber' | 'tankA' | 'tankB' | 'extractor' | 'refinery' | 'enemyCmd' | 'enemyTank';
+const UNIT: Record<Who, { type: number; ambit: Ambit; slot: number; side: 'defender' | 'attacker'; cat: 'planet' | 'fleet'; max: number }> = {
+  cmd: { type: 1, ambit: 'land', slot: 0, side: 'defender', cat: 'fleet', max: 6 },
+  bomber: { type: 6, ambit: 'air', slot: 0, side: 'defender', cat: 'fleet', max: 3 },
+  tankA: { type: 9, ambit: 'land', slot: 1, side: 'defender', cat: 'fleet', max: 3 },
+  tankB: { type: 9, ambit: 'land', slot: 0, side: 'defender', cat: 'fleet', max: 3 },
+  extractor: { type: 14, ambit: 'land', slot: 0, side: 'defender', cat: 'planet', max: 6 },
+  refinery: { type: 15, ambit: 'land', slot: 1, side: 'defender', cat: 'planet', max: 6 },
+  enemyCmd: { type: 1, ambit: 'land', slot: 0, side: 'attacker', cat: 'fleet', max: 6 },
+  enemyTank: { type: 9, ambit: 'land', slot: 0, side: 'attacker', cat: 'fleet', max: 3 },
+};
+const TYPE_NAME: Record<number, string> = { 1: 'Command Ship', 6: 'Stealth Bomber', 9: 'Tank' };
+const shot = (target: Who, before: number, after: number, extra: Partial<ShotRow> = {}): ShotRow => ({
+  targetStructId: target, targetStructTypeId: UNIT[target].type, targetStructType: TYPE_NAME[UNIT[target].type] ?? '', targetStructOperatingAmbit: UNIT[target].ambit, targetStructSlot: UNIT[target].slot,
+  targetPlayerId: '', targetHealthBefore: before, targetHealthAfter: after, targetDestroyed: after === 0 && before > 0, targetHealthMax: UNIT[target].max, eventAttackDefenderCounterDetail: [], ...extra,
+});
+const counter = (by: Who, dmg: number, killed = false): CounterRow => ({ counterByStructId: by, counterDamage: dmg, counterDestroyedAttacker: killed, counterByStructType: TYPE_NAME[UNIT[by].type], counterByStructOperatingAmbit: UNIT[by].ambit, counterByStructWeaponSystem: 'primaryWeapon' });
+const attack = (by: Who, hp: number, shots: ShotRow[]): AttackDetail => ({
+  attackerPlayerId: '', attackerStructId: by, attackerStructTypeId: UNIT[by].type, attackerStructType: TYPE_NAME[UNIT[by].type], attackerStructOperatingAmbit: UNIT[by].ambit, attackerStructSlot: UNIT[by].slot,
+  weaponSystem: 'primaryWeapon', weaponControl: 'guided', activeWeaponry: '', attackerHealthBefore: hp, attackerHealthMax: UNIT[by].max, eventAttackShotDetail: shots,
+});
 
 interface Step { id: string; ph?: number; m?: 'say' | 'ask'; pos?: 't' | 'b'; k?: string; p?: string; tg?: string[]; t?: string; scr?: 'file' | 'loading' | 'cert' | 'ftl' }
 const S: Step[] = [
@@ -74,7 +104,18 @@ async function saveGrade(grade: string) {
 const screen: Screen = {
   render(root) {
     let i = 0, sub = 0;
-    const go = (n: number) => { i = Math.max(0, Math.min(S.length - 1, n)); sub = 0; if (S[i].id === 'CERT') void saveGrade('C-'); paint(); };
+    const go = (n: number) => {
+      i = Math.max(0, Math.min(S.length - 1, n)); sub = 0;
+      if (S[i].id === 'CERT') {
+        let first = false;
+        try { first = !localStorage.getItem('structs-kor.tutorial'); } catch { /* storage blocked: no XP, still certify */ }
+        void saveGrade('C-');
+        sfx.play('victory');
+        banner({ kicker: 'SN.CORP', title: '훈련 수료', sub: '전투 훈련 과정을 이수했습니다', tone: 'gold' });
+        if (first) setTimeout(() => career.award(60, '전투 훈련 수료'), 1200);
+      }
+      paint();
+    };
     const at = (id: string) => i >= ix(id);
 
     const view = (): Safe => {
@@ -83,16 +124,11 @@ const screen: Screen = {
       const cur = train ? (st.m === 'ask' ? st.tg![sub] : st.p ?? null) : null;
       const tgt = (id: string) => (cur === id ? ' tgt' : '');
       const cmd = !at('CMD_SHIP_DESTROYED') || at('DEFENSES_SECURE') ? 'alive' : at('BATTERY_DEPLETES') ? 'build' : 'dead';
-      const tankADead = at('WENT_POORLY'), aDef = at('DEFENDED_AND_DEFENDERS') && !tankADead;
-      const eTankDead = at('SUCCESS'), eCmdDead = at('RAIDERS_REPELLED'), raiders = at('RAIDERS_ATTACK');
+      const raiders = at('RAIDERS_ATTACK');
       const secure = cmd === 'alive' && (!at('CMD_SHIP_DESTROYED') || at('DEFENSES_SECURE'));
       const cd = at('RAIDERS_REPELLED') ? '' : at('STEALTH_BOMBER') ? '28분' : at('DESTROY_ENEMY_CMD_SHIP') ? '29분' : at('CMD_SHIP_DESTROYED') ? '30분' : '';
       const bat = at('DESTROY_ENEMY_CMD_SHIP') ? '5 / 5' : at('DEFEND_OTHER_TANK') ? '3 / 5' : at('BATTERY_DEPLETES') ? '1 / 5 · 충전 중' : '5 / 5';
       const tNo = train ? TRAIN.indexOf(st) + 1 : TRAIN.length;
-      const slot = (id: string, name: string, sub2: string, kind: 'mine' | 'enemy' | 'empty' | 'dead' | 'build') => html`<button class="tslot s-${kind}${tgt(id)}" data-act="hit" data-id="${id}" aria-label="${name} ${sub2}"><b>${name}</b><span>${sub2}</span></button>`;
-      const empty = (k: string) => slot(k, '—', '비어 있음', 'empty');
-      const lane = (label: string, cells: Safe[]) => html`<div class="tlane"><span>${label}</span>${cells}</div>`;
-      const cmdCell = cmd === 'dead' ? slot('emptyCmd', '빈 사령 타일', '파괴됨 · 재배치 필요', 'dead') : slot('cmd', 'CMD 함선', cmd === 'build' ? '건조 중…' : 'ST-21 스피어포인트', cmd === 'build' ? 'build' : 'mine');
 
       if (st.scr === 'file') return html`<div class="tscreen"><section class="card" style="max-width:560px;width:100%;text-align:center;align-items:center;box-shadow:10px 10px 0 var(--sunken)">
         <span class="label c-cheong">SN.CORP · 인사 파일</span><h1 style="font-size:40px">파일 수신 완료</h1>
@@ -116,7 +152,7 @@ const screen: Screen = {
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><b style="font-size:13px;color:var(--cheong-hi)">SN.CORP 인사 봇</b>${st.k ? html`<span class="chip hwang" style="font-weight:700">${st.k}</span>` : ''}<span class="mono faint" style="margin-left:auto;font-size:12px">${PHASES[st.ph!]} · ${tNo}/${TRAIN.length}</span></div>
           <p style="margin:0;font-size:17px;line-height:1.7;color:#fff">${st.t}</p>
           <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn ghost" data-act="prev">이전</button>
-            ${st.m === 'ask' ? html`<span class="chip hwang" style="padding:10px 14px">▼ 표시된 대상을 누르세요 · ${sub + 1} / ${st.tg!.length}</span>` : html`<button class="btn primary" data-act="next">확인</button>`}</div>
+            ${st.m === 'ask' ? html`<span class="chip hwang" style="padding:10px 14px">▼ 표시된 대상을 누르세요 · ${sub + 1} / ${st.tg!.length}</span>` : html`<button class="btn primary" data-act="next" ${busy ? 'disabled' : ''}>${busy ? '교전 중…' : '확인'} <kbd>Enter</kbd></button>`}</div>
         </div></div></div>`;
 
       return html`<div class="ttrain">
@@ -127,23 +163,10 @@ const screen: Screen = {
           <button class="hudb${tgt('hudBattery')}" data-act="hit" data-id="hudBattery"><small>배터리</small><b class="c-cheong">${bat}</b></button>
           ${st.id === 'CMD_SHIP_PROTECTS' ? html`<div role="status" style="flex:1 1 260px;background:var(--sunken);border:1px solid var(--cheong);padding:8px 12px;font-size:13px"><b class="c-cheong">상세 · 행성 방어</b> — 상태 보안 · CMD 함선 주둔 중 · 돌파 불가</div>` : ''}
         </div>
-        <div style="position:relative;flex:1 1 auto;padding:48px 16px 200px;min-height:560px">
-          <div class="g2" style="gap:24px">
-            <section aria-label="내 진형" style="display:flex;flex-direction:column;gap:6px"><b class="c-cheong" style="font-family:var(--f-display);font-weight:400;font-size:18px">내 알파 기지</b>
-              ${lane('우주', [empty('p0'), empty('p1'), empty('p2'), empty('p3')])}
-              ${lane('공중', [slot('bomber', '스텔스 폭격기', '공중 · 폭탄', 'mine'), empty('p5'), empty('p6'), empty('p7')])}
-              ${lane('지상', [cmdCell, tankADead ? slot('tankA', '탱크 A', '파괴됨', 'dead') : slot('tankA', '탱크 A', aDef ? '방어자 → 탱크 B' : '레일건 · 지상', 'mine'), empty('p10'), slot('tankB', '탱크 B', aDef ? '보호받음' : '레일건 · 지상', 'mine')])}
-              ${lane('수상', [empty('p12'), empty('p13'), empty('p14'), empty('p15')])}
-              <div class="tlane two${cur === 'planet' ? ' tgt' : ''}" style="position:relative;margin-top:6px"><span style="background:var(--hwang-bg);color:var(--hwang)">행성</span>${slot('extractor', '추출기', '알파 광석 채굴', 'build')}${slot('refinery', '정제소', '광석 → 알파 매터', 'build')}</div>
-            </section>
-            <section aria-label="레이더 진형" style="display:flex;flex-direction:column;gap:6px"><b class="c-jeok" style="font-family:var(--f-display);font-weight:400;font-size:18px">레이더</b>
-              ${raiders ? html`${lane('우주', [empty('e0'), empty('e1'), empty('e2'), empty('e3')])}${lane('공중', [empty('e4'), empty('e5'), empty('e6'), empty('e7')])}
-                ${lane('지상', [eCmdDead ? slot('enemyCmd', '레이더 CMD 함선', '파괴됨', 'dead') : slot('enemyCmd', '레이더 CMD 함선', eTankDead ? 'HP 2' : 'HP 2 · 보호받음', 'enemy'), eTankDead ? slot('enemyTank', '레이더 탱크', '파괴됨', 'dead') : slot('enemyTank', '레이더 탱크', '방어자 · 레일건', 'enemy'), empty('e10'), empty('e11')])}
-                ${lane('수상', [empty('e12'), empty('e13'), empty('e14'), empty('e15')])}`
-                : html`<div style="min-height:300px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);color:var(--text-faint);font:13px var(--f-mono)">레이더 미탐지 · 궤도 스캔 중</div>`}
-            </section>
-          </div>
+        <div style="position:relative;flex:1 1 auto;padding:12px 16px 16px;min-height:560px">
           ${narr}
+          <div class="tfield-legend"><b class="c-cheong">◀ 내 알파 기지</b><b class="c-jeok">${raiders ? '레이더 ▶' : '궤도 스캔 중…'}</b></div>
+          <div id="bd-host" class="bd-host"></div>
           ${st.id === 'DEPLOY_MENU' ? html`<aside aria-label="구조체 배치" style="position:absolute;top:0;right:0;bottom:0;width:360px;max-width:100%;background:var(--bg-raised);border-left:2px solid var(--cheong);z-index:6;display:flex;flex-direction:column">
             <div style="padding:16px;border-bottom:1px solid var(--line)"><h2 style="font-size:22px">구조체 배치</h2><span class="dim" style="font-size:13px">지상 · 슬롯 1 · 사령</span></div>
             <div style="padding:16px;display:flex;flex-direction:column;gap:10px"><button class="hudb${tgt('deployCard')}" data-act="hit" data-id="deployCard" style="display:flex;gap:12px;align-items:center;padding:14px;background:var(--cheong-bg)"><span style="width:48px;height:48px;background:var(--cheong);color:var(--cheong-bg);display:flex;align-items:center;justify-content:center;font-family:var(--f-display)">CMD</span><span style="text-align:left"><b class="c-white">CMD 함선</b><br><small class="c-cheong">ST-21 “스피어포인트”</small></span></button>
@@ -176,18 +199,99 @@ const screen: Screen = {
     };
     const body = view;
 
-    const paint = () => { if (root.isConnected) mount(root, frame(), handlers); };
+    /* ── The board ── */
+    let board: Board | null = null, busy = false;
+    const hp: Record<Who, number> = { cmd: 6, bomber: 3, tankA: 3, tankB: 3, extractor: 6, refinery: 6, enemyCmd: 6, enemyTank: 3 };
+    const reset = () => Object.assign(hp, { cmd: 6, bomber: 3, tankA: 3, tankB: 3, extractor: 6, refinery: 6, enemyCmd: 6, enemyTank: 3 });
+    /** Health as the script says it should stand at the current step (after its fight has played). */
+    const truth = () => {
+      reset();
+      if (at('CMD_SHIP_DESTROYED')) hp.cmd = 0;
+      if (at('BATTERY_DEPLETES')) hp.cmd = 6;
+      if (at('WENT_POORLY')) { hp.tankA = 0; hp.enemyTank = 2; }
+      if (at('TRIGGERED_COUNTER_ATTACK')) { hp.enemyTank = 1; hp.tankB = 2; }
+      if (at('SUCCESS')) hp.enemyTank = 0;
+      if (at('RAIDERS_REPELLED')) hp.enemyCmd = 0;
+    };
+    const structs = (): BoardStruct[] => {
+      const raiders = at('RAIDERS_ATTACK');
+      const building = at('BATTERY_DEPLETES') && !at('DEFENSES_SECURE');
+      return (Object.keys(UNIT) as Who[]).filter((w) => raiders || UNIT[w].side === 'defender').map((w) => ({
+        id: w, typeId: UNIT[w].type, ambit: UNIT[w].ambit, slot: UNIT[w].slot, side: UNIT[w].side, category: UNIT[w].cat, isCommand: UNIT[w].type === 1,
+        health: hp[w], maxHealth: UNIT[w].max, building: w === 'cmd' && building ? 0.6 : null,
+        protects: (w === 'tankA' && at('DEFENDED_AND_DEFENDERS') && !at('WENT_POORLY')) ? 'tankB' : w === 'enemyTank' && !at('SUCCESS') ? 'enemyCmd' : null,
+      }));
+    };
+    const ensureBoard = () => {
+      if (board) return board;
+      board = new Board({
+        slots: { space: 0, air: 2, land: 2, water: 0 }, fog: true, speed: 1.1, label: '훈련장', maxHeight: () => innerHeight - 380,
+        onPick: (id) => handlers.hit({ dataset: { id } } as unknown as HTMLElement),
+        onTile: (key) => { if (key === 'cmd|defender|land') handlers.hit({ dataset: { id: 'emptyCmd' } } as unknown as HTMLElement); },
+      });
+      return board;
+    };
+    /** Each step that is a fight plays it; the narrator waits for the dust to settle. */
+    const FIGHTS: Record<string, () => void> = {
+      CMD_SHIP_DESTROYED: () => { board!.playAttack(attack('enemyTank', 3, [shot('cmd', 6, 3)])); board!.playAttack(attack('enemyTank', 3, [shot('cmd', 3, 0)])); },
+      BATTERY_DEPLETES: () => board!.play('cmd', ['DEPLOYMENT_LAND']),
+      WENT_POORLY: () => {
+        board!.playAttack(attack('tankA', 3, [shot('enemyCmd', 6, 6, { blocked: true, blockedByStructId: 'enemyTank', blockerHealthBefore: 3, blockerHealthAfter: 2, eventAttackDefenderCounterDetail: [counter('enemyTank', 1)] })]));
+        board!.playAttack(attack('enemyCmd', 6, [shot('tankA', 2, 0)]));
+      },
+      TRIGGERED_COUNTER_ATTACK: () => board!.playAttack(attack('tankB', 3, [shot('enemyTank', 2, 1, { eventAttackDefenderCounterDetail: [counter('enemyTank', 1)] })])),
+      SUCCESS: () => board!.playAttack(attack('bomber', 3, [shot('enemyTank', 1, 0)])),
+      RAIDERS_REPELLED: () => { board!.playAttack(attack('bomber', 3, [shot('enemyCmd', 6, 3)])); board!.playAttack(attack('bomber', 3, [shot('enemyCmd', 3, 0)])); },
+      DEFENSES_SECURE: () => board!.play('cmd', ['DEPLOYMENT_LAND']),
+    };
+    let lastStep = '';
+    const paint = () => {
+      if (!root.isConnected) return;
+      const st = S[i];
+      const entered = st.id !== lastStep;
+      lastStep = st.id;
+      const fight = entered && !!FIGHTS[st.id] && !busy && !st.scr;
+      if (fight) busy = true;
+      mount(root, frame(), handlers);
+      const host = root.querySelector('#bd-host');
+      if (!host) { busy = false; return; }
+      const b = ensureBoard();
+      b.attach(host);
+      if (fight) {
+        // Show the state before the fight, then play it.
+        const save = i; i = Math.max(0, i - 1); truth(); i = save;
+        b.setStructs(structs().map((x) => ({ ...x, building: st.id === 'BATTERY_DEPLETES' || st.id === 'DEFENSES_SECURE' ? null : x.building })));
+        FIGHTS[st.id]();
+        void b.idle().then(() => { busy = false; truth(); b.setStructs(structs()); if (root.isConnected) { mount(root, frame(), handlers); const h = root.querySelector('#bd-host'); if (h) b.attach(h); highlight(); } });
+      } else if (!busy) { truth(); b.setStructs(structs()); }
+      if (st.id === 'RAIDERS_ATTACK' && entered) { b.setFog(false); sfx.play('alarm'); }
+      else b.setFog(!at('RAIDERS_ATTACK'));
+      highlight();
+    };
+    const highlight = () => {
+      if (!board) return;
+      const st = S[i];
+      const cur = st.m === 'ask' ? st.tg![sub] : st.p ?? null;
+      const ids = cur && cur in UNIT ? [cur] : cur === 'planet' ? ['extractor', 'refinery'] : [];
+      board.markTargets(busy ? [] : ids);
+      if (ids[0]) board.reveal(ids[0]);
+      if (!busy && cur === 'emptyCmd') board.ping('cmd|defender|land');
+    };
     const handlers = {
-      next: () => go(i + 1), prev: () => go(i - 1), restart: () => go(2),
+      next: () => { if (!busy) go(i + 1); }, prev: () => { if (!busy) go(i - 1); }, restart: () => { lastStep = ''; go(2); },
       phase: (el: HTMLElement) => go(S.findIndex((s) => s.ph === Number(el.dataset.k))),
       hit: (el: HTMLElement) => {
         const st = S[i];
         if (st.m !== 'ask' || st.tg![sub] !== el.dataset.id) return;
+        if (busy) return;
+        sfx.play('confirm');
         if (sub + 1 >= st.tg!.length) go(i + 1); else { sub++; paint(); }
       },
     };
     i = 0;
     paint();
+    const off = keys.scope({ Enter: () => (S[i].m === 'ask' ? undefined : handlers.next()), ArrowRight: () => handlers.next(), ArrowLeft: () => handlers.prev() });
+    return () => { off(); board?.dispose(); };
   },
 };
 export default screen;

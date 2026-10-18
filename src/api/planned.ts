@@ -52,7 +52,7 @@ export const publicDirectory = () => planned<DirectoryRow[]>('REQ-PUB-3', 'publi
 
 export interface Dashboard {
   player: PlayerRow; power: PowerRow | null; planet: PlanetRow | null; shield_health: number | null; active_raid: RaidRow | null;
-  fleet: FleetRow | null; structs: StructRow[]; work: WorkRow[]; activity: ActivityRow[]; height: number | null;
+  fleet: FleetRow | null; structs: StructRow[]; /** null when the read failed (not "nothing owed"). */ work: WorkRow[] | null; activity: ActivityRow[]; height: number | null;
 }
 
 export function dashboard(playerId: string): Promise<Dashboard> {
@@ -66,7 +66,7 @@ export function dashboard(playerId: string): Promise<Dashboard> {
       pid ? soft(g.activeRaid(pid), null) : null,
       soft(g.fleetOf(playerId), null),
       soft(g.structsOf(playerId), []),
-      soft(g.workOf(playerId), []),
+      soft<WorkRow[] | null>(g.workOf(playerId), null),
       soft(g.playerActivity(playerId, 1, 20), []),
       soft(g.block().then((b) => b.height), null),
     ]);

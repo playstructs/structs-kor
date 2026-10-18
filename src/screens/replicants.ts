@@ -4,12 +4,52 @@
  * player needs ≥ 4 kW of substation share, (capacity − load) ÷ (connections + queue). */
 import type { Screen } from '../router';
 import { href } from '../router';
-import { html, mount, n, micro, watts, toast, type Safe } from '../ui/dom';
+import { html, mount, n, micro, watts, toast, raw, type Safe } from '../ui/dom';
+import { portraitHtml, seededPfp } from '../game/portrait';
 import { needSession, errorCard, loading } from '../ui/gate';
 import { replicants, energy, type Replicant, type Energy } from '../api/planned';
 import { guildApi } from '../api/guild';
 import { wallet } from '../wallet/wallet';
 import { GUILD_ID } from '../config';
+import { demo, DEMO_ID, type RepId } from '../game/demo';
+import { setTiles } from '../ui/shell';
+import { sfx } from '../game/sfx';
+import { float } from '../game/fx';
+
+/* The demo's replicants: agents hired with alpha that keep standing orders on the base. */
+function demoReplicants(root: HTMLElement): () => void {
+  const view = (): Safe => {
+    const reps = demo.reps, upkeep = reps.filter((r) => r.on).reduce((a, r) => a + r.upkeep, 0);
+    return html`
+    <div class="card-head"><h1 style="font-size:28px">레플리칸트</h1><span class="label c-cheong">REPLICANTS</span><span class="end mono ${upkeep ? 'c-hwang' : 'dim'}">급여 −${upkeep.toFixed(2)} α/블록</span></div>
+    <p class="note">레플리칸트는 당신 대신 기지를 돌봅니다. 계약금을 한 번 내면 매 블록 급여를 받고 맡은 일을 합니다. 금고가 비면 떠납니다.</p>
+    <div class="rep-grid">${reps.map((r) => html`<article class="rep-card ${r.on ? 'on' : ''}">
+      <div class="tech-top">${raw(portraitHtml(seededPfp('rep:' + r.id), 64))}<div><b>${r.role} · ${r.name}</b><small class="mono ${r.on ? 'c-cheong' : 'dim'}">${r.on ? '근무 중' : '대기'}</small></div></div>
+      <p>${r.order}</p>
+      <span class="mono dim">급여 ${r.upkeep} α/블록</span>
+      <button class="btn ${r.on ? 'ghost' : 'gold'}" data-act="hire" data-id="${r.id}" ${!r.on && demo.state.alpha < r.hire ? 'disabled' : ''}>${r.on ? '해고' : `고용 · 계약금 ${r.hire} g`}</button>
+    </article>`)}</div>
+    <section class="card game-panel"><h2>근무 일지</h2>${demo.repLog.length ? html`<ol class="newswire">${demo.repLog.map((x) => html`<li><span class="mono faint">#${n(x.h)}</span> ${x.text}</li>`)}</ol>` : html`<p class="note">아직 기록이 없습니다.</p>`}</section>
+    <p class="note">사령관으로 입대하면 레플리칸트는 같은 복구 문구에서 파생된 진짜 플레이어가 됩니다.</p>`;
+  };
+  const handlers = {
+    hire: (el: HTMLElement) => {
+      const id = el.dataset.id as RepId, was = demo.reps.find((r) => r.id === id)!.on;
+      const e = demo.hire(id);
+      if (e) { sfx.play('error'); toast(e); return; }
+      sfx.play(was ? 'click' : 'confirm'); if (!was) float(el, '고용!', 'var(--cheong-hi)', true);
+      paint();
+    },
+  };
+  const paint = () => {
+    if (!root.isConnected) return;
+    mount(root, view(), handlers);
+    setTiles([{ label: '알파 매터', value: '', num: demo.state.alpha, fmt: (v) => n(v, 2) + ' g', tone: 'var(--hwang)' }, { label: '레플리칸트', value: `${demo.reps.filter((r) => r.on).length} / ${demo.reps.length}` }]);
+  };
+  paint();
+  const off = demo.onChange(paint);
+  return () => { off(); setTiles([]); };
+}
 
 type Role = 'productive' | 'bait' | 'raider';
 const ROLE: Record<Role, { name: string; builds: string; c1: string; c2: string; head: string }> = {
@@ -26,14 +66,14 @@ const DKEY = 'structs-kor.doctrine';
 const loadDoctrine = (): Doctrine => { try { return { enabled: true, autopilot: false, sweepAbove: 2, rally: '', roles: {}, ...JSON.parse(localStorage.getItem(DKEY) || '{}') }; } catch { return { enabled: true, autopilot: false, sweepAbove: 2, rally: '', roles: {} }; } };
 const saveDoctrine = (d: Doctrine) => { try { localStorage.setItem(DKEY, JSON.stringify(d)); } catch { /* fine */ } };
 
-const portrait = (c1: string, c2: string, label: string) => html`<svg class="pix" width="56" height="56" viewBox="0 0 12 12" role="img" aria-label="${label}" style="flex:0 0 56px;background:var(--sunken)"><rect x="3" y="2" width="6" height="6" fill="${c1}"/><rect x="4" y="4" width="1" height="1" fill="#fff"/><rect x="7" y="4" width="1" height="1" fill="#fff"/><rect x="5" y="6" width="2" height="1" fill="${c2}"/><rect x="2" y="8" width="8" height="4" fill="${c2}"/><rect x="5" y="0" width="2" height="2" fill="${c1}"/></svg>`;
 
 const sw = (on: boolean, act: string, label: string) => html`<button class="sw" aria-pressed="${on}" aria-label="${label}" data-act="${act}"></button>`;
 
 const screen: Screen = {
   async render(root) {
-    const pid = needSession(root, '레플리칸트');
+    const pid = needSession(root, '레플리칸트', { demo: true });
     if (!pid) return;
+    if (pid === DEMO_ID) return demoReplicants(root);
     if (wallet.state !== 'unlocked') {
       mount(root, html`<section class="card accent" style="max-width:560px;margin:40px auto"><h1 style="font-size:28px">지갑 잠금 해제 필요</h1><p class="note">레플리칸트는 내 복구 문구에서 파생됩니다. 주소를 계산하려면 지갑을 열어야 합니다.</p><a class="btn primary" href="${href('/login')}">잠금 해제</a></section>`);
       return;
@@ -71,7 +111,7 @@ const screen: Screen = {
             const ro = ROLE[d.roles[r.player_id] ?? 'productive'];
             const name = r.username || `${CALLSIGNS[(r.hd_index ?? i) % CALLSIGNS.length]}-${r.hd_index ?? i + 1}`;
             return html`<article style="background:var(--bg-raised);border:2px solid ${ro.c2};display:flex;flex-direction:column">
-              <div style="display:flex;gap:12px;padding:14px;align-items:center;background:${ro.head}">${portrait(ro.c1, ro.c2, name + ' 초상')}
+              <div style="display:flex;gap:12px;padding:14px;align-items:center;background:${ro.head}"><span style="border:2px solid ${ro.c1};line-height:0">${raw(portraitHtml(seededPfp('rep:' + r.address), 56, name))}</span>
                 <div style="min-width:0"><h3 style="font-size:20px">${name}</h3><span style="font-size:12px;color:${ro.c1}">${ro.name} 레플리칸트</span><br><span class="mono dim" style="font-size:11px">${r.player_id} · ${r.planet_id || '행성 없음'}</span></div></div>
               <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:13px">
                 <div style="display:flex;justify-content:space-between"><span class="dim">알파</span><span class="mono c-hwang">${micro(r.alpha)} g</span></div>

@@ -27,7 +27,21 @@ export function setBearer(t: string | null) { bearer = t; }
 const authFns = new Set<() => void>();
 export function onAuthLost(f: () => void) { authFns.add(f); return () => authFns.delete(f); }
 
+/** Dev only: `?mock=1` answers from src/api/mock.ts (planned routes 404 as they do today). */
+export const MOCK = import.meta.env.DEV && (() => {
+  try {
+    const q = new URLSearchParams(location.search).get('mock');
+    if (q != null) localStorage.setItem('structs-kor.mock', q);
+    return localStorage.getItem('structs-kor.mock') === '1';
+  } catch { return false; }
+})();
+
 export async function call<T>(path: string, init: RequestInit = {}): Promise<Envelope<T>> {
+  if (MOCK) {
+    const hit = (await import('./mock')).mock<T>(path);
+    if (hit) return hit;
+    throw new ApiError('아직 없는 API입니다.', 'missing', 404, path);
+  }
   const headers = new Headers(init.headers || {});
   headers.set('accept', 'application/json');
   if (bearer) headers.set('authorization', 'Bearer ' + bearer);

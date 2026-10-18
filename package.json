@@ -8,14 +8,18 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node scripts/spa-fallback.mjs",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test scripts/*.test.ts",
+    "balance": "tsx scripts/campaign-balance.ts",
+    "soak": "tsx scripts/economy-soak.ts"
   },
   "dependencies": {
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
     "@scure/base": "^2.4.0",
     "@scure/bip32": "^2.4.0",
-    "@scure/bip39": "^2.4.0"
+    "@scure/bip39": "^2.4.0",
+    "lottie-web": "5.12.2"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

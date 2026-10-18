@@ -10,3 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_SITE_URL?: string;
 }
 interface ImportMeta { readonly env: ImportMetaEnv }
+
+declare module 'lottie-web/build/player/lottie_svg' {
+  import lottie from 'lottie-web';
+  export default lottie;
+}

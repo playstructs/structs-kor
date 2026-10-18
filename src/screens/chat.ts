@@ -6,6 +6,46 @@ import type { Screen } from '../router';
 import { href } from '../router';
 import { html, mount, raw, esc, toast, type Safe } from '../ui/dom';
 import { needSession } from '../ui/gate';
+import { demo, DEMO_ID } from '../game/demo';
+import { commsLog, onComms, record, guildSay } from '../game/comms';
+import { portraitHtml, seededPfp, myPfp } from '../game/portrait';
+import { sfx } from '../game/sfx';
+
+/* The demo's comms: the guild channel (guildmates talk back) and every rival transmission received. */
+function demoComms(root: HTMLElement): () => void {
+  const view = (): Safe => {
+    const g = demo.guild, log = commsLog();
+    const line = (l: ReturnType<typeof commsLog>[number]) => html`<li class="cm ${l.kind}">${raw(portraitHtml(l.kind === 'me' ? myPfp() : seededPfp(l.kind === 'guild' ? (g?.id ?? '') + l.who : l.from), 32))}<div><b>${l.who}</b> <span class="mono faint">${new Date(l.at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span><p>${l.text}</p></div></li>`;
+    return html`
+    <div class="card-head"><h1 style="font-size:28px">통신</h1><span class="label c-cheong">COMMS</span></div>
+    <div class="g2" style="align-items:start;gap:16px">
+      <section class="card game-panel"><div class="card-head"><h2>${g ? `${g.name} 채널` : '길드 채널'}</h2>${g ? html`<span class="end chip hwang mono">${g.tag}</span>` : ''}</div>
+        ${g ? html`<ol class="comms-log">${log.filter((l) => l.kind !== 'rival').slice(0, 30).map(line)}</ol>
+          <form class="comms-send" data-act="send" data-on="submit"><input class="input" name="msg" maxlength="120" placeholder="길드원에게 한마디…" autocomplete="off"><button class="btn primary" type="submit">보내기</button></form>`
+        : html`<p class="note">길드에 가입하면 길드원들과 이야기할 수 있습니다.</p><a class="btn gold" href="${href('/guild')}">길드 고르기</a>`}
+      </section>
+      <section class="card game-panel"><h2>수신된 통신</h2>
+        ${log.some((l) => l.kind === 'rival') ? html`<ol class="comms-log">${log.filter((l) => l.kind === 'rival').slice(0, 30).map(line)}</ol>` : html`<p class="note">경쟁 세력이 습격하거나, 패하거나, 현상금을 걸 때 통신이 옵니다.</p>`}
+      </section>
+    </div>`;
+  };
+  const handlers = {
+    send: (el: HTMLElement) => {
+      const input = el.querySelector<HTMLInputElement>('input[name=msg]');
+      const text = input?.value.trim();
+      if (!text || !demo.guild) return;
+      record({ from: 'me', who: '나 · 한빛 IV', text, kind: 'me' });
+      sfx.play('click');
+      guildSay(demo.guild.members, 'reply', 900 + Math.random() * 1500);
+      paint();
+      root.querySelector<HTMLInputElement>('input[name=msg]')?.focus();
+    },
+  };
+  const paint = () => { if (root.isConnected) mount(root, view(), handlers); };
+  paint();
+  const off = onComms(() => { const typing = root.querySelector<HTMLInputElement>('input[name=msg]')?.value; paint(); if (typing) { const i = root.querySelector<HTMLInputElement>('input[name=msg]'); if (i) i.value = typing; } });
+  return () => { off(); };
+}
 import { matrix, type Room } from '../chat/matrix';
 import { looksLikePhrase } from '../wallet/keys';
 import { wallet } from '../wallet/wallet';
@@ -20,7 +60,9 @@ function rich(body: string): Safe {
 
 const screen: Screen = {
   async render(root) {
-    if (!needSession(root, '통신')) return;
+    const pid = needSession(root, '통신', { demo: true });
+    if (!pid) return;
+    if (pid === DEMO_ID) return demoComms(root);
     if (wallet.state !== 'unlocked') {
       mount(root, html`<section class="card accent" style="max-width:560px;margin:40px auto"><h1 style="font-size:28px">지갑 잠금 해제 필요</h1><p class="note">채팅은 지갑 서명으로 로그인합니다. 비밀번호는 필요 없습니다.</p><a class="btn primary" href="${href('/login')}">잠금 해제</a></section>`);
       return;

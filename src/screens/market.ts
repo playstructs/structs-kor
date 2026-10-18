@@ -8,6 +8,9 @@ import { guildApi, type AgreementRow, type BankRow, type ProviderRow } from '../
 import { marketStats, quote, quoteLocal, type MarketStat, type Quote } from '../api/planned';
 import { actions, BLOCKS_PER_DAY } from '../api/actions';
 import { wallet } from '../wallet/wallet';
+import { DEMO_ID } from '../game/demo';
+import { sfx } from '../game/sfx';
+import { demoExchange } from './exchange-demo';
 
 type Tab = 'buy' | 'mine' | 'sell' | 'bank';
 const KW = 1e6; // mW per kW
@@ -20,7 +23,7 @@ interface State { tab: Tab; providers: ProviderRow[]; stats: Map<string, MarketS
 function buy(s: State): Safe {
   const p = s.providers[s.sel];
   return html`<div class="g2" style="grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)">
-    <section class="card flush">
+    <section class="card flush game-panel">
       <div class="card-head" style="padding:16px"><h1 style="font-size:26px">전력 판매 목록</h1><span class="dim" style="font-size:13px">kW·일 기준 · 저렴한 순</span>
         <span class="end" style="font-size:12px"><span class="c-jeok">▲ 상승</span> · <span class="c-down">▼ 하락</span></span></div>
       <div class="scroll-x"><table class="t" style="min-width:640px"><thead><tr><th>공급자</th><th class="r">요율 / kW·일</th><th class="r">용량</th><th class="r">기간</th><th>접근</th><th class="r">24시간</th></tr></thead><tbody>
@@ -37,7 +40,7 @@ function buy(s: State): Safe {
       }) : html`<tr><td colspan="6" class="empty">판매 중인 전력이 없습니다.</td></tr>`}
       </tbody></table></div>
     </section>
-    <section class="card accent">
+    <section class="card accent game-panel">
       <h2>계약 개설</h2>
       ${p ? html`
         <div><b class="c-cheong-hi" style="color:var(--cheong-hi)">${p.id}</b><br><span class="mono" style="font-size:12px">${micro(perKwDay(p), 4)} ${denomName(p.rate_denom)} / kW·일</span></div>
@@ -55,7 +58,7 @@ function buy(s: State): Safe {
 }
 
 function mine(s: State): Safe {
-  return html`<section class="card flush"><div class="card-head" style="padding:16px"><h1 style="font-size:26px">내 계약</h1></div>
+  return html`<section class="card flush game-panel"><div class="card-head" style="padding:16px"><h1 style="font-size:26px">내 계약</h1></div>
     <div class="scroll-x"><table class="t" style="min-width:760px"><thead><tr><th>계약</th><th>공급자</th><th class="r">용량</th><th>남은 기간</th><th class="r">에스크로</th><th class="r">작업</th></tr></thead><tbody>
     ${s.agreements.length ? s.agreements.map((a) => {
       const total = a.end_block - a.start_block;
@@ -70,7 +73,7 @@ function mine(s: State): Safe {
 }
 
 function sell(): Safe {
-  return html`<section class="card" style="max-width:820px">
+  return html`<section class="card game-panel" style="max-width:820px">
     <h1 style="font-size:26px">전력 판매하기</h1>
     <p class="note">변전소의 남는 전력을 공급자로 등록해 판매합니다. 쓰지 않은 용량은 그 블록에서 사라집니다.</p>
     <form data-act="create" data-on="submit" style="display:flex;flex-direction:column;gap:14px">
@@ -91,7 +94,7 @@ function sell(): Safe {
 }
 
 function bank(s: State): Safe {
-  return html`<section class="card flush"><div class="card-head" style="padding:16px"><h1 style="font-size:26px">길드 중앙은행</h1><span class="dim" style="font-size:13px">알파 담보 토큰 · 담보율 = 담보 ÷ 발행량</span></div>
+  return html`<section class="card flush game-panel"><div class="card-head" style="padding:16px"><h1 style="font-size:26px">길드 중앙은행</h1><span class="dim" style="font-size:13px">알파 담보 토큰 · 담보율 = 담보 ÷ 발행량</span></div>
     <div class="scroll-x"><table class="t" style="min-width:560px"><thead><tr><th>길드</th><th>토큰</th><th class="r">담보 (알파)</th><th class="r">발행량</th><th class="r">담보율</th></tr></thead><tbody>
     ${s.bank.length ? s.bank.map((b) => html`<tr><td class="c-white">${b.guild_id}</td><td class="mono">${b.denom}</td><td class="r mono c-hwang">${micro(b.collateral)} g</td><td class="r mono">${micro(b.supply)}</td><td class="r mono c-cheong">${n(b.ratio, 4)}</td></tr>`) : html`<tr><td colspan="5" class="empty">은행 정보가 없습니다.</td></tr>`}
     </tbody></table></div></section>`;
@@ -99,8 +102,9 @@ function bank(s: State): Safe {
 
 const screen: Screen = {
   async render(root) {
-    const pid = needSession(root, '에너지 거래소');
+    const pid = needSession(root, '알파 거래소', { demo: true });
     if (!pid) return;
+    if (pid === DEMO_ID) return demoExchange(root);
     mount(root, loading());
     const s: State = { tab: 'buy', providers: [], stats: new Map(), agreements: [], bank: [], sel: 0, capKw: 10, days: 7, q: null, busy: false };
     const requote = () => {
@@ -111,8 +115,8 @@ const screen: Screen = {
       void quote(p, cap, dur).then((q) => { s.q = q; paint(); }).catch(() => null);
     };
     const tabs = (): Safe => html`<div class="tabs" role="tablist">${([['buy', '구매'], ['mine', '내 계약'], ['sell', '판매'], ['bank', '길드 은행']] as [Tab, string][]).map(([t, l]) => html`<button class="tab ${s.tab === t ? 'on' : ''}" role="tab" aria-selected="${s.tab === t}" data-act="tab" data-t="${t}">${l}</button>`)}</div>`;
-    const paint = () => { if (root.isConnected) mount(root, html`${tabs()}${s.tab === 'buy' ? buy(s) : s.tab === 'mine' ? mine(s) : s.tab === 'sell' ? sell() : bank(s)}`, handlers); };
-    const sign = (p: Promise<string>) => { s.busy = true; paint(); p.then((h) => toast(`전송됨 · ${h.slice(0, 10)}…`)).catch((e) => toast('실패: ' + (e as Error).message, 5000)).finally(() => { s.busy = false; paint(); }); };
+    const paint = () => { if (root.isConnected) mount(root, html`<div class="card-head"><h1 style="font-size:28px">알파 거래소</h1><span class="label c-cheong">ALPHA EXCHANGE</span></div>${tabs()}${s.tab === 'buy' ? buy(s) : s.tab === 'mine' ? mine(s) : s.tab === 'sell' ? sell() : bank(s)}`, handlers); };
+    const sign = (p: Promise<string>) => { s.busy = true; paint(); p.then((h) => { sfx.play('coin'); toast(`전송됨 · ${h.slice(0, 10)}…`); }).catch((e) => toast('실패: ' + (e as Error).message, 5000)).finally(() => { s.busy = false; paint(); }); };
     const handlers = {
       tab: (el: HTMLElement) => { s.tab = el.dataset.t as Tab; paint(); },
       pick: (el: HTMLElement) => { s.sel = Number(el.dataset.i); requote(); paint(); },

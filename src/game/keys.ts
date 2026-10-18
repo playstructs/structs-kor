@@ -1,0 +1,70 @@
+/* Hotkeys. Screens push a scope (their own keys win); the rest navigate. `?` lists them all. */
+import { go } from '../router';
+import { sfx } from './sfx';
+import { music } from './music';
+
+/** A key handler; returning false means "not mine" and lets the key fall through. */
+type Fn = (e: KeyboardEvent) => unknown;
+const scopes: Record<string, Fn>[] = [];
+
+export const NAV_KEYS: { key: string; path: string; label: string }[] = [
+  { key: 'c', path: '/console', label: '지휘 함교' },
+  { key: 'p', path: '/galaxy', label: '은하 지도' },
+  { key: 'g', path: '/energy', label: '전력망' },
+  { key: 't', path: '/market', label: '거래소' },
+  { key: 'u', path: '/research', label: '연구소' },
+  { key: 'b', path: '/sim', label: '전투 시뮬' },
+  { key: 'o', path: '/campaign', label: '작전' },
+  { key: 'y', path: '/guild', label: '길드' },
+  { key: 'n', path: '/replicants', label: '레플리칸트' },
+  { key: 'k', path: '/chat', label: '통신' },
+  { key: 'h', path: '/tutorial', label: '훈련소' },
+  { key: 'x', path: '/codex', label: '교본' },
+];
+
+export const keys = {
+  /** Claim keys while a screen is up; returns the release. */
+  scope(map: Record<string, Fn>) { scopes.push(map); return () => { const i = scopes.indexOf(map); if (i >= 0) scopes.splice(i, 1); }; },
+};
+
+const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !(t instanceof HTMLInputElement && t.type === 'range'));
+
+function help() {
+  const old = document.getElementById('keys-help');
+  if (old) { old.remove(); return; }
+  const el = document.createElement('div');
+  el.id = 'keys-help';
+  el.className = 'keys-help';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', '단축키');
+  const local = scopes.length ? Object.keys(scopes[scopes.length - 1]).filter((k) => k.length <= 6) : [];
+  el.innerHTML = `<div class="keys-in"><h2>단축키</h2><div class="keys-grid">${NAV_KEYS.map((k) => `<kbd>${k.key.toUpperCase()}</kbd><span>${k.label}</span>`).join('')}<kbd>M</kbd><span>소리 켜기/끄기</span><kbd>J</kbd><span>음악 켜기/끄기</span><kbd>?</kbd><span>이 도움말</span></div>${local.length ? `<p>이 화면: ${local.map((k) => `<kbd>${k === ' ' ? 'Space' : k.length === 1 ? k.toUpperCase() : k}</kbd>`).join(' ')}</p>` : ''}<div style="display:flex;gap:8px;justify-content:flex-end">${location.pathname.endsWith('/console') ? '<button class="btn gold" type="button" data-tour>안내 다시 보기</button>' : ''}<button class="btn ghost" type="button">닫기</button></div></div>`;
+  el.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement;
+    if (t.closest('[data-tour]')) { el.remove(); void import('./tour').then((m) => m.runTour('bridge', m.BRIDGE_TOUR)); return; }
+    if (e.target === el || t.closest('button')) el.remove();
+  });
+  document.body.appendChild(el);
+  el.querySelector('button')?.focus();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  // A held key fires once (arrows may repeat to move the board cursor): no auto-fire, no re-sent orders.
+  if (e.repeat && !k.startsWith('Arrow')) return;
+  // Enter and Space on a focused control press that control; screen hotkeys must not also fire.
+  if ((k === 'Enter' || k === ' ') && e.target instanceof HTMLElement && e.target.closest('button, a[href], select, summary, [role="button"]')) return;
+  // An open help overlay owns Escape, whatever screen is underneath.
+  if (k === 'Escape' && document.getElementById('keys-help')) { document.getElementById('keys-help')!.remove(); return; }
+  for (let i = scopes.length - 1; i >= 0; i--) {
+    const f = scopes[i][k] ?? scopes[i][e.key];
+    if (f && f(e) !== false) { e.preventDefault(); return; }
+  }
+  if (k === 'Escape') { document.getElementById('keys-help')?.remove(); return; }
+  if (k === '?' || (k === '/' && e.shiftKey)) { e.preventDefault(); help(); return; }
+  if (k === 'm') { sfx.toggle(); return; }
+  if (k === 'j') { music.toggle(); return; }
+  const nav = NAV_KEYS.find((n) => n.key === k);
+  if (nav) { e.preventDefault(); sfx.play('click'); go(nav.path); }
+});

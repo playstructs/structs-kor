@@ -1,0 +1,66 @@
+/* The battle board — structs-webapp's map layers collapsed into per-cell stacks (structs-universe
+ * raidview grid). 128 px tiles, pixel-perfect, zoomed to fit. */
+.bd { position: relative; width: 100%; background: #0E0D1C; overflow: hidden; isolation: isolate; }
+.bd-scroll { overflow: hidden; display: flex; justify-content: center; background: #0E0D1C; }
+.bd-map { position: relative; display: flex; flex-direction: column; image-rendering: pixelated; user-select: none; }
+.bd-map img { image-rendering: pixelated; }
+.bd-row { position: relative; display: flex; height: 128px; }
+.bd-transition { pointer-events: none; }
+.bd-strip { position: absolute; inset: 0; display: flex; }
+.bd-tile, .bd-cell { flex: 0 0 128px; width: 128px; height: 128px; background-size: 128px 128px; background-repeat: no-repeat; }
+.bd-cell { position: relative; }
+.bd-cell[data-key] { cursor: pointer; }
+.bd-cell[data-key]:hover::after { content: ''; position: absolute; inset: 6px; border: 4px solid rgba(255,255,255,.35); pointer-events: none; z-index: 600; }
+.bd-marker { position: absolute; inset: 0; width: 128px; height: 128px; pointer-events: none; z-index: 50; }
+.bd-mount { position: absolute; inset: 0; z-index: 100; }
+.bd-flip { transform: scaleX(-1); }
+.bd-still, .bd-anims, .bd-anim { position: absolute; inset: 0; }
+.bd-still img { position: absolute; inset: 0; width: 128px; height: 128px; }
+.bd-still.bd-hidden { visibility: hidden; }
+.bd-stealth { opacity: .5; }
+.bd-offline { filter: grayscale(.85) brightness(.7); }
+.bd-anim svg { width: 128px !important; height: 128px !important; }
+.bd-cell.bd-has .bd-still { animation: bd-bob 3.2s ease-in-out infinite; }
+.bd-cell:nth-child(2n).bd-has .bd-still { animation-delay: -1.6s; }
+@keyframes bd-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.bd-hud { position: absolute; left: 40px; top: 10px; width: 48px; z-index: 500; display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+.bd-busy .bd-hud { visibility: hidden; }
+.bd-pips { display: flex; gap: 2px; height: 4px; }
+.bd-pips i { flex: 1 1 0; background: #CC2D2D; box-shadow: 0 0 0 1px #0E0D1C; }
+.bd-pips i.on { background: #EFB719; }
+.bd-badges { display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; margin-top: 82px; }
+.bd-badge { font: 600 9px/1 var(--f-mono); padding: 2px 3px; background: #0E0D1C; color: #fff; border: 1px solid #394958; }
+.bd-badge.off { color: var(--hwang); border-color: var(--hwang-line); }
+.bd-badge.def { color: var(--cheong-hi); border-color: var(--cheong-mid); }
+.bd-badge.cmd { color: #EFB719; border-color: #785B02; }
+.bd-badge.bld { color: var(--warn); }
+.bd-focus { position: absolute; inset: 0; width: 128px; height: 128px; z-index: 450; pointer-events: none; display: none; }
+.bd-focused .bd-focus { display: block; }
+.bd-target .bd-focus { animation: bd-blink .8s steps(2) infinite; }
+@keyframes bd-blink { 50% { opacity: .35; } }
+.bd-ping::before { content: ''; position: absolute; inset: 0; border: 6px solid #EFB719; z-index: 700; animation: bd-ping 1.2s ease-out 3; pointer-events: none; }
+@keyframes bd-ping { from { transform: scale(.8); opacity: 1; } to { transform: scale(1.1); opacity: 0; } }
+.bd-band { position: absolute; left: 0; top: 0; height: 256px; width: 28px; z-index: 650; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(14,13,28,.72); pointer-events: none; }
+.bd-band span { writing-mode: vertical-rl; transform: rotate(180deg); font: 12px var(--f-label); letter-spacing: 4px; color: #fff; }
+.bd-band b { font: 400 14px var(--f-display); color: var(--hwang); writing-mode: vertical-rl; }
+.bd-fog { position: absolute; top: 0; bottom: 0; z-index: 800; display: flex; pointer-events: none; }
+.bd-fog.off { opacity: 0; transition: opacity 1.2s; }
+.bd-fog { transition: opacity 1.2s; }
+.bd-fog-edge { flex: 0 0 128px; background: url('/img/tiles/fog-of-war/fog-of-war-left.png') repeat-y; background-size: 128px 128px; }
+.bd-fog-body { flex: 1 1 auto; background: url('/img/tiles/fog-of-war/fog-of-war-middle.png') repeat; background-size: 128px 128px; }
+.bd-fog span { position: absolute; left: 50%; top: 50%; transform: translate(-30%, -50%); font: 400 40px var(--f-display); color: rgba(255,255,255,.4); letter-spacing: 8px; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .bd-cell.bd-has .bd-still, .bd-target .bd-focus, .bd-ping::before { animation: none; } }
+.bd-zoom { position: absolute; right: 8px; top: 8px; z-index: 900; opacity: .85; }
+.bd-zoom:hover { opacity: 1; }
+.bd-attract .bd-zoom { display: none; }
+.bd-attract .bd-scroll { scrollbar-width: none; }
+.bd-attract .bd-cell[data-key] { cursor: default; }
+.bd-map:focus { outline: none; }
+.bd-map:focus-visible { box-shadow: inset 0 0 0 3px var(--cheong); }
+.bd-cursor::after { content: ''; position: absolute; inset: 4px; border: 4px dashed #fff; z-index: 640; pointer-events: none; animation: bd-blink 1s steps(2) infinite; }
+.bd-dest::before { content: ''; position: absolute; inset: 8px; border: 4px dashed var(--cheong-hi); z-index: 640; pointer-events: none; animation: bd-blink 1s steps(2) infinite; }
+/* Overclocked: a red heat shimmer and an OC tag. */
+.bd-badge.hot { color: #fff; background: var(--jeok-strong); border-color: var(--jeok-hi); }
+.bd-hot { filter: drop-shadow(0 0 6px rgba(238,90,70,.85)) saturate(1.3); animation: bd-heat .9s steps(3) infinite alternate; }
+@keyframes bd-heat { to { filter: drop-shadow(0 0 12px rgba(255,120,60,.95)) saturate(1.5) brightness(1.08); } }
+@media (prefers-reduced-motion: reduce) { .bd-hot { animation: none; } }

@@ -10,7 +10,7 @@
 import { GUILD_ID } from '../config';
 import { wallet } from '../wallet/wallet';
 import { guildApi } from './guild';
-import { ApiError, call, onAuthLost, setBearer } from './http';
+import { ApiError, MOCK, call, onAuthLost, setBearer } from './http';
 import { fellBack, isMissing, markMissing } from './requirements';
 
 export type SessionState = 'out' | 'signing' | 'in' | 'failed';
@@ -28,6 +28,8 @@ export const session = {
 
   /** Resume a session this browser already holds (token or cookie). */
   async resume() {
+    // Dev mock: signed in as the fixture commander.
+    if (MOCK) { set({ state: 'in', playerId: '1-42', why: '' }); return; }
     const pid = wallet.commander?.playerId;
     if (!pid) return;
     try {

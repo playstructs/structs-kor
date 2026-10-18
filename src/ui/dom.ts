@@ -30,8 +30,13 @@ export const when = (c: unknown, a: () => Safe, b?: () => Safe): Safe => (c ? a(
 export type Handler = (el: HTMLElement, ev: Event) => void;
 export type Handlers = Record<string, Handler>;
 
+/* One delegated binding per root: screens repaint often, and a listener added per paint would run
+ * every handler once per paint ever made (a single click sending the same transaction N times). */
+const bound = new WeakMap<HTMLElement, () => void>();
+
 /** Mount an HTML string into `root`, routing data-act events to `handlers`. Returns an unbind. */
 export function mount(root: HTMLElement, view: Safe, handlers: Handlers = {}): () => void {
+  bound.get(root)?.();
   root.innerHTML = view.s;
   const on = (ev: Event) => {
     const t = (ev.target as HTMLElement | null)?.closest<HTMLElement>('[data-act]');
@@ -44,7 +49,9 @@ export function mount(root: HTMLElement, view: Safe, handlers: Handlers = {}): (
     h(t, ev);
   };
   for (const type of ['click', 'input', 'change', 'submit']) root.addEventListener(type, on);
-  return () => { for (const type of ['click', 'input', 'change', 'submit']) root.removeEventListener(type, on); };
+  const unbind = () => { for (const type of ['click', 'input', 'change', 'submit']) root.removeEventListener(type, on); if (bound.get(root) === unbind) bound.delete(root); };
+  bound.set(root, unbind);
+  return unbind;
 }
 
 export function toast(msg: string, ms = 2600) {

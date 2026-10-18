@@ -9,7 +9,7 @@ import { wallet } from '../wallet/wallet';
 import { Writer, any, coin } from '../wallet/proto';
 import { encodeAny, typeUrlOf, type Msg, type MsgValue } from '../wallet/encode';
 import { signBytes, toB64, type KeyPair } from '../wallet/keys';
-import { ApiError, get, post } from './http';
+import { ApiError, MOCK, get, post } from './http';
 import { fellBack, isMissing, markMissing } from './requirements';
 
 const FEE = { amount: [{ denom: 'ualpha', amount: '0' }], gas: 500_000 };
@@ -64,18 +64,47 @@ function signTx(key: KeyPair, msgs: Msg[], chain: string, acc: Account): Uint8Ar
   return raw.finish();
 }
 
+/* Transactions go out one at a time, and each signer's sequence is tracked here as well: the
+ * account read can lag a just-accepted tx, and two signed with the same sequence lose one. */
+let queue: Promise<unknown> = Promise.resolve();
+const nextSeq = new Map<string, bigint>();
+/** True when the chain refused a tx for its sequence (not for the move itself). */
+export const isSequenceError = (e: unknown) => /account sequence mismatch|incorrect account sequence/i.test((e as Error)?.message ?? '');
+
 /** Sign and broadcast one Structs message as the commander (or a replicant by HD index). */
-export async function act(name: string, value: MsgValue, index = 0): Promise<string> {
+export function act(name: string, value: MsgValue, index = 0): Promise<string> {
+  const run = queue.then(() => send(name, value, index));
+  queue = run.catch(() => null);
+  return run;
+}
+async function send(name: string, value: MsgValue, index: number): Promise<string> {
+  // The dev mock is a pretend guild: nothing it shows may be signed against the real chain.
+  if (MOCK) throw new Error('모의 모드: 체인 거래는 보내지 않습니다');
   const key = wallet.key(index);
-  const [chain, acc] = await Promise.all([chainId(), account(key.address)]);
-  const r = await broadcastBytes(signTx(key, [{ typeUrl: typeUrlOf(name), value: { creator: key.address, ...value } }], chain, acc));
-  if (r.code) throw new Error(r.raw_log || `체인 오류 ${r.code}`);
+  const [chain, fetched] = await Promise.all([chainId(), account(key.address)]);
+  const local = nextSeq.get(key.address);
+  const seq = local !== undefined && local > BigInt(fetched.sequence) ? local : BigInt(fetched.sequence);
+  const r = await broadcastBytes(signTx(key, [{ typeUrl: typeUrlOf(name), value: { creator: key.address, ...value } }], chain, { ...fetched, sequence: String(seq) }));
+  // A refusal at broadcast (sync mode) consumed no sequence: trust the chain's count next time.
+  if (r.code) { nextSeq.delete(key.address); throw new Error(r.raw_log || `체인 오류 ${r.code}`); }
+  nextSeq.set(key.address, seq + 1n);
   return r.txhash;
 }
 
 export const actions = {
   structActivate: (structId: string) => act('MsgStructActivate', { structId }),
   structDeactivate: (structId: string) => act('MsgStructDeactivate', { structId }),
+  /** Fire one struct's weapon at another (raids and defense). */
+  attack: (operatingStructId: string, targetStructId: string, weaponSystem: 'primaryWeapon' | 'secondaryWeapon' = 'primaryWeapon') =>
+    act('MsgStructAttack', { operatingStructId, targetStructId: [targetStructId], weaponSystem }),
+  /** Order one struct to guard another (it blocks shots at its ward and counter-fires), or stand down. */
+  defenseSet: (defenderStructId: string, protectedStructId: string) => act('MsgStructDefenseSet', { defenderStructId, protectedStructId }),
+  defenseClear: (defenderStructId: string) => act('MsgStructDefenseClear', { defenderStructId }),
+  /** Send the fleet to another planet (a raid starts on arrival) or home. */
+  fleetMove: (fleetId: string, destinationLocationId: string) => act('MsgFleetMove', { fleetId, destinationLocationId }),
+  /** Start a build in a planet or fleet slot; the proof that finishes it is hashed by src/pow. */
+  structBuild: (playerId: string, structTypeId: number, ambit: string, slot: number) =>
+    act('MsgStructBuildInitiate', { playerId, structTypeId: String(structTypeId), operatingAmbit: ambit, slot: String(slot) }),
   /** capacity in mW, duration in blocks; the whole capacity × rate × duration is escrowed now. */
   agreementOpen: (providerId: string, capacity: number, duration: number) => act('MsgAgreementOpen', { providerId, capacity: String(capacity), duration: String(duration) }),
   agreementClose: (agreementId: string) => act('MsgAgreementClose', { agreementId }),
