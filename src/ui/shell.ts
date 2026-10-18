@@ -224,7 +224,9 @@ export function setTiles(tiles: HudTile[]) {
     if (l) l.textContent = t.label;
     s.style.color = t.tone || 'var(--white)';
     if (t.num != null && t.fmt) roll(s, t.num, t.fmt); else s.textContent = t.value;
-    d.textContent = t.delta ?? '';
+    // '+0.6/블록': the unit is its own span so a phone can drop it.
+    const [dv = '', du] = (t.delta ?? '').split(/(?=\/)/, 2);
+    if (du) { const u = document.createElement('span'); u.className = 'tile-u'; u.textContent = du; d.replaceChildren(dv, u); } else d.textContent = dv;
     d.style.color = t.deltaTone ?? 'var(--cheong)';
     s.closest('.tile')?.classList.toggle('alert', !!t.alert);
   });
