@@ -120,3 +120,16 @@ table.t .r { text-align: right; }
 .sw::after { content: ''; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; background: #fff; transition: left .12s; }
 .sw[aria-pressed="true"]::after { left: 28px; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--sunken); border: 2px solid var(--cheong); padding: 12px 18px; color: var(--white); z-index: 50; box-shadow: 6px 6px 0 var(--cheong-bg); }
+
+/* An order on its way (api/pending.ts): a small spinner beside its words. */
+.spin { display: inline-block; width: 8px; height: 8px; margin-right: 5px; vertical-align: -1px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ab-head .chip.order-chip { display: inline-flex; align-items: center; margin-left: auto; background: #3A2C10; color: var(--hwang); }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; border-right-color: currentColor; opacity: .7; } }
+
+/* A button whose order is on its way (ui/orderbuttons.ts). */
+button.order-busy { position: relative; cursor: progress; }
+button.order-busy::after { content: ''; position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border: 2px solid var(--hwang); border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+button.order-ok { box-shadow: 0 0 0 2px var(--cheong-hi) !important; }
+button.order-bad { box-shadow: 0 0 0 2px var(--jeok-hi, #FF6B5B) !important; }
+@media (prefers-reduced-motion: reduce) { button.order-busy::after { animation: none; } }

@@ -13,6 +13,7 @@ import { signBytes, toB64, type KeyPair } from '../wallet/keys';
 import { ApiError, MOCK, get, post } from './http';
 import { fellBack, isMissing, markMissing } from './requirements';
 import { track, noteRefused } from './txlog';
+import { pending } from './pending';
 
 const FEE = { amount: [{ denom: 'ualpha', amount: '0' }], gas: 500_000 };
 
@@ -76,8 +77,11 @@ export const isSequenceError = (e: unknown) => /account sequence mismatch|incorr
 
 /** Sign and broadcast one Structs message as the commander (or a replicant by HD index). */
 export function act(name: string, value: MsgValue, index = 0): Promise<string> {
+  // On screen from the moment it's given (src/api/pending.ts), not only once it's signed and sent.
+  const order = pending.begin(name, value as Record<string, unknown>);
   const run = queue.then(() => send(name, value, index));
   queue = run.catch(() => null);
+  run.then((hash) => pending.sent(order, hash, MOCK), (e) => pending.refused(order, (e as Error).message));
   return run;
 }
 async function send(name: string, value: MsgValue, index: number): Promise<string> {

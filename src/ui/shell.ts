@@ -15,6 +15,7 @@ import { portraitHtml, myPfp, onPfp } from '../game/portrait';
 import { guildApi } from '../api/guild';
 import { matrix } from '../chat/matrix';
 import { onUnread } from '../chat/background';
+import { pending, type Order } from '../api/pending';
 
 /** The Structs "S" mark (structs-design-system img/sui/logo/logo-structs.gif, traced to pixels). */
 export const LOGO = `<svg class="pix" width="30" height="30" viewBox="-3.5 0 25 25" shape-rendering="crispEdges" aria-hidden="true"><path fill="#CD7BF1" d="M8 0h2v1h-2zM6 1h6v1h-6zM4 2h10v1h-10zM2 3h14v1h-14zM0 4h18v1h-18zM0 5h8v1h-8zM10 5h8v1h-8zM0 6h6v1h-6zM12 6h6v1h-6zM0 7h4v1h-4zM14 7h4v1h-4zM0 8h6v1h-6zM14 8h4v1h-4zM0 9h8v1h-8zM14 9h4v1h-4zM0 10h10v1h-10zM14 10h4v1h-4zM0 11h12v1h-12zM14 11h4v1h-4zM0 12h18v1h-18zM0 13h4v1h-4zM6 13h12v1h-12zM0 14h4v1h-4zM8 14h10v1h-10zM0 15h4v1h-4zM10 15h8v1h-8zM0 16h4v1h-4zM12 16h6v1h-6zM0 17h4v1h-4zM14 17h4v1h-4zM0 18h6v1h-6zM12 18h6v1h-6zM0 19h8v1h-8zM10 19h8v1h-8zM0 20h18v1h-18zM2 21h14v1h-14zM4 22h10v1h-10zM6 23h6v1h-6zM8 24h2v1h-2z"/></svg>`;
@@ -72,6 +73,7 @@ export function shell(root: HTMLElement) {
         <button class="hud-btn" id="snd" type="button" data-silent aria-label="소리"></button>
         <button class="hud-btn" id="mus" type="button" aria-label="음악"></button>
         <a class="hud-btn bell" id="comms-btn" href="${href('/chat')}" aria-label="통신"></a>
+        <button class="hud-btn orders-btn" id="orders" type="button" aria-label="명령" aria-expanded="false" hidden></button>
         <button class="hud-btn bell" id="bell" type="button" aria-label="알림 기록" aria-expanded="false"></button>
         <span id="who" class="hud-who"></span>
         <button class="hud-btn menu-btn" id="menu-btn" type="button" aria-label="메뉴 (F10)" aria-expanded="false" title="메뉴 (F10)"><i class="si icon-menu"></i></button>
@@ -179,6 +181,36 @@ export function shell(root: HTMLElement) {
   document.addEventListener('keydown', (e) => { if (logOpen && e.key === 'Escape') { logOpen = false; paintBell(); } });
   notes.onChange(paintBell);
   paintBell();
+  /* 명령: orders on their way (api/pending.ts). A spinner and a count while any is in flight, a tick or a
+   * cross for a moment when one finishes; open it for the list. Hidden when there's nothing to say. */
+  const ordersBtn = root.querySelector<HTMLButtonElement>('#orders')!;
+  let ordersOpen = false;
+  const PHASE: Record<Order['phase'], string> = { sending: '전송 중', pending: '처리 중', done: '완료', failed: '실패' };
+  const orderRow = (o: Order) => `<li class="${o.phase === 'failed' ? 'jeok' : o.phase === 'done' ? 'cheong' : 'hwang'}"><b>${o.phase === 'sending' || o.phase === 'pending' ? '<i class="spin" aria-hidden="true"></i>' : ''}${esc(o.label)} · ${PHASE[o.phase]}</b>${o.error ? `<span>${esc(o.error)}</span>` : ''}<small class="mono">${new Date(o.at).toLocaleTimeString('ko-KR')}</small></li>`;
+  const paintOrders = () => {
+    const live = pending.list(), flying = pending.inFlight, last = live[0];
+    const failed = live.find((o) => o.phase === 'failed');
+    ordersBtn.hidden = !live.length && !ordersOpen;
+    ordersBtn.className = `hud-btn orders-btn ${flying ? 'busy' : failed ? 'bad' : last?.phase === 'done' ? 'ok' : ''}`;
+    ordersBtn.innerHTML = flying ? `<i class="spin" aria-hidden="true"></i><span class="orders-n">${flying}</span>` : failed ? '<span class="orders-mark">✕</span>' : '<span class="orders-mark">✓</span>';
+    ordersBtn.setAttribute('aria-label', flying ? `명령 ${flying}건 처리 중` : failed ? `명령 실패: ${failed.label}` : last ? `${last.label} 완료` : '명령');
+    ordersBtn.title = flying ? `명령 ${flying}건 처리 중` : failed ? `${failed.label} 실패${failed.error ? ` · ${failed.error}` : ''}` : last ? `${last.label} 완료` : '명령';
+    ordersBtn.setAttribute('aria-expanded', String(ordersOpen));
+    document.getElementById('order-log')?.remove();
+    if (!ordersOpen) return;
+    const panel = document.createElement('div');
+    panel.id = 'order-log';
+    panel.className = 'note-log';
+    panel.setAttribute('role', 'log');
+    const rows = [...live.filter((o) => o.phase === 'sending' || o.phase === 'pending'), ...pending.recent()];
+    panel.innerHTML = `<div class="card-head"><h2>명령</h2></div>` + (rows.length ? `<ol>${rows.slice(0, 12).map(orderRow).join('')}</ol>` : '<p class="empty">이번 접속에 내린 명령이 없습니다.</p>');
+    document.body.appendChild(panel);
+  };
+  ordersBtn.addEventListener('click', () => { ordersOpen = !ordersOpen; paintOrders(); });
+  document.addEventListener('click', (e) => { if (ordersOpen && !(e.target as Element).closest('#order-log, #orders')) { ordersOpen = false; paintOrders(); } });
+  document.addEventListener('keydown', (e) => { if (ordersOpen && e.key === 'Escape') { ordersOpen = false; paintOrders(); } });
+  pending.onChange(paintOrders);
+  paintOrders();
   /* 통신: unread across rooms (amber when someone named me). */
   const commsBtn = root.querySelector<HTMLElement>('#comms-btn')!;
   const paintComms = () => {

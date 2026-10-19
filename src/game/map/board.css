@@ -90,3 +90,20 @@ body.is-map-panning, body.is-map-panning * { cursor: grabbing !important; user-s
 .bd-cell:not(.bd-has):hover .bd-slot-tip, .bd-cell.bd-cursor:not(.bd-has) .bd-slot-tip { opacity: 1; }
 .bd-attract .bd-slot-tip { display: none; }
 @media (prefers-reduced-motion: reduce) { .bd-work.done { animation: none; } }
+
+/* Orders in flight (setOrders): a pulsing frame and a plate over the tile until the chain has run it. */
+.bd-order { --od: var(--cheong-hi); position: absolute; inset: 0; z-index: 720; pointer-events: none; }
+.bd-order::before { content: ''; position: absolute; inset: 6px; border: 3px dashed var(--od); animation: bd-blink 1s steps(2) infinite; }
+.bd-order.pending { --od: var(--hwang); }
+.bd-order.done { --od: var(--cheong-hi); }
+.bd-order.done::before { border-style: solid; animation: bd-order-done .7s ease-out forwards; }
+.bd-order.failed { --od: var(--jeok-hi, #FF6B5B); }
+.bd-order.failed::before { border-style: solid; animation: none; }
+.bd-order-ghost { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .6; image-rendering: pixelated; }
+.bd-order-plate { position: absolute; left: 50%; top: -10px; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; padding: 3px 6px; background: rgba(14,13,28,.94); box-shadow: 0 0 0 2px #0E0D1C, inset 0 0 0 2px var(--od); color: #fff; font: 700 11px/1 var(--f-pix, sans-serif); white-space: nowrap; }
+.bd-order-plate em { font: 400 10px/1 var(--f-hud, monospace); font-style: normal; color: var(--od); }
+.bd-order-plate i { font-style: normal; color: var(--od); }
+.bd-order.sending .bd-order-plate i, .bd-order.pending .bd-order-plate i { width: 7px; height: 7px; border: 2px solid var(--od); border-right-color: transparent; border-radius: 50%; animation: bd-spin .8s linear infinite; }
+@keyframes bd-spin { to { transform: rotate(360deg); } }
+@keyframes bd-order-done { from { transform: scale(.9); opacity: 1; } to { transform: scale(1.06); opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .bd-order::before, .bd-order.done::before, .bd-order-plate i { animation: none !important; } }

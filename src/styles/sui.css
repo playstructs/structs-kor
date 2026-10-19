@@ -472,3 +472,12 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
 @media (pointer: coarse) {
   .sb kbd, .ck kbd, .ab-switch kbd, .btn kbd, .title-keys { display: none; }
 }
+
+/* 명령 (orders on their way): amber with a spinner while in flight, a tick or a cross when one ends. */
+.orders-btn { display: inline-flex; align-items: center; justify-content: center; gap: 3px; color: var(--hwang); font: 700 12px/1 var(--f-pix, sans-serif); }
+.orders-btn[hidden] { display: none; }
+.orders-btn .spin { margin: 0; }
+.orders-btn.ok { color: var(--cheong-hi); }
+.orders-btn.bad { color: var(--jeok-hi, #FF6B5B); }
+.orders-btn .orders-mark { font-size: 15px; }
+#order-log li b { display: flex; align-items: center; }

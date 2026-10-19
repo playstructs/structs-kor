@@ -10,6 +10,7 @@ import './game/music';
 import { retireDemo } from './game/retire';
 import './game/alerts';
 import './game/settle';
+import './ui/orderbuttons';
 import './game/medals';
 import { href, onRoute, route, startRouter } from './router';
 import { applySeo } from './seo';

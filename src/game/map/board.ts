@@ -28,6 +28,10 @@ export interface BoardStruct {
   /** Work it owes the chain (a build, a mine or a refine) and how far along: a plate under the tile. */
   work?: BoardWork | null;
 }
+/** An order in flight about a tile: `target` is a struct id or a tile key (plan|land|0, fleet|defender|space|1).
+ * `ghost` shows the build marker on an empty tile while a build order is on its way. */
+export interface BoardOrder { target: string; phase: 'sending' | 'pending' | 'done' | 'failed'; label: string; ghost?: boolean }
+const ORDER_PHASE: Record<BoardOrder['phase'], string> = { sending: '전송 중', pending: '처리 중', done: '완료', failed: '실패' };
 export interface BoardWork { kind: 'BUILD' | 'MINE' | 'REFINE'; label: string; p: number | null; done?: boolean }
 const WORK: Record<BoardWork['kind'], { ko: string; glyph: string }> = { BUILD: { ko: '건설', glyph: '\ue90c' }, MINE: { ko: '채굴', glyph: '\ue91b' }, REFINE: { ko: '정제', glyph: '\ue925' } };
 export interface BoardOpts {
@@ -97,6 +101,8 @@ export class Board {
   private homed = false;
   /** The player has moved the camera themselves: stop pointing it at the planet on refreshes. */
   private userMoved = false;
+  /** Tiles showing an order in flight, with what they show (so a refresh doesn't restart the animation). */
+  private ordered = new Map<HTMLElement, string>();
   speed: number;
   /** 'full' fits the whole field; 'close' fills the width and scrolls. */
   zoom: 'full' | 'close' = 'full';
@@ -202,6 +208,7 @@ export class Board {
     }
     this.cells = [...this.map.querySelectorAll<HTMLElement>('.bd-cell[data-key]')];
     this.cursor = null;
+    this.ordered.clear();
     this.fit();
   }
 
@@ -363,6 +370,26 @@ export class Board {
     if (!hud) { hud = document.createElement('div'); hud.className = 'bd-hud'; cell.appendChild(hud); }
     hud.innerHTML = `<div class="bd-pips">${pips}</div><div class="bd-badges">${badges}</div>${plate}`;
     cell.setAttribute('aria-label', `${s.side === 'defender' ? '아군' : '적'} ${STRUCT_TYPE[s.typeId] ?? typeNameOf(s.typeId)} 내구도 ${hp}/${s.maxHealth}${w ? ` · ${WORK[w.kind].ko} ${w.label}` : ''}`);
+  }
+
+  /* ── Orders in flight ── */
+  /** Mark the tiles that orders are about: sending and processing pulse, done flashes, failed shows red.
+   * The first order about a tile wins (the newest, as the list comes newest first). */
+  setOrders(list: BoardOrder[]) {
+    const want = new Map<HTMLElement, BoardOrder>();
+    for (const o of list) { const cell = this.cellOf(o.target) ?? this.anchors.get(o.target); if (cell && !want.has(cell)) want.set(cell, o); }
+    for (const cell of [...this.ordered.keys()]) if (!want.has(cell)) { cell.querySelector('.bd-order')?.remove(); this.ordered.delete(cell); }
+    for (const [cell, o] of want) {
+      const moving = o.phase === 'sending' || o.phase === 'pending';
+      const ghost = !!o.ghost && moving && !cell.classList.contains('bd-has');
+      const sig = `${o.phase}|${o.label}|${ghost}`;
+      if (this.ordered.get(cell) === sig) continue;
+      this.ordered.set(cell, sig);
+      let el = cell.querySelector<HTMLElement>('.bd-order');
+      if (!el) { el = document.createElement('div'); el.setAttribute('role', 'status'); cell.appendChild(el); }
+      el.className = `bd-order ${o.phase}`;
+      el.innerHTML = `${ghost ? `<img class="bd-order-ghost" src="${import.meta.env.BASE_URL}img/structs/deployment-indicator/deployment-indicator.gif" alt="">` : ''}<div class="bd-order-plate"><i aria-hidden="true">${o.phase === 'done' ? '✓' : o.phase === 'failed' ? '✕' : ''}</i><span>${esc(o.label)}</span><em>${ORDER_PHASE[o.phase]}</em></div>`;
+    }
   }
 
   /* ── Selection & targeting marks ── */

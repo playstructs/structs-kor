@@ -2,6 +2,9 @@
  * each raid_status change; this turns them into the alarm, banners, music and XP that the retired
  * demo director used to give (src/game/director.ts). The bridge still plays the attacks itself. */
 import { session } from '../api/session';
+import { orderName } from '../i18n/ko';
+import { playerMessage } from '../api/errors';
+import type { Order } from '../api/pending';
 import { guildApi } from '../api/guild';
 import { onGrass } from '../grass/grass';
 import { current } from '../router';
@@ -81,4 +84,6 @@ onWatch(syncWatch);
 
 /* A transaction that made it into a block but failed there: say so (the broadcast toast said 전송됨). */
 import { onTxFailed } from '../api/txlog';
-onTxFailed((t) => notify('거래 실패', `${t.name.replace(/^Msg/, '')} · ${(t.error ?? '').slice(0, 120)}`, 'jeok', 'error'));
+onTxFailed((t) => notify('명령 실패', `${orderName(t.name)} · ${playerMessage(t.error)}`, 'jeok', 'error'));
+// The first planet is the moment the game starts: say so when the explore order has landed.
+addEventListener('structs:order', (e) => { const o = (e as CustomEvent<Order>).detail; if (o.name === 'MsgPlanetExplore' && o.phase === 'done') notify('행성 발견', '정착할 행성을 찾았습니다 · 이제 건설할 수 있습니다', 'cheong', 'confirm'); });
