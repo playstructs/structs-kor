@@ -62,14 +62,13 @@ const screen: Screen = {
         <div class="guild-hero-txt"><span class="label c-hwang">길드</span><h1>${guild?.name ?? '길드'}</h1>${guild?.description ? html`<p>${guild.description}</p>` : ''}</div>
         <div class="guild-hero-acts">
           ${mine() ? html`<a class="btn ghost" href="${href('/chat?room=%23sn-corp')}">길드 통신</a>` : html`<button class="btn gold" data-act="request" ${busy || !unlocked() ? 'disabled' : ''}>가입 신청</button>`}
-          <button class="btn primary" data-act="shareGuild">모집 카드 공유</button>
+          <button class="btn ghost" data-act="shareGuild">모집 카드 공유</button>
           ${viewing() && !mine() ? html`<a class="btn ghost" href="${href('/guild')}">내 길드로</a>` : ''}
         </div>
       </div>
-      <div class="tabs" role="tablist">${([['home', '개요'], ['members', `길드원 ${n(count || roster.length)}`], ['apps', `가입 신청${apps.length ? ' · ' + apps.length : ''}`], ['find', '길드 찾기'], ...(mine() ? [['admin', owner() ? '관리' : '관리 (권한 필요)']] : [])] as [Tab, string][]).map(([t, l]) => html`<button class="tab ${tab === t ? 'on' : ''}" role="tab" aria-selected="${tab === t}" data-act="tab" data-t="${t}">${l}</button>`)}</div>`;
+      <div class="tabs" role="tablist">${([['home', '개요'], ['members', `길드원 ${n(count || roster.length)}`], ['apps', `가입 신청${apps.length ? ' · ' + apps.length : ''}`], ['find', '길드 찾기'], ...(mine() && owner() ? [['admin', '관리']] : [])] as [Tab, string][]).map(([t, l]) => html`<button class="tab ${tab === t ? 'on' : ''}" role="tab" aria-selected="${tab === t}" data-act="tab" data-t="${t}">${l}</button>`)}</div>`;
 
     const home = (): Safe => {
-      const b = bank.find((x) => x.guild_id === guild?.id);
       const cap = Number(power?.capacity ?? 0), load = Number(power?.load ?? 0);
       const top = [...roster].sort((a, z) => Number(z.alpha) - Number(a.alpha)).slice(0, 5);
       const rank = [...dir].sort((a, z) => Number(z.alpha) - Number(a.alpha)).findIndex((d) => d.guild_id === guild?.id);
@@ -78,12 +77,10 @@ const screen: Screen = {
           <div class="stat-grid">
             <div class="stat"><small>길드원</small><strong class="mono">${n(count || roster.length)}</strong></div>
             <div class="stat"><small>알파 순위</small><strong class="mono c-hwang">${rank >= 0 ? `${rank + 1}위 / ${dir.length}` : '—'}</strong></div>
-            <div class="stat"><small>길드 은행 교환 비율</small><strong class="mono" style="color:${b && Number(b.ratio) < 1 ? 'var(--jeok)' : 'var(--cheong)'}">${b ? n(b.ratio, 3) : '—'}</strong></div>
-            <div class="stat"><small>길드 화폐 유통량</small><strong class="mono">${b ? micro(b.supply, 0) : '—'}</strong></div>
             <div class="stat"><small>주 리액터</small><strong class="mono"><a href="${href(`/o/${guild?.primary_reactor_id ?? ''}`)}">${guild?.primary_reactor_id || '—'}</a></strong></div>
             <div class="stat"><small>가입 변전소</small><strong class="mono"><a href="${href(`/o/${guild?.entry_substation_id ?? ''}`)}">${guild?.entry_substation_id || '—'}</a></strong></div>
             <div class="stat"><small>리액터 기본 몫</small><strong class="mono">${guild?.default_commission ? n(Number(guild.default_commission) * 100, 1) + '%' : '—'}</strong></div>
-            <div class="stat"><small>가입 최소 주입</small><strong class="mono">${guild ? micro(guild.join_infusion_minimum, 1) + ' g' : '—'}</strong></div>
+            ${guild && Number(guild.join_infusion_minimum) > 0 ? html`<div class="stat"><small>가입 최소 주입</small><strong class="mono">${micro(guild.join_infusion_minimum, 1)} g</strong></div>` : ''}
           </div>
           ${cap ? html`<div><small class="dim">길드 전력 ${watts(load)} / ${watts(cap)}</small><div class="meter"><i style="width:${Math.min(100, (load / cap) * 100)}%"></i></div></div>` : ''}
           <p class="note">길드장 <a href="${href(`/o/${guild?.owner ?? ''}`)}">${nameOf(guild?.owner)}</a>${guild?.website && /^https?:\/\//i.test(guild.website) ? html` · <a href="${guild.website}" target="_blank" rel="noopener noreferrer">웹사이트</a>` : ''}</p>
@@ -154,9 +151,9 @@ const screen: Screen = {
     const paint = () => {
       if (!root.isConnected) return;
       mount(root, view(), handlers);
-      const b = bank.find((x) => x.guild_id === guild?.id);
-      setTiles([{ label: '길드', value: guild?.tag ? `[${guild.tag}]` : guild?.id ?? '—', tone: 'var(--hwang)' }, { label: '길드원', value: n(count || roster.length) }, { label: '교환 비율', value: b ? n(b.ratio, 3) : '—', tone: 'var(--cheong-hi)' }]);
+      setTiles([{ label: '길드', value: guild?.tag ? `[${guild.tag}]` : guild?.id ?? '—', tone: 'var(--hwang)' }, { label: '길드원', value: n(count || roster.length) }, { label: '알파 순위', value: rankNow(), tone: 'var(--cheong-hi)' }]);
     };
+    const rankNow = () => { const i = [...dir].sort((a, z) => Number(z.alpha) - Number(a.alpha)).findIndex((x) => x.guild_id === guild?.id); return i >= 0 ? `${i + 1}위` : '—'; };
     const sign = (p: Promise<string>, done = '보냈습니다', after?: () => void) => {
       busy = true; paint();
       p.then(() => { sfx.play('confirm'); toast(done); after?.(); setTimeout(() => void load().then(paint).catch(() => null), 6000); })

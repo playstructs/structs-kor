@@ -383,7 +383,7 @@ async function realGalaxy(root: HTMLElement, pid: string): Promise<() => void> {
           ${wallet.state === 'unlocked' ? '' : html`<p class="note">출격하려면 계정 잠금을 해제하세요.</p>`}
           <a class="btn ghost" href="${href(`/sim?vs=${p.id}`)}">시뮬레이터로 먼저 대비</a>
           <div class="intel-acts"><a class="btn ghost sm" href="${href(`/o/${p.planet_id}`)}">행성 관전</a><a class="btn ghost sm" href="${href(`/o/${p.id}`)}">카드</a><button class="btn ghost sm" data-ref="message" data-id="${p.id}">메시지</button><button class="btn ghost sm" data-ref="share" data-id="${p.planet_id}">공유</button></div></section>`
-        : html`<section class="card game-panel"><h2>정보</h2><p class="note">행성을 눌러 사령관을 살펴보세요. 크기는 알파 보유량입니다.${raid ? ' 붉은 점선은 내 행성을 습격 중인 함대입니다.' : ''}</p>
+        : html`<section class="card game-panel"><h2>정보</h2><p class="note">행성을 눌러 사령관을 살펴보세요. 점이 클수록 알파가 많습니다 · 습격할 표적은 작전 상황실에서 고르세요.${raid ? ' 붉은 점선은 내 행성을 습격 중인 함대입니다.' : ''}</p>
           ${raid && me.planet_id ? html`<div class="notice err">내 행성이 습격받고 있습니다!<button class="btn danger sm" style="margin-left:auto" data-act="sos">지원 요청</button></div>` : ''}
           ${fleet && fleet.status !== 'onStation' ? html`<div class="notice">함대 ${fleet.id} 원정 중 · ${fleet.location_id}<button class="btn ghost" style="min-height:32px;margin-left:auto" data-act="recall" ${wallet.state === 'unlocked' ? '' : 'disabled'}>귀환</button></div>` : ''}
           <div class="g2" style="gap:8px"><div class="stat"><small>내 알파</small><strong class="c-hwang">${micro(me.alpha)} g</strong></div><div class="stat"><small>알파 순위</small><strong>${rank >= 0 ? `#${rank + 1}` : '순위권 밖'}</strong></div></div></section>`}</aside></div>`;

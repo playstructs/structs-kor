@@ -93,7 +93,8 @@ const screen: Screen = {
     /* Targeting (webapp ActionBarLock): an order waiting for its target tile. */
     let mode: 'attack' | 'defend' | null = null;
     let enemyPick: string | null = null;
-    let intelTab: string | null = innerWidth > 1100 ? 'radar' : null;
+    // Closed until there's something to see: the 방어 tab lights up when a raid comes (the alert class).
+    let intelTab: string | null = null;
     let opsOpen = false;
     let board: Board | null = null;
     const offs: (() => void)[] = [];

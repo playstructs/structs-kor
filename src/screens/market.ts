@@ -79,9 +79,8 @@ function buy(s: State): Safe {
         ${(() => {
           // Can't pay: say so on the button instead of letting the chain refuse it.
           const have = Number(s.coins.find((c) => c.denom === p.rate_denom)?.amount ?? 0), short = !!s.q && have < Number(s.q.total);
-          return html`<button class="btn primary lg" data-act="open" ${!s.q?.valid || short || s.busy || !unlocked() ? 'disabled' : ''}>${short ? `${denomName(p.rate_denom)} 부족 · 보유 ${micro(have, 2)}` : s.q ? `${micro(s.q.total, 2)} ${denomName(p.rate_denom)} 내고 계약` : '계약하기'}</button>`;
+          return html`<button class="btn primary lg" data-act="open" ${!s.q?.valid || short || s.busy || !unlocked() ? 'disabled' : ''}>${short ? `${denomLabel(p.rate_denom)} 부족 · 보유 ${micro(have, 2)}${p.rate_denom === 'ualpha' ? ' g' : ''}` : s.q ? `${micro(s.q.total, 2)} ${denomName(p.rate_denom)} 내고 계약` : '계약하기'}</button>`;
         })()}
-        <button class="btn ghost" data-act="shareOffer" data-i="${s.sel}">이 제안을 길드에 공유</button>
         ${unlocked() ? '' : html`<p class="note">계정 잠금을 해제하세요.</p>`}` : html`<p class="empty">공급자를 선택하세요.</p>`}
     </section></div>`;
 }
