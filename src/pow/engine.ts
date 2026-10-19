@@ -32,6 +32,13 @@ class Engine {
   private poll: ReturnType<typeof setInterval> | null = null;
   private emitT: ReturnType<typeof setTimeout> | null = null;
   readonly threads = Math.max(1, Math.min(4, Math.floor((navigator.hardwareConcurrency || 4) / 2)));
+  /** Where the hashing runs: the GPU when WebGPU works here (pow/gpu.ts), else CPU threads. */
+  device: 'gpu' | 'cpu' = 'cpu';
+  /** Set once the GPU has failed this visit (or the player chose the CPU): don't try it again. */
+  private noGpu = (() => { try { return localStorage.getItem('structs-kor.pow.cpu') === '1'; } catch { return false; } })();
+
+  /** Hashes a second to plan with: measured once hashing has run, else a guess for the device. */
+  get expectedRate() { return this.rate || (!this.noGpu && typeof navigator !== 'undefined' && 'gpu' in navigator ? 1e8 : 1e6 * this.threads); }
 
   onChange(f: () => void) { this.fns.add(f); return () => this.fns.delete(f); }
   private emit() { if (!this.emitT) this.emitT = setTimeout(() => { this.emitT = null; for (const f of this.fns) f(); }, 200); }
@@ -57,17 +64,40 @@ class Engine {
   start() {
     if (this.running) return;
     this.running = true;
-    for (let i = 0; i < this.threads; i++) {
-      const w = new Worker(new URL('./hash.worker.ts', import.meta.url), { type: 'module' });
-      const slot = { w, task: null as string | null };
-      w.onmessage = (e: MessageEvent) => this.onWorker(e.data);
-      this.workers.push(slot);
-    }
+    this.spawn();
     // Follow the chain while hashing, so proofs go out the block they become valid.
     this.poll = setInterval(() => { void guildApi.block().then((b) => { if (b.height > this.height) { this.height = b.height; this.check(); this.schedule(); this.emit(); } }).catch(() => null); }, 6000);
     this.schedule();
     this.emit();
   }
+  /** One GPU worker if WebGPU may work here, else the CPU threads. A GPU that fails hands over to them. */
+  private spawn() {
+    const gpuMaybe = !this.noGpu && typeof navigator !== 'undefined' && 'gpu' in navigator;
+    this.device = gpuMaybe ? 'gpu' : 'cpu';
+    const n = gpuMaybe ? 1 : this.threads;
+    for (let i = 0; i < n; i++) {
+      const w = gpuMaybe
+        ? new Worker(new URL('./gpu.worker.ts', import.meta.url), { type: 'module' })
+        : new Worker(new URL('./hash.worker.ts', import.meta.url), { type: 'module' });
+      const slot = { w, task: null as string | null };
+      w.onmessage = (e: MessageEvent) => {
+        if (e.data?.type === 'gpu-failed') { this.fallBack(); return; }
+        this.onWorker(e.data);
+      };
+      w.onerror = () => { if (gpuMaybe) this.fallBack(); };
+      this.workers.push(slot);
+    }
+  }
+  private fallBack() {
+    if (this.noGpu) return;
+    this.noGpu = true;
+    for (const x of this.workers) x.w.terminate();
+    this.workers = [];
+    for (const t of this.tasks.values()) if (t.status === 'hashing') t.status = 'waiting';
+    if (this.running) { this.spawn(); this.schedule(); }
+    this.emit();
+  }
+
   stop() {
     this.running = false;
     for (const x of this.workers) x.w.terminate();
@@ -85,7 +115,7 @@ class Engine {
     // Tasks out of automatic retries stop taking workers; the player resends them by hand.
     // Hash only what can pass soon: the bar falls with age, so a proof the next ten minutes' bar is still
     // far above is wasted heat. Those wait (status 'waiting') and join when the bar comes within reach.
-    const reach = Math.floor(Math.log(Math.max(this.rate, 5e5 * this.threads) * 600) / Math.log(16));
+    const reach = Math.floor(Math.log(Math.max(this.rate, this.expectedRate * 0.25) * 600) / Math.log(16));
     const soon = (t: PowTask) => difficultyAt(this.height + 1 + Math.round(600 / BLOCK_SECONDS) - t.blockStart, t.range) <= reach;
     for (const t of this.tasks.values()) if (t.status === 'hashing' && !soon(t)) t.status = 'waiting';
     const open = [...this.tasks.values()].filter((t) => (t.status === 'waiting' || t.status === 'hashing' || t.status === 'failed') && (t.tries ?? 0) < MAX_TRIES && soon(t))

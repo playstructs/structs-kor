@@ -39,6 +39,8 @@ import { dailyOrders, claimDaily, claimDailyBonus, DAILY_XP, DAILY_BONUS } from 
 const DESTROYED = 32, ONLINE = 4, REFINERY = 15;
 const isFleetType = (t: number) => t <= 13;
 /** mW → kW; a missing reading (a fresh commander, no power row yet) is 0, never NaN. */
+/** Hashes a second in Korean units: 3,000만, 1.2억. */
+const hashRate = (r: number) => (r >= 1e8 ? `${(r / 1e8).toFixed(1)}억` : r >= 1e4 ? `${Math.round(r / 1e4).toLocaleString('ko-KR')}만` : String(Math.round(r)));
 const kw = (mw: unknown) => (Number(mw) || 0) / 1e6;
 
 type Panel = { kind: 'struct'; id: string } | { kind: 'build'; key: string; ambit: Ambit; cat: 'planet' | 'fleet'; slot: number } | null;
@@ -254,7 +256,7 @@ const screen: Screen = {
     const powCard = (): Safe => {
       const tasks = [...pow.tasks.values()];
       const canSign = wallet.state === 'unlocked';
-      return html`<section class="card game-panel pow"><div class="card-head"><h2>작업</h2><span class="end mono ${pow.running ? 'c-cheong' : 'faint'}" title="${pow.running ? `${n(Math.round(pow.rate))} H/s · ${pow.threads}스레드` : ''}">${pow.running ? '● 작업 중' : '정지'}</span></div>
+      return html`<section class="card game-panel pow"><div class="card-head"><h2>작업</h2><span class="end mono ${pow.running ? 'c-cheong' : 'faint'}" title="${pow.running ? `초당 ${n(Math.round(pow.rate))}회 · ${pow.device === 'gpu' ? '그래픽카드' : `프로세서 ${pow.threads}스레드`}` : ''}">${pow.running ? `● 작업 중${pow.rate ? ` · ${pow.device === 'gpu' ? '그래픽카드' : '프로세서'} 초당 ${hashRate(pow.rate)}` : ''}` : '정지'}</span></div>
         ${tasks.length ? tasks.map((t) => {
           const have = t.best?.zeros ?? 0;
           const wait = t.best ? blocksUntil(t, have, pow.height) : Infinity, age = Math.max(0, pow.height - t.blockStart);
@@ -309,7 +311,7 @@ const screen: Screen = {
      * hash rate (2 MH/s until it has measured one). */
     const buildTime = (difficulty: number) => {
       if (isDemo) return `${Math.max(3, Math.round(difficulty / 140))}블록`;
-      const b = estimateBlocks(difficulty, pow.rate || 2e6), min = Math.round((b * BLOCK_SECONDS) / 60);
+      const b = estimateBlocks(difficulty, pow.expectedRate), min = Math.round((b * BLOCK_SECONDS) / 60);
       return min >= 60 ? `약 ${(min / 60).toFixed(1)}시간` : `약 ${Math.max(1, min)}분`;
     };
     const actionChunk = (): Safe => {
