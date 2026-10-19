@@ -197,11 +197,11 @@ function ledgerList(rows: Record<string, unknown>[] | null | undefined): Safe {
 
 function walletTab(s: State): Safe {
   return html`<div class="g2" style="align-items:start">
-    <section class="card game-panel"><div class="card-head"><h2>내 자산</h2><span class="end mono dim">${wallet.commander?.address.slice(0, 16) ?? ''}…</span></div>
-      ${s.coins.length ? html`<ul class="coins">${s.coins.map((c) => html`<li><span class="coin-ico ${c.denom === 'ualpha' ? 'alpha' : 'token'}"></span><div><b>${denomLabel(c.denom)}</b><small class="mono">${c.denom}</small></div><strong class="mono ${c.denom === 'ualpha' ? 'c-hwang' : ''}">${micro(c.amount, 4)}</strong><button class="btn ghost sm" data-act="send" data-d="${c.denom}" ${unlocked() ? '' : 'disabled'}>보내기</button></li>`)}</ul>` : html`<p class="empty">잔액이 없습니다.</p>`}
+    <section class="card game-panel"><div class="card-head"><h2>내 자산</h2></div>
+      ${s.coins.length ? html`<ul class="coins">${s.coins.map((c) => html`<li><span class="coin-ico ${c.denom === 'ualpha' ? 'alpha' : 'token'}"></span><div><b>${denomLabel(c.denom)}</b></div><strong class="mono ${c.denom === 'ualpha' ? 'c-hwang' : ''}">${micro(c.amount, 4)}</strong><button class="btn ghost sm" data-act="send" data-d="${c.denom}" ${unlocked() ? '' : 'disabled'}>보내기</button></li>`)}</ul>` : html`<p class="empty">잔액이 없습니다.</p>`}
       <button class="btn gold" data-act="send" data-d="ualpha" ${unlocked() ? '' : 'disabled'}>알파 보내기</button>
     </section>
-    <section class="card game-panel"><h2>거래 내역</h2>${ledgerList(s.ledger)}</section>
+    <section class="card game-panel"><h2>자산 기록</h2>${ledgerList(s.ledger)}</section>
     <section class="card game-panel"><h2>레플리칸트 자산</h2>
       <p class="note">레플리칸트의 알파는 <a href="${href('/replicants')}">레플리칸트</a> 화면에서 한 번에 회수하거나, 여기서 개별로 보낼 수 있습니다.</p>
       <ul class="coins">${wallet.accounts.filter((a) => a.index > 0).slice(0, 12).map((a) => html`<li><span class="coin-ico rep"></span><div><b>#${a.index} ${a.playerId ?? ''}</b><small class="mono">${a.address.slice(0, 18)}…</small></div><button class="btn ghost sm" data-act="sendFrom" data-i="${a.index}" ${unlocked() ? '' : 'disabled'}>보내기</button></li>`)}</ul>
