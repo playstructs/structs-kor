@@ -73,18 +73,18 @@ export const guildApi = {
   matrixLogin: (body: { address: string; pubkey: string; signature: string; guild_id: string; unix_timestamp: number; device_id?: string }) => post<MatrixLogin>('auth/matrix', body),
 
   /* Session */
-  block: () => get<BlockRow>('block'),
+  block: () => viaChain(() => get<BlockRow>('block'), () => chainread.block()),
   guild: (id: string) => cached(`guild/${id}`, 600_000, () => get<GuildRow>(`guild/${enc(id)}`)),
-  directory: () => cached('guild/directory', 300_000, () => get<DirectoryRow[]>('guild/directory')),
+  directory: () => cached('guild/directory', 300_000, () => viaChain(() => get<DirectoryRow[]>('guild/directory'), () => chainread.directory())),
   roster: (id: string) => cached(`roster/${id}`, 300_000, () => get<RosterRow[]>(`guild/${enc(id)}/roster`)),
   guildPower: (id: string) => get<Record<string, Num>>(`guild/${enc(id)}/power/stats`),
   memberCount: (id: string) => get<{ count: number }>(`guild/${enc(id)}/members/count`),
-  bank: () => get<BankRow[]>('guild-bank'),
+  bank: () => viaChain(() => get<BankRow[]>('guild-bank'), () => chainread.bank()),
   bankHistory: (id: string, bucket: '1h' | '1d' = '1d') => get<BucketVolume[]>(`guild-bank/${enc(id)}/history`, { bucket }),
 
   player: (id: string) => viaChain(() => get<PlayerRow>(`player/${enc(id)}`), () => chainread.player(id)),
   playerPower: (id: string) => viaChain(() => get<PowerRow>(`player/${enc(id)}/power`), async () => chainread.power(await chainread.player(id))),
-  playerCount: () => get<{ count: number }>('player/count'),
+  playerCount: () => viaChain(() => get<{ count: number }>('player/count'), async () => ({ count: await chainread.playerCount() })),
   activeCount: () => get<{ count: number }>('player/active/count'),
   oreStats: (id: string) => get<{ forfeited: Num; mined: Num; seized: Num }>(`player/${enc(id)}/ore/stats`),
   lastAction: (id: string) => get<{ last_action_block_height: number }>(`player/${enc(id)}/action/last/block/height`),
@@ -110,9 +110,9 @@ export const guildApi = {
   substationsOf: (owner: string) => page<SubstationRow>(`substation/owner/${enc(owner)}`),
   playersOnSubstation: (id: string) => page<Record<string, unknown>>(`player/list/substation/${enc(id)}`, 1, { include_total: 1, limit: 1 }),
 
-  providerMarket: () => cached('provider/market', 60_000, () => get<ProviderRow[]>('provider/market')),
-  providersOf: (owner: string) => page<ProviderRow>(`provider/owner/${enc(owner)}`),
-  agreementsOf: (owner: string) => get<AgreementRow[]>(`agreement/owner/${enc(owner)}/market`),
+  providerMarket: () => cached('provider/market', 60_000, () => viaChain(() => get<ProviderRow[]>('provider/market'), () => chainread.providers())),
+  providersOf: (owner: string) => viaChain(() => page<ProviderRow>(`provider/owner/${enc(owner)}`), async () => (await chainread.providers()).filter((p) => p.owner === owner)),
+  agreementsOf: (owner: string) => viaChain(() => get<AgreementRow[]>(`agreement/owner/${enc(owner)}/market`), async () => (await chainread.agreements()).filter((a) => a.owner === owner)),
   permissionsTo: (playerId: string) => page<PermissionRow>(`permission/player/${enc(playerId)}`),
 
   /** Members-only on the guild. Without a session the player standings come from the chain; the

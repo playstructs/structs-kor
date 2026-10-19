@@ -10,7 +10,7 @@
 import { GUILD_ID } from '../config';
 import { wallet } from '../wallet/wallet';
 import { guildApi, guildMode } from './guild';
-import { ApiError, MOCK, call, onAuthLost, setBearer, holdRequestsUntil, signinInit, quiet } from './http';
+import { ApiError, MOCK, call, net, onAuthLost, setBearer, holdRequestsUntil, signinInit, quiet } from './http';
 
 const login = (body: Record<string, unknown>) => call<null>('auth/login', signinInit({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }));
 import { fellBack, isMissing, markMissing } from './requirements';
@@ -48,7 +48,7 @@ const fns = new Set<(s: Status) => void>();
 /** Is the guild's own session live? False in chain mode: the commander is signed in, but members-only
  * Guild API reads won't answer (the browser dropped the cookie), so screens read the chain instead. */
 let guildLive = false;
-const setLive = (v: boolean) => { guildLive = v; guildMode.chain = !v; };
+const setLive = (v: boolean) => { guildLive = v; guildMode.chain = !v; net.cookies = v; };
 let status: Status = { state: 'out', playerId: null, why: '' };
 const set = (p: Partial<Status>) => { status = { ...status, ...p }; for (const f of fns) f(status); };
 
@@ -91,6 +91,8 @@ export const session = {
         if (!pid) throw new Error('이 길드에 등록된 사령관이 아닙니다. 먼저 입대하세요.');
         wallet.setPlayerId(0, pid);
       }
+      // Dev only: `?nocookie=1` behaves like Safari dropping the guild cookie, to test the chain path.
+      if (devFlag('nocookie')) { setLive(false); set({ state: 'in', playerId: pid, why: 'chain' }); return; }
       // Let anything already on the wire land first: its response must not replace the login's cookie.
       await quiet();
       const ts = (await call<{ unix_timestamp: number }>('timestamp', signinInit())).data.unix_timestamp;
@@ -128,7 +130,7 @@ export const session = {
   },
 
   async signOut() {
-    setLive(false); guildMode.chain = false;
+    setLive(false); guildMode.chain = false; net.cookies = true;
     await guildApi.logout().catch(() => null);
     setBearer(null);
     try { localStorage.removeItem(TOKEN_KEY); } catch { /* fine */ }
@@ -167,4 +169,13 @@ function mockAs(): string | null {
 function chainAs(): string | null {
   if (typeof import.meta === 'undefined' || !(import.meta as { env?: { DEV?: boolean } }).env?.DEV) return null;
   try { const q = new URLSearchParams(location.search).get('chainas'); return q && /^1-\d{1,9}$/.test(q) ? q : null; } catch { return null; }
+}
+
+/** Dev builds only: a `?flag=1` switch on the page URL (kept for the rest of the tab). */
+function devFlag(name: string): boolean {
+  if (!(import.meta as { env?: { DEV?: boolean } }).env?.DEV) return false;
+  try {
+    if (new URLSearchParams(location.search).get(name) === '1') sessionStorage.setItem('dev.' + name, '1');
+    return sessionStorage.getItem('dev.' + name) === '1';
+  } catch { return false; }
 }

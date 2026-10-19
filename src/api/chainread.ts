@@ -8,7 +8,7 @@
  * substation's own connectionCapacity grid attribute (structsd GetCapacitySecondary). */
 import { endpoints } from '../config';
 import { TYPES_BY_ID } from '../data/catalogue';
-import type { PlayerRow, PowerRow, PlanetRow, FleetRow, StructRow, WorkRow, LeaderPlayer } from './guild';
+import type { PlayerRow, PowerRow, PlanetRow, FleetRow, StructRow, WorkRow, LeaderPlayer, ProviderRow, AgreementRow, BankRow, BlockRow, DirectoryRow } from './guild';
 
 type Grid = Record<string, string | undefined>;
 interface LcdPlayer { Player: { id: string; guildId: string; substationId: string; primaryAddress: string; planetId: string; fleetId: string; name: string; pfp: string; pfpClientRenderAttributes?: string }; gridAttributes?: Grid }
@@ -19,10 +19,11 @@ interface LcdStruct { Struct: { id: string; type: string; owner: string; locatio
 /* Screens ask for the same player and structs several times a paint: answers live for a few seconds
  * (a block is ~6 s), and a request in flight is shared. */
 const memo = new Map<string, { at: number; v: Promise<unknown> }>();
-function get<T>(path: string, ttl = 4000): Promise<T> {
+function get<T>(path: string, ttl = 4000, url = endpoints.lcd + path): Promise<T> {
+  path ||= url;
   const hit = memo.get(path);
   if (hit && Date.now() - hit.at < ttl) return hit.v as Promise<T>;
-  const v = fetch(endpoints.lcd + path, { signal: AbortSignal.timeout(15_000) }).then((r) => {
+  const v = fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(15_000) }).then((r) => {
     if (!r.ok) throw new Error(`LCD ${r.status} ${path}`);
     return r.json() as Promise<T>;
   });
@@ -32,6 +33,22 @@ function get<T>(path: string, ttl = 4000): Promise<T> {
   return v;
 }
 const LEADERS_TTL = 300_000;
+const LIST_TTL = 60_000;
+
+/** Every row of an LCD list, following next_key (capped, so a runaway list can't hang a screen). */
+async function all<T>(path: string, field: string, ttl = LIST_TTL, max = 20): Promise<T[]> {
+  const out: T[] = [];
+  let key = '';
+  for (let i = 0; i < max; i++) {
+    const r = await get<Record<string, unknown> & { pagination?: { next_key?: string | null } }>(`${path}?pagination.limit=1000${key ? '&pagination.key=' + encodeURIComponent(key) : ''}`, ttl);
+    out.push(...((r[field] as T[] | undefined) ?? []));
+    key = r.pagination?.next_key ?? '';
+    if (!key) break;
+  }
+  return out;
+}
+interface LcdProvider { id: string; owner: string; substationId: string; rate?: { denom: string; amount: string }; accessPolicy: string; capacityMinimum: string; capacityMaximum: string; durationMinimum: string; durationMaximum: string; providerCancellationPenalty?: string; consumerCancellationPenalty?: string }
+interface LcdAgreement { id: string; providerId: string; allocationId: string; capacity: string; startBlock: string; endBlock: string; owner: string }
 const n = (v: unknown) => (v == null || v === '' ? 0 : Number(v));
 const ids = (...lists: (string[] | undefined)[]) => [...new Set(lists.flatMap((l) => l ?? []).filter(Boolean))];
 
@@ -93,6 +110,61 @@ export const chainread = {
       },
       attrs: a,
     };
+  },
+
+  /** The chain's tip, in the guild's BlockRow shape (no indexer, so never behind). */
+  async block(): Promise<BlockRow> {
+    const h = await this.height();
+    return { height: h, tip_height: h, lag_blocks: 0, status: 'chain', updated_at: new Date().toISOString() };
+  },
+
+  async playerCount(): Promise<number> {
+    const r = await get<{ pagination?: { total?: string } }>('/structs/player?pagination.limit=1&pagination.count_total=true', LEADERS_TTL);
+    return n(r.pagination?.total);
+  },
+
+  /** Energy contracts on offer, with how much of each is already taken. */
+  async providers(): Promise<ProviderRow[]> {
+    const [ps, ags] = await Promise.all([all<LcdProvider>('/structs/provider', 'Provider'), this.agreements().catch(() => [] as AgreementRow[])]);
+    const taken = new Map<string, number>();
+    for (const a of ags) taken.set(a.provider_id, (taken.get(a.provider_id) ?? 0) + n(a.capacity));
+    return ps.map((p) => ({
+      id: p.id, owner: p.owner, substation_id: p.substationId, rate_amount: n(p.rate?.amount), rate_denom: p.rate?.denom ?? 'ualpha', access_policy: p.accessPolicy,
+      capacity_minimum: n(p.capacityMinimum), capacity_maximum: n(p.capacityMaximum), duration_minimum: n(p.durationMinimum), duration_maximum: n(p.durationMaximum),
+      provider_cancellation_penalty: n(p.providerCancellationPenalty), consumer_cancellation_penalty: n(p.consumerCancellationPenalty), committed_capacity: taken.get(p.id) ?? 0,
+    }));
+  },
+
+  async agreements(): Promise<AgreementRow[]> {
+    const tip = await this.height().catch(() => 0);
+    return (await all<LcdAgreement>('/structs/agreement', 'Agreement')).map((a) => ({
+      id: a.id, provider_id: a.providerId, allocation_id: a.allocationId, capacity: n(a.capacity), start_block: n(a.startBlock), end_block: n(a.endBlock), owner: a.owner,
+      blocks_remaining: tip ? Math.max(0, n(a.endBlock) - tip) : undefined,
+    }));
+  },
+
+  /** Each guild's bank: alpha held as collateral against the guild's token supply. */
+  async bank(): Promise<BankRow[]> {
+    const banks = await all<{ address: string; objectId: string }>('/structs/guild_bank_collateral_address', 'internalAddressAssociation', LEADERS_TTL);
+    return Promise.all(banks.map(async (b) => {
+      const denom = `uguild.${b.objectId}`;
+      const [col, sup] = await Promise.all([
+        get<{ balances: { denom: string; amount: string }[] }>(`/cosmos/bank/v1beta1/balances/${encodeURIComponent(b.address)}?pagination.limit=100`, LIST_TTL).then((r) => n(r.balances.find((c) => c.denom === 'ualpha')?.amount)).catch(() => 0),
+        get<{ amount: { amount: string } }>(`/cosmos/bank/v1beta1/supply/by_denom?denom=${encodeURIComponent(denom)}`, LIST_TTL).then((r) => n(r.amount.amount)).catch(() => 0),
+      ]);
+      return { guild_id: b.objectId, denom, collateral: col, supply: sup, ratio: sup ? col / sup : 0 };
+    }));
+  },
+
+  /** Every guild, named from its own guild.json where it answers. */
+  async directory(): Promise<DirectoryRow[]> {
+    const [guilds, banks] = await Promise.all([all<{ id: string; name: string; pfp: string; endpoint: string }>('/structs/guild', 'Guild', LEADERS_TTL), this.bank().catch(() => [] as BankRow[])]);
+    return Promise.all(guilds.map(async (g) => {
+      const meta = /^https:\/\//.test(g.endpoint)
+        ? await get<{ guild?: { name?: string; logo?: string } }>('', LEADERS_TTL, g.endpoint).catch(() => null)
+        : null;
+      return { guild_id: g.id, name: meta?.guild?.name || g.name || g.id, logo: meta?.guild?.logo || g.pfp || '', alpha: banks.find((b) => b.guild_id === g.id)?.collateral ?? 0, members: 0 };
+    }));
   },
 
   /** How many planets have been discovered. Planet ids are sequential (2-1, 2-2, …) and the list is too

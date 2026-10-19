@@ -58,6 +58,10 @@ export function quiet(ms = 4000): Promise<void> {
 /** RequestInit for a call that is part of signing in (not held by the gate). */
 export const signinInit = (init: RequestInit = {}): RequestInit => ({ ...init, headers: { ...(init.headers as Record<string, string> | undefined), [BYPASS]: '1' } });
 
+/** Whether guild calls carry the session cookie. Off once sign-in finds the browser won't keep it
+ * (structs.xyz does the same): public routes and signed ones (chat, signup) need no cookie. */
+export const net = { cookies: true };
+
 export async function call<T>(path: string, init: RequestInit = {}): Promise<Envelope<T>> {
   const inSignin = new Headers(init.headers || {}).has(BYPASS);
   if (gate && !inSignin) await gate.catch(() => null);
@@ -73,7 +77,7 @@ export async function call<T>(path: string, init: RequestInit = {}): Promise<Env
   let r: Response;
   if (!inSignin) inflight++;
   try {
-    r = await fetch(`${endpoints.guildApi}/${path.replace(/^\/+/, '')}`, { ...init, headers, credentials: 'include', redirect: 'error' });
+    r = await fetch(`${endpoints.guildApi}/${path.replace(/^\/+/, '')}`, { ...init, headers, credentials: inSignin || net.cookies ? 'include' : 'omit', redirect: 'error' });
   } catch (e) {
     if (!inSignin && --inflight === 0) { const f = idleFns; idleFns = []; for (const g of f) g(); }
     if ((e as Error).name === 'AbortError') throw e;
