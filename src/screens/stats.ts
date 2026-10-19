@@ -37,7 +37,7 @@ const screen: Screen = {
     const rows = (): Safe => {
       if (board === 'players') {
         const max = Math.max(1, ...players.map((p) => Number(p.alpha_value_p ?? p.alpha_balance_p)));
-        return html`${players.map((p, i) => html`<li class="${p.player_id === pid ? 'me' : ''}"><span class="rk mono">${i + 1}</span>${raw(portraitHtml(seededPfp(p.player_id), 30))}<a href="${href(`/o/${p.player_id}`)}"><b>${p.username || p.player_id}</b><small class="mono">${p.player_id} · ${p.guild_id}</small></a>${bar(Number(p.alpha_value_p ?? p.alpha_balance_p), max, 'var(--hwang)')}<span class="mono c-hwang">${micro(p.alpha_value_p ?? p.alpha_balance_p, 1)} g</span></li>`)}`;
+        return html`${players.map((p, i) => html`<li class="${p.player_id === pid ? 'me' : ''}"><span class="rk mono">${i + 1}</span>${raw(portraitHtml(seededPfp(p.player_id), 30))}<a href="${href(`/o/${p.player_id}`)}"><b>${p.username || p.player_id}</b><small class="mono">${p.player_id}${p.guild_id ? ` · ${p.guild_id}` : ''}</small></a>${bar(Number(p.alpha_value_p ?? p.alpha_balance_p), max, 'var(--hwang)')}<span class="mono c-hwang">${micro(p.alpha_value_p ?? p.alpha_balance_p, 1)} g</span></li>`)}`;
       }
       if (board === 'guilds') {
         const max = Math.max(1, ...guilds.map((g) => Number(g.collateral_p)));

@@ -52,7 +52,7 @@ export function publicSummary(): Promise<PublicSummary> {
   });
 }
 
-export const publicLeaderboard = (limit = 5) => planned<LeaderPlayer[]>('REQ-PUB-2', 'public/leaderboard/player', async () => (signedIn() ? g.leaderboard<LeaderPlayer>('player', limit) : []), { limit });
+export const publicLeaderboard = (limit = 5) => planned<LeaderPlayer[]>('REQ-PUB-2', 'public/leaderboard/player', async () => (signedIn() ? g.leaderboard<LeaderPlayer>('player', limit) : MOCK ? [] : chainread.leaders(limit)), { limit });
 export const publicDirectory = () => planned<DirectoryRow[]>('REQ-PUB-3', 'public/guild/directory', async () => (signedIn() ? g.directory() : []));
 
 /* ── REQ-AGG-1: everything the command console shows, in one read ───────── */

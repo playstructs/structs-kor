@@ -90,7 +90,7 @@ export const guildApi = {
   lastAction: (id: string) => get<{ last_action_block_height: number }>(`player/${enc(id)}/action/last/block/height`),
 
   planet: (id: string) => viaChain(() => get<PlanetRow>(`planet/${enc(id)}`), async () => (await chainread.planet(id)).row),
-  planetCount: () => get<{ count: number }>('planet/count'),
+  planetCount: () => viaChain(() => get<{ count: number }>('planet/count'), async () => ({ count: await chainread.planetCount() })),
   shieldHealth: (id: string) => get<{ health: number }>(`planet/${enc(id)}/shield/health`),
   activeRaid: (planetId: string) => get<RaidRow | null>(`planet/${enc(planetId)}/raid/active`),
   activity: (planetId: string, n = 1, limit = 30) => page<ActivityRow>(`planet-activity/planet/${enc(planetId)}`, n, { limit }),
@@ -115,7 +115,10 @@ export const guildApi = {
   agreementsOf: (owner: string) => get<AgreementRow[]>(`agreement/owner/${enc(owner)}/market`),
   permissionsTo: (playerId: string) => page<PermissionRow>(`permission/player/${enc(playerId)}`),
 
-  leaderboard: <T = LeaderPlayer>(kind: LeaderKind, limit = 10) => cached(`lb/${kind}/${limit}`, 120_000, () => get<T[]>(`leaderboard/${kind}`, { limit })),
+  /** Members-only on the guild. Without a session the player standings come from the chain; the
+   * other boards (guilds, reactors, providers) have no chain equivalent yet and stay empty. */
+  leaderboard: <T = LeaderPlayer>(kind: LeaderKind, limit = 10) => cached(`lb/${kind}/${limit}`, 120_000, () =>
+    viaChain(() => get<T[]>(`leaderboard/${kind}`, { limit }), async () => (kind === 'player' ? chainread.leaders(limit) : []) as unknown as T[])),
   /** Players whose name or id matches (the guild's transfer-recipient search). */
   playerSearch: (q: string) => get<Record<string, unknown>[]>('player/transfer/search', { search_string: q }).then((r) => (r ?? []).map((x) => ({ id: String(x.id ?? x.player_id ?? ''), username: String(x.username ?? ''), guild_id: String(x.guild_id ?? ''), pfp: String(x.pfp ?? x.pfp_attrs ?? '') })).filter((x) => /^1-\d+$/.test(x.id))),
   objects: (ids: string[]) => ids.length ? get<ObjectRow[]>('objects', { ids: ids.slice(0, 200).join(',') }) : Promise.resolve([] as ObjectRow[]),

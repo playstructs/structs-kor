@@ -8,7 +8,7 @@
  * substation's own connectionCapacity grid attribute (structsd GetCapacitySecondary). */
 import { endpoints } from '../config';
 import { TYPES_BY_ID } from '../data/catalogue';
-import type { PlayerRow, PowerRow, PlanetRow, FleetRow, StructRow, WorkRow } from './guild';
+import type { PlayerRow, PowerRow, PlanetRow, FleetRow, StructRow, WorkRow, LeaderPlayer } from './guild';
 
 type Grid = Record<string, string | undefined>;
 interface LcdPlayer { Player: { id: string; guildId: string; substationId: string; primaryAddress: string; planetId: string; fleetId: string; name: string; pfp: string; pfpClientRenderAttributes?: string }; gridAttributes?: Grid }
@@ -31,6 +31,7 @@ function get<T>(path: string, ttl = 4000): Promise<T> {
   if (memo.size > 200) memo.delete(memo.keys().next().value as string);
   return v;
 }
+const LEADERS_TTL = 300_000;
 const n = (v: unknown) => (v == null || v === '' ? 0 : Number(v));
 const ids = (...lists: (string[] | undefined)[]) => [...new Set(lists.flatMap((l) => l ?? []).filter(Boolean))];
 
@@ -92,6 +93,42 @@ export const chainread = {
       },
       attrs: a,
     };
+  },
+
+  /** How many planets have been discovered. Planet ids are sequential (2-1, 2-2, …) and the list is too
+   * big to count in one query, so find the highest id that exists by doubling, then halving. */
+  async planetCount(): Promise<number> {
+    const has = (i: number) => get<LcdPlanet>(`/structs/planet/2-${i}`, LEADERS_TTL).then(() => true, () => false);
+    if (!(await has(1))) return 0;
+    let lo = 1, hi = 2;
+    while (await has(hi)) { lo = hi; hi *= 2; if (hi > 1 << 24) return lo; }
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (await has(mid)) lo = mid; else hi = mid; }
+    return lo;
+  },
+
+  /** The commanders holding the most alpha, best first (the guild's leaderboard/player, from the chain).
+   * The bank lists every alpha holder (~1,400 on testnet, two pages); each top address maps to its
+   * commander through the address registry. Cached for a few minutes: it's a standings table. */
+  async leaders(limit = 10): Promise<LeaderPlayer[]> {
+    const owners: { address: string; balance: { amount: string } }[] = [];
+    let key = '';
+    for (let i = 0; i < 10; i++) {
+      const q = `?pagination.limit=1000${key ? '&pagination.key=' + encodeURIComponent(key) : ''}`;
+      const r = await get<{ denom_owners: typeof owners; pagination?: { next_key?: string | null } }>(`/cosmos/bank/v1beta1/denom_owners/ualpha${q}`, LEADERS_TTL);
+      owners.push(...r.denom_owners);
+      key = r.pagination?.next_key ?? '';
+      if (!key) break;
+    }
+    const top = owners.filter((o) => o.address).sort((a, b) => n(b.balance.amount) - n(a.balance.amount)).slice(0, limit * 2);
+    const rows = await Promise.all(top.map(async (o) => {
+      const a = await get<{ playerId?: string }>(`/structs/address/${encodeURIComponent(o.address)}`, LEADERS_TTL).catch(() => null);
+      if (!a?.playerId || a.playerId === '1-0') return null;
+      const p = await get<LcdPlayer>(`/structs/player/${encodeURIComponent(a.playerId)}`, LEADERS_TTL).catch(() => null);
+      return p ? { player_id: a.playerId, username: p.Player.name, guild_id: p.Player.guildId, alpha_balance_p: o.balance.amount, alpha_value_p: o.balance.amount } : null;
+    }));
+    // One commander can hold alpha on several addresses: count each once, at their biggest.
+    const seen = new Set<string>();
+    return rows.filter((r): r is LeaderPlayer => !!r && !seen.has(r.player_id) && !!seen.add(r.player_id)).slice(0, limit);
   },
 
   /** Every struct the commander has on their planet and in their fleet, with the work each one owes. */
