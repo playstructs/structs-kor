@@ -4,7 +4,8 @@
  *
  * Everything here is a plain read. Screens should prefer the aggregate reads in planned.ts, which
  * fall back to these when the guild doesn't serve the aggregate yet. */
-import { cached, call, get, post, type Envelope } from './http';
+import { cached, call, get, post, ApiError, MOCK, type Envelope } from './http';
+import { chainread } from './chainread';
 
 export type Num = string | number;
 const enc = encodeURIComponent;
@@ -51,6 +52,15 @@ export interface MatrixLogin { user_id: string; device_id: string; access_token:
 const page = <T>(path: string, n = 1, q?: Record<string, string | number | boolean | undefined>) =>
   call<T[]>(`${path}/page/${n}` + (q ? '?' + new URLSearchParams(Object.entries(q).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])).toString() : '')).then((b) => b.data ?? []);
 
+/** Chain mode: the guild session isn't live (session.ts sets this), so a commander's own reads come
+ * from the chain (chainread.ts). Any members-only read that answers "login required" does too. */
+export const guildMode = { chain: false };
+function viaChain<T>(read: () => Promise<T>, fromChain: () => Promise<T>): Promise<T> {
+  if (MOCK) return read();
+  if (guildMode.chain) return fromChain();
+  return read().catch((e) => { if (e instanceof ApiError && e.code === 'auth') return fromChain(); throw e; });
+}
+
 export const guildApi = {
   /* Public */
   thisGuild: () => cached('guild/this', 3_600_000, () => get<GuildRow>('guild/this')),
@@ -72,25 +82,25 @@ export const guildApi = {
   bank: () => get<BankRow[]>('guild-bank'),
   bankHistory: (id: string, bucket: '1h' | '1d' = '1d') => get<BucketVolume[]>(`guild-bank/${enc(id)}/history`, { bucket }),
 
-  player: (id: string) => get<PlayerRow>(`player/${enc(id)}`),
-  playerPower: (id: string) => get<PowerRow>(`player/${enc(id)}/power`),
+  player: (id: string) => viaChain(() => get<PlayerRow>(`player/${enc(id)}`), () => chainread.player(id)),
+  playerPower: (id: string) => viaChain(() => get<PowerRow>(`player/${enc(id)}/power`), async () => chainread.power(await chainread.player(id))),
   playerCount: () => get<{ count: number }>('player/count'),
   activeCount: () => get<{ count: number }>('player/active/count'),
   oreStats: (id: string) => get<{ forfeited: Num; mined: Num; seized: Num }>(`player/${enc(id)}/ore/stats`),
   lastAction: (id: string) => get<{ last_action_block_height: number }>(`player/${enc(id)}/action/last/block/height`),
 
-  planet: (id: string) => get<PlanetRow>(`planet/${enc(id)}`),
+  planet: (id: string) => viaChain(() => get<PlanetRow>(`planet/${enc(id)}`), async () => (await chainread.planet(id)).row),
   planetCount: () => get<{ count: number }>('planet/count'),
   shieldHealth: (id: string) => get<{ health: number }>(`planet/${enc(id)}/shield/health`),
   activeRaid: (planetId: string) => get<RaidRow | null>(`planet/${enc(planetId)}/raid/active`),
   activity: (planetId: string, n = 1, limit = 30) => page<ActivityRow>(`planet-activity/planet/${enc(planetId)}`, n, { limit }),
   playerActivity: (playerId: string, n = 1, limit = 30) => page<ActivityRow>(`planet-activity/player/${enc(playerId)}`, n, { limit, order: 'desc' }),
 
-  structsOf: (playerId: string) => get<StructRow[]>(`struct/player/${enc(playerId)}`),
+  structsOf: (playerId: string) => viaChain(() => get<StructRow[]>(`struct/player/${enc(playerId)}`), async () => (await chainread.base(await chainread.player(playerId))).structs),
   structTypes: () => cached('struct/type', 86_400_000, () => get<StructTypeRow[]>('struct/type')),
   structCount: () => get<{ count: number }>('struct/count', { is_destroyed: 0 }),
-  fleetOf: (playerId: string) => get<FleetRow>(`fleet/player/${enc(playerId)}`),
-  workOf: (playerId: string) => get<WorkRow[]>(`work/player/${enc(playerId)}`),
+  fleetOf: (playerId: string) => viaChain(() => get<FleetRow>(`fleet/player/${enc(playerId)}`), async () => { const p = await chainread.player(playerId); if (!p.fleet_id) throw new ApiError('함대가 없습니다', 'missing', 404); return (await chainread.fleet(p.fleet_id)).row; }),
+  workOf: (playerId: string) => viaChain(() => get<WorkRow[]>(`work/player/${enc(playerId)}`), async () => (await chainread.base(await chainread.player(playerId))).work),
 
   infusionOf: (playerId: string) => get<InfusionRow>(`infusion/player/${enc(playerId)}`),
   infusionsOf: (playerId: string) => page<InfusionRow>(`infusion/list/player/${enc(playerId)}`),

@@ -9,7 +9,7 @@
  *      in production it depends on the browser keeping a third-party cookie. */
 import { GUILD_ID } from '../config';
 import { wallet } from '../wallet/wallet';
-import { guildApi } from './guild';
+import { guildApi, guildMode } from './guild';
 import { ApiError, MOCK, call, onAuthLost, setBearer, holdRequestsUntil, signinInit, quiet } from './http';
 
 const login = (body: Record<string, unknown>) => call<null>('auth/login', signinInit({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }));
@@ -45,25 +45,35 @@ async function signedInAs(pid: string): Promise<boolean> {
   try { await call(`player/${encodeURIComponent(pid)}`, signinInit()); return true; } catch (e) { if (e instanceof ApiError && e.code === 'auth') return false; throw e; }
 }
 const fns = new Set<(s: Status) => void>();
+/** Is the guild's own session live? False in chain mode: the commander is signed in, but members-only
+ * Guild API reads won't answer (the browser dropped the cookie), so screens read the chain instead. */
+let guildLive = false;
+const setLive = (v: boolean) => { guildLive = v; guildMode.chain = !v; };
 let status: Status = { state: 'out', playerId: null, why: '' };
 const set = (p: Partial<Status>) => { status = { ...status, ...p }; for (const f of fns) f(status); };
 
 export const session = {
   get status() { return status; },
   get playerId() { return status.playerId; },
+  /** False while playing from the chain (see chainread.ts). */
+  get guildLive() { return guildLive; },
   onChange(f: (s: Status) => void) { fns.add(f); f(status); return () => fns.delete(f); },
 
   /** Resume a session this browser already holds (token or cookie). */
   async resume() {
     // Dev mock: signed in as this browser's commander if it enlisted against the mock, else the fixture.
     if (MOCK) { set({ state: 'in', playerId: mockAs() ?? wallet.commander?.playerId ?? '1-42', why: '' }); return; }
+    // Dev only: `?chainas=1-5553` shows that commander in chain mode (read-only: no keys, no orders),
+    // to check the chain fallback against real data from a browser that does keep cookies.
+    const as = chainAs();
+    if (as) { setLive(false); set({ state: 'in', playerId: as, why: 'chain' }); return; }
     const pid = wallet.commander?.playerId;
     if (!pid) return;
     try {
       const t = localStorage.getItem(TOKEN_KEY);
       if (t) setBearer(t);
     } catch { /* storage refused */ }
-    try { if (await signedInAs(pid)) { set({ state: 'in', playerId: pid, why: '' }); return; } setBearer(null); } catch { setBearer(null); }
+    try { if (await signedInAs(pid)) { setLive(true); set({ state: 'in', playerId: pid, why: '' }); return; } setBearer(null); } catch { setBearer(null); }
     // No live session (an expired token, or Safari never kept the cookie): this device holds the
     // commander's key, so sign in again without asking. It's a signature, not a transaction.
     if (wallet.state === 'unlocked') await this.signIn().catch(() => null);
@@ -107,8 +117,10 @@ export const session = {
         ok = await signedInAs(pid);
         if (!ok && i === 1 && !token) await login(body).catch(() => null);
       }
-      if (!ok) throw token ? new Error('길드가 로그인 토큰을 받아들이지 않습니다. 다시 시도하세요.') : new CookieBlockedError();
-      set({ state: 'in', playerId: pid, why: '' });
+      // No guild session (Safari and others drop a cross-site cookie): the commander is enlisted on the
+      // chain all the same, so play from the chain instead of stopping here.
+      setLive(ok);
+      set({ state: 'in', playerId: pid, why: ok ? '' : 'chain' });
     } catch (e) {
       set({ state: 'failed', why: (e as Error).message });
       throw e;
@@ -116,6 +128,7 @@ export const session = {
   },
 
   async signOut() {
+    setLive(false); guildMode.chain = false;
     await guildApi.logout().catch(() => null);
     setBearer(null);
     try { localStorage.removeItem(TOKEN_KEY); } catch { /* fine */ }
@@ -129,6 +142,8 @@ let signedAt = 0, healedAt = 0;
 fns.add((s) => { if (s.state === 'in') { if (!signedAt) signedAt = Date.now(); } else signedAt = 0; });
 onAuthLost(() => {
   if (status.state !== 'in') return;
+  // In chain mode the guild answers "login required" by design; screens fall back to the chain.
+  if (!guildLive) return;
   // At most once every two minutes: a heal that ends in another "login required" is the real thing.
   if (signedAt && Date.now() - signedAt < 60_000 && Date.now() - healedAt > 120_000 && wallet.state === 'unlocked') {
     healedAt = Date.now();
@@ -146,4 +161,10 @@ function mockAs(): string | null {
     if (q && /^1-\d{1,9}$/.test(q)) sessionStorage.setItem('structs-kor.mock.as', q);
     return sessionStorage.getItem('structs-kor.mock.as');
   } catch { return null; }
+}
+
+/** Dev builds only (Vite drops this in production). */
+function chainAs(): string | null {
+  if (typeof import.meta === 'undefined' || !(import.meta as { env?: { DEV?: boolean } }).env?.DEV) return null;
+  try { const q = new URLSearchParams(location.search).get('chainas'); return q && /^1-\d{1,9}$/.test(q) ? q : null; } catch { return null; }
 }

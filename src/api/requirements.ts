@@ -7,6 +7,7 @@ export interface Requirement { id: string; title: string; endpoint: string; fall
 
 export const REQUIREMENTS: Requirement[] = [
   { id: 'REQ-AUTH-1', title: '토큰 로그인 (서드파티 쿠키 없이)', endpoint: 'POST /api/auth/token', fallback: 'POST /api/auth/login + 세션 쿠키' },
+  { id: 'CHAIN', title: '길드 세션 없이 체인에서 읽기', endpoint: 'members-only Guild API reads', fallback: 'LCD: /structs/player · planet · fleet · struct, 은행 잔액 (src/api/chainread.ts)' },
   { id: 'REQ-PUB-1', title: '공개 요약 통계', endpoint: 'GET /api/public/summary', fallback: '로그인 후 count 엔드포인트 6개' },
   { id: 'REQ-PUB-2', title: '공개 랭킹', endpoint: 'GET /api/public/leaderboard/{kind}', fallback: 'GET /api/leaderboard/{kind} (로그인 필요)' },
   { id: 'REQ-PUB-3', title: '공개 길드 목록', endpoint: 'GET /api/public/guild/directory', fallback: 'GET /api/guild/directory (로그인 필요)' },

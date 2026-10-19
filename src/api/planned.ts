@@ -2,7 +2,8 @@
  * Each tries the planned route first and, when the guild doesn't serve it, assembles the same shape
  * from today's routes. Screens only ever see the planned shape, so when the guild ships an
  * endpoint the site gets faster with no code change. */
-import { ApiError, get } from './http';
+import { chainread } from './chainread';
+import { ApiError, MOCK, get } from './http';
 import { fellBack, isMissing, markMissing } from './requirements';
 import { session } from './session';
 import {
@@ -61,7 +62,23 @@ export interface Dashboard {
   fleet: FleetRow | null; structs: StructRow[]; /** null when the read failed (not "nothing owed"). */ work: WorkRow[] | null; activity: ActivityRow[]; height: number | null;
 }
 
+/** The same dashboard from the chain, when the guild session is missing (chainread.ts). */
+export async function chainDashboard(playerId: string): Promise<Dashboard> {
+  fellBack('CHAIN');
+  const player = await chainread.player(playerId);
+  const [base, height] = await Promise.all([chainread.base(player), chainread.height().catch(() => null)]);
+  return { player, power: chainread.power(player), planet: base.planet, shield_health: null, active_raid: null, fleet: base.fleet, structs: base.structs, work: base.work, activity: [], height };
+}
+
+/** Members-only reads go to the chain when the guild won't answer as this commander. */
+const orChain = <T>(read: () => Promise<T>, fromChain: () => Promise<T>): Promise<T> =>
+  !session.guildLive && session.status.state === 'in' && !MOCK ? fromChain()
+    : read().catch((e) => { if (e instanceof ApiError && e.code === 'auth' && !MOCK) return fromChain(); throw e; });
+
 export function dashboard(playerId: string): Promise<Dashboard> {
+  return orChain(() => guildDashboard(playerId), () => chainDashboard(playerId));
+}
+function guildDashboard(playerId: string): Promise<Dashboard> {
   return planned('REQ-AGG-1', `player/${encodeURIComponent(playerId)}/dashboard`, async () => {
     const player = await g.player(playerId);
     const pid = player.planet_id;
