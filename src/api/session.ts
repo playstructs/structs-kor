@@ -60,10 +60,13 @@ export const session = {
     const pid = wallet.commander?.playerId;
     if (!pid) return;
     try {
-      const t = sessionStorage.getItem(TOKEN_KEY);
+      const t = localStorage.getItem(TOKEN_KEY);
       if (t) setBearer(t);
     } catch { /* storage refused */ }
-    try { if (await signedInAs(pid)) set({ state: 'in', playerId: pid, why: '' }); else setBearer(null); } catch { setBearer(null); }
+    try { if (await signedInAs(pid)) { set({ state: 'in', playerId: pid, why: '' }); return; } setBearer(null); } catch { setBearer(null); }
+    // No live session (an expired token, or Safari never kept the cookie): this device holds the
+    // commander's key, so sign in again without asking. It's a signature, not a transaction.
+    if (wallet.state === 'unlocked') await this.signIn().catch(() => null);
   },
 
   /** Sign in as the commander. The wallet must be unlocked. Other guild requests wait until it's done. */
@@ -90,7 +93,7 @@ export const session = {
       }
       if (token) {
         setBearer(token);
-        try { sessionStorage.setItem(TOKEN_KEY, token); } catch { /* fine */ }
+        try { localStorage.setItem(TOKEN_KEY, token); } catch { /* fine */ }
       } else {
         fellBack('REQ-AUTH-1');
         await login(body);
@@ -115,7 +118,7 @@ export const session = {
   async signOut() {
     await guildApi.logout().catch(() => null);
     setBearer(null);
-    try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* fine */ }
+    try { localStorage.removeItem(TOKEN_KEY); } catch { /* fine */ }
     set({ state: 'out', playerId: null, why: '' });
   },
 };
