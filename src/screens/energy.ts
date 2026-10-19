@@ -67,7 +67,7 @@ function distribution(p: PlayerRow, e: Energy, d: Dist, canSign: boolean): Safe 
 }
 function infusionPanel(e: Energy, inf: Inf, canSign: boolean): Safe {
   return html`<div class="inf-panel">
-    ${e.infusions.length ? html`<ul class="coins">${e.infusions.map((i) => html`<li><span class="coin-ico"></span><div><b><a href="${href(`/o/${i.destination_id}`)}">${entityOf(i.destination_id)} ${i.destination_id}</a></b><small class="mono">주입 ${micro(i.fuel_p ?? i.fuel, 2)} g · 회수 중 ${micro(i.defusing, 2)} g · 수수료 ${n(Number(i.commission))}%</small></div><strong class="mono c-hwang">${watts(Number(i.power_p ?? i.power ?? 0))}</strong>
+    ${e.infusions.length ? html`<ul class="coins">${e.infusions.map((i) => html`<li><span class="coin-ico"></span><div><b><a href="${href(`/o/${i.destination_id}`)}">${entityOf(i.destination_id)} ${i.destination_id}</a></b><small class="mono">주입 ${micro(i.fuel_p ?? i.fuel, 2)} g · 회수 중 ${micro(i.defusing, 2)} g · 리액터 몫 ${n(Number(i.commission))}%</small></div><strong class="mono c-hwang">${watts(Number(i.power_p ?? i.power ?? 0))}</strong>
       <button class="btn ghost sm" data-act="defuse" data-id="${i.destination_id}" data-fuel="${String(i.fuel_p ?? i.fuel)}" ${canSign && Number(i.fuel) > 0 ? '' : 'disabled'}>회수</button></li>`)}</ul>` : html`<p class="note">아직 주입한 알파가 없습니다. 1 g당 약 1 kW 용량이 생깁니다.</p>`}
     <form class="inf-form" data-act="infuseReal" data-on="submit">
       <label class="field"><span>리액터</span><input class="input mono" name="reactor" value="${inf.reactor}" placeholder="3-…" data-act="infReactor" required></label>
@@ -94,11 +94,11 @@ function view(p: PlayerRow, e: Energy, structs: StructRow[], dropKw: number, cut
   return html`
   <div class="grid-cmd">
     <section class="card game-panel grid-flow">
-      <div class="card-head"><h1 style="font-size:28px">전력망 지휘</h1><span class="label c-hwang">GRID COMMAND</span>
+      <div class="card-head"><h1 style="font-size:28px">전력망 지휘</h1>
         <span class="end chip ${use > 1 ? 'jeok' : 'cheong'}">● ${use > 1 ? '정전' : '그리드 온라인'}</span></div>
       <div class="flow">
         <div class="flow-col">
-          <div class="src gold"><span class="label">알파 주입</span><strong class="mono">${watts(infused)}</strong><small>${e.infusions[0] ? `리액터 ${e.infusions[0].destination_id} · 수수료 ${n(e.infusions[0].commission)}%` : '1 g = 1 kW'}</small></div>
+          <div class="src gold"><span class="label">알파 주입</span><strong class="mono">${watts(infused)}</strong><small>${e.infusions[0] ? `리액터 ${e.infusions[0].destination_id} · 리액터 몫 ${n(e.infusions[0].commission)}%` : '1 g = 1 kW'}</small></div>
           <div class="src cheong"><span class="label">필드 발전기 ×${gens.length}</span><strong class="mono">${isDemo ? `${(gens.length * 2).toFixed(1)} kW` : gens.length ? '가동' : '—'}</strong><small>${gens.length ? '행성 발전' : '지상 슬롯에 건설'}</small></div>
           <div class="src"><span class="label">변전소 ${e.substation?.id ?? '—'}</span><strong class="mono">${watts(sec)}</strong><small>${e.substation?.connection_count != null ? `${n(e.substation.connection_count)}명 연결` : '(용량 − 부하) ÷ 연결 수'}</small></div>
         </div>
@@ -125,7 +125,7 @@ ${sl <= 0 && !e.allocations_out.length ? '' : html`      <label class="field"><s
         ${isDemo ? html`
           <button class="btn gold" data-act="infuse" data-g="1" style="justify-content:space-between">알파 1 g 주입 <span class="mono">+1 kW · <kbd>I</kbd></span></button>
           <button class="btn ghost" data-act="infuse" data-g="5" style="justify-content:space-between" ${demo.state.alpha < 5 ? 'disabled' : ''}>알파 5 g 주입 <span class="mono">+5 kW</span></button>` : infusionPanel(e, inf, canSign)}
-        <a class="btn ghost" href="${href('/market')}" style="justify-content:space-between">여유 ${watts(spare)} 판매 <span class="mono c-cheong">거래소 →</span></a>
+        <a class="btn ghost" href="${href('/market')}" style="justify-content:space-between">여유 ${watts(spare)} 판매 <span class="mono c-cheong">시장 →</span></a>
       </div>
       <p class="note">부하가 용량을 넘으면 가장 오래된 외부 할당부터 끊기고, 그 손실이 아래쪽으로 이어집니다.</p>
     </section>

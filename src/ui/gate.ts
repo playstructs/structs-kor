@@ -11,7 +11,7 @@ export function needSession(root: HTMLElement, what: string, _opts: { demo?: boo
   if (session.status.state === 'in' && session.playerId) return session.playerId;
   mount(root, html`
     <section class="card accent game-panel gate" style="max-width:640px;margin:40px auto">
-      <span class="label c-cheong">ACCESS · 사령관 인증</span>
+      <span class="label c-cheong">사령관 인증</span>
       <h1 style="font-size:34px">${what}</h1>
       <p style="margin:0;line-height:1.7">길드 API의 게임 데이터는 길드 회원만 볼 수 있습니다. 바로 플레이로 사령관을 만들거나, 이미 있다면 로그인하세요.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">

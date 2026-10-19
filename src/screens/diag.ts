@@ -37,7 +37,7 @@ const screen: Screen = {
     const view = (): Safe => {
       const used = fallbacksUsed(), d = doctrine();
       return html`
-      <div class="card-head"><h1 style="font-size:28px">시스템 진단</h1><span class="label c-cheong">DIAGNOSTICS</span>
+      <div class="card-head"><h1 style="font-size:28px">시스템 진단</h1>
         <span class="end" style="display:flex;gap:6px"><button class="btn ghost sm" data-act="rerun">다시 점검</button><button class="btn primary sm" data-act="copy">진단 보고서 복사</button></span></div>
       <div class="guild-wrap">
         <section class="card game-panel"><h2>신원</h2><table class="t"><tbody>

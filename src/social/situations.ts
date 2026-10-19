@@ -43,9 +43,9 @@ export function battleSituation(o: { title: string; win: number; mine: string; t
 }
 
 export function offerSituation(p: ProviderRow, by?: string): Situation {
-  const den = p.rate_denom === 'ualpha' ? 'α' : p.rate_denom;
+  const den = p.rate_denom === 'ualpha' ? 'g' : p.rate_denom;
   return {
-    t: 'market', title: `전력 판매 — ${micro(perKwDay(p.rate_amount), 3)} ${den}/kW·일`, sub: `공급자 ${p.id} · 변전소 ${p.substation_id}`,
+    t: 'market', title: `전력 판매 — ${micro(perKwDay(p.rate_amount), 3)} ${den}/kW 하루`, sub: `공급자 ${p.id} · 변전소 ${p.substation_id}`,
     lines: [['용량', `${n(Number(p.capacity_minimum) / KW, 1)}–${n(Number(p.capacity_maximum) / KW, 1)} kW`], ['기간', `${n(Number(p.duration_minimum) / BLOCKS_PER_DAY, 1)}–${n(Number(p.duration_maximum) / BLOCKS_PER_DAY, 1)}일`], ['접근', /^open/i.test(p.access_policy) ? '공개' : /^guild/i.test(p.access_policy) ? '길드 전용' : '비공개']],
     ids: [p.id, p.owner].filter(Boolean), go: '/market', tone: 'hwang', by, at: Date.now(),
   };
@@ -54,7 +54,7 @@ export function offerSituation(p: ProviderRow, by?: string): Situation {
 export function guildSituation(o: { id: string; name: string; tag?: string; members: number; ratio?: number | null; note?: string; by?: string }): Situation {
   return {
     t: 'guild', title: `${o.name}${o.tag ? ` [${o.tag}]` : ''} — 함께할 사령관 모집`, sub: o.note,
-    lines: [['길드원', `${n(o.members)}명`], ['담보율', o.ratio == null ? '—' : n(o.ratio, 3)], ['길드', o.id]],
+    lines: [['길드원', `${n(o.members)}명`], ['교환 비율', o.ratio == null ? '—' : n(o.ratio, 3)], ['길드', o.id]],
     ids: [o.id], go: `/guild?id=${o.id}`, tone: 'hwang', by: o.by, at: Date.now(),
   };
 }

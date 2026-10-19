@@ -296,7 +296,7 @@ function adoptStored(): boolean {
   } catch { return false; }
 }
 let wasLeader = false;
-/* Coming back on consecutive days pays: 2 α a day of the streak, up to 20. */
+/* Coming back on consecutive days pays: 2 g a day of the streak, up to 20. */
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 function checkStreak() {
   const today = dayKey(), y = new Date(); y.setDate(y.getDate() - 1);
@@ -309,7 +309,7 @@ function checkStreak() {
   if (n >= 2 && played) {
     const g = Math.min(20, 2 * n);
     s.alpha += g;
-    chronicle('cheong', `연속 ${n}일 복귀 · +${g} α`);
+    chronicle('cheong', `연속 ${n}일 복귀 · +${g} g`);
     emit('streak', `${n}|${g}`);
   }
 }
@@ -570,7 +570,7 @@ function bountyStep() {
   const patron = merchant && r() < 0.5 ? merchant : patrons[Math.floor(r() * patrons.length)];
   const reward = Math.round(6 + target.fleet * 1.5 + r() * 6);
   s.bounty = { target: target.id, patron: patron.id, reward, until: s.height + BOUNTY.lasts };
-  log('event', `현상금 · ${target.name} ${reward} α`);
+  log('event', `현상금 · ${target.name} ${reward} g`);
   emit('news', `${patron.name}이(가) ${target.name}에게 현상금 ${reward} α를 걸었습니다 · ${BOUNTY.lasts}블록 안에 약탈하세요`);
 }
 function warStep() {
@@ -612,7 +612,7 @@ function repsStep() {
   if (on('warden')) for (const x of s.structs) if ([14, 15, 20].includes(x.type) && !x.online && x.hp > 0 && x.building == null && (x.type === 20 || structsKw() + soldKw() + kwOf(x.type) * ocf(x, OC.power) <= capacityKw())) { x.online = true; repNote(`${STRUCT_TYPE[x.type] ?? TYPES_BY_ID[x.type].type} 재가동`); }
   if (on('mechanic') && !s.raid && s.height % 5 === 0) {
     const worst = [...s.structs].filter((x) => x.hp < x.max).sort((a, b) => a.hp / a.max - b.hp / b.max)[0];
-    if (worst) { const cost = (worst.hp <= 0 ? worst.max : worst.max - worst.hp) * 0.5; if (cost <= s.alpha / 3) { s.alpha -= cost; worst.hp = worst.max; worst.oc = false; if (worst.type === 20 || structsKw() + soldKw() + kwOf(worst.type) <= capacityKw()) worst.online = true; repNote(`${STRUCT_TYPE[worst.type] ?? TYPES_BY_ID[worst.type].type} 수리 −${cost.toFixed(1)} α`); } }
+    if (worst) { const cost = (worst.hp <= 0 ? worst.max : worst.max - worst.hp) * 0.5; if (cost <= s.alpha / 3) { s.alpha -= cost; worst.hp = worst.max; worst.oc = false; if (worst.type === 20 || structsKw() + soldKw() + kwOf(worst.type) <= capacityKw()) worst.online = true; repNote(`${STRUCT_TYPE[worst.type] ?? TYPES_BY_ID[worst.type].type} 수리 −${cost.toFixed(1)} g`); } }
   }
   if (on('trader') && s.height % 5 === 0) {
     const h = s.priceHist, avg = h.slice(-30).reduce((a, x) => a + x, 0) / Math.min(30, h.length), spare = Math.max(0, ownKw() - structsKw() - soldKw());
@@ -813,7 +813,7 @@ function jobRepelled(startedAt?: number) {
   const a = s.jobs?.active;
   if (!a || a.kind !== 'defend' || s.height > a.until) return;
   if (startedAt != null && startedAt < (a.taken ?? 0)) return;
-  if (++a.count >= a.need) { s.alpha += a.reward; s.jobs!.done = (s.jobs!.done ?? 0) + 1; chronicle('cheong', `방어 의뢰 완수 · +${a.reward} α`); emit('bounty', `${rivals().find((x) => x.id === a.who)?.name ?? '의뢰인'} 방어 의뢰 보수 ${a.reward} α`); s.jobs!.active = null; }
+  if (++a.count >= a.need) { s.alpha += a.reward; s.jobs!.done = (s.jobs!.done ?? 0) + 1; chronicle('cheong', `방어 의뢰 완수 · +${a.reward} g`); emit('bounty', `${rivals().find((x) => x.id === a.who)?.name ?? '의뢰인'} 방어 의뢰 보수 ${a.reward} g`); s.jobs!.active = null; }
 }
 
 /* ── 대출 (credit): 청룡 상단 lends against your future. 20% on top, due in 200 blocks, repaid
@@ -825,8 +825,8 @@ function loanStep() {
   const lender = rivals().find((x) => x.id === '1-1004');
   if (s.alpha >= l.owed) {
     s.alpha -= l.owed; if (lender) lender.alpha += l.owed;
-    if (catching) awayLoan = `대출 상환 −${l.owed.toFixed(1)} α`;
-    emit('cheong', `청룡 상단 대출 상환 · −${l.owed.toFixed(1)} α`);
+    if (catching) awayLoan = `대출 상환 −${l.owed.toFixed(1)} g`;
+    emit('cheong', `청룡 상단 대출 상환 · −${l.owed.toFixed(1)} g`);
   } else {
     // Default: whatever alpha there is, then ore at twice the shortfall; and the house is angry.
     const short = l.owed - s.alpha; if (lender) lender.alpha += s.alpha; s.alpha = 0;
@@ -858,8 +858,8 @@ function raceStep() {
   // Only members who were in for the whole season share the prize (no switching in at the end).
   if (s.guild?.id === winner && s.guild.joinedAt <= s.race.start) {
     s.alpha += RACE.prize; s.raceWins = (s.raceWins ?? 0) + 1;
-    chronicle('hwang', `길드 전 우승 · ${name} · +${RACE.prize} α`);
-    emit('race', `${name} 우승! 길드원 보상 +${RACE.prize} α`);
+    chronicle('hwang', `길드 전 우승 · ${name} · +${RACE.prize} g`);
+    emit('race', `${name} 우승! 길드원 보상 +${RACE.prize} g`);
   } else emit('news', `길드 전 종료 · ${name} 우승${s.guild ? ` · ${GUILDS.find((g) => g.id === s.guild!.id)!.name} ${order.findIndex(([g]) => g === s.guild!.id) + 1}위` : ''}`);
   s.race = { start: s.height, pts: { blue: 0, gold: 0, iron: 0 } };
 }
@@ -937,15 +937,15 @@ function choicesOf(id: DecisionId, r: Rival): { title: string; text: string; cho
   const odds = ultOdds(r), strong = odds >= 0.5;
   switch (id) {
     case 'smuggler': return { title: '밀수선 접근', text: '정체불명의 화물선이 광석을 싸게 넘기겠답니다. 출처는 묻지 말라는군요.',
-      choices: [{ label: '매입', effect: '−6 α · 광석 +30 · 다음 습격이 8블록 빨라짐', ok: s.alpha >= 6 }, { label: '돌려보내기', effect: '아무 일도 없음' }] };
+      choices: [{ label: '매입', effect: '−6 g · 광석 +30 · 다음 습격이 8블록 빨라짐', ok: s.alpha >= 6 }, { label: '돌려보내기', effect: '아무 일도 없음' }] };
     case 'pact': return { title: `${r.name}의 불가침 제안`, text: `${r.name}이(가) 120블록 동안 서로 공격하지 말자고 합니다. 대가로 알파 8 g을 요구합니다.`,
-      choices: [{ label: '조약 체결', effect: `−8 α · ${r.name} 120블록 습격 없음`, ok: s.alpha >= 8 }, { label: '거절', effect: '이 세력의 다음 습격이 앞당겨짐' }] };
+      choices: [{ label: '조약 체결', effect: `−8 g · ${r.name} 120블록 습격 없음`, ok: s.alpha >= 8 }, { label: '거절', effect: '이 세력의 다음 습격이 앞당겨짐' }] };
     case 'orebuyer': return { title: '광석 대량 매입 제안', text: '청룡 상단 중개인이 비축 광석을 지금 전부 사겠답니다. 정제보다 싸지만, 약탈당할 광석이 사라집니다.',
-      choices: [{ label: '전량 매도', effect: `광석 ${Math.floor(s.ore)} → +${(s.ore * 0.75).toFixed(1)} α (정제가의 75%)`, ok: s.ore >= 1 }, { label: '보유', effect: '정제를 계속함' }] };
+      choices: [{ label: '전량 매도', effect: `광석 ${Math.floor(s.ore)} → +${(s.ore * 0.75).toFixed(1)} g (정제가의 75%)`, ok: s.ore >= 1 }, { label: '보유', effect: '정제를 계속함' }] };
     case 'mercs': return { title: '용병 함장', text: '떠돌이 함장이 궤도 방어막을 채워 주겠답니다. 다음 습격 전에 쓸 만합니다.',
-      choices: [{ label: '고용', effect: '−5 α · 방어막 100%', ok: s.alpha >= 5 && s.shield < 100 }, { label: '사양', effect: '아무 일도 없음' }] };
+      choices: [{ label: '고용', effect: '−5 g · 방어막 100%', ok: s.alpha >= 5 && s.shield < 100 }, { label: '사양', effect: '아무 일도 없음' }] };
     case 'ultimatum': return { title: `${r.name}에게 최후통첩`, text: strong ? `우리 세력이 ${r.name}을(를) 압도합니다. 공물을 요구할 수 있습니다.` : `${r.name}은(는) 만만치 않습니다. 요구하면 반발할 수 있습니다.`,
-      choices: [{ label: '공물 요구', effect: `성공 확률 ${Math.round(odds * 100)}% · 성공 +${Math.min(12, r.alpha * 0.3).toFixed(1)} α · 실패 시 곧 습격` }, { label: '보류', effect: '아무 일도 없음' }] };
+      choices: [{ label: '공물 요구', effect: `성공 확률 ${Math.round(odds * 100)}% · 성공 +${Math.min(12, r.alpha * 0.3).toFixed(1)} g · 실패 시 곧 습격` }, { label: '보류', effect: '아무 일도 없음' }] };
   }
 }
 /** Your full power (the same score the standings use), against a rival's. */
@@ -982,12 +982,12 @@ function decide(i: number): string | null {
   if (i === 0) switch (d.id) {
     case 'smuggler': s.alpha -= 6; s.ore += 30; s.nextRaid = Math.max(1, s.nextRaid - 8); note = '광석 +30'; break;
     case 'pact': s.alpha -= 8; s.pacts = { ...s.pacts, [r.id]: s.height + 120 }; note = `${r.name} 불가침 체결`; break;
-    case 'orebuyer': { const a = s.ore * 0.75; s.alpha += a; note = `광석 ${Math.floor(s.ore)} 매도 +${a.toFixed(1)} α`; s.ore = 0; break; }
+    case 'orebuyer': { const a = s.ore * 0.75; s.alpha += a; note = `광석 ${Math.floor(s.ore)} 매도 +${a.toFixed(1)} g`; s.ore = 0; break; }
     case 'mercs': s.alpha -= 5; s.shield = 100; note = '방어막 100%'; break;
     case 'ultimatum': {
       const ratio = netWorthOf() / Math.max(1, rivalWorth(r));
       // Strength decides, with the luck fixed when the card opened (waiting doesn't help).
-      if (ratio * (d.luck ?? 1) > 1.4) { const a = Math.min(12, r.alpha * 0.3); r.alpha -= a; s.alpha += a; note = `${r.name} 공물 +${a.toFixed(1)} α`; }
+      if (ratio * (d.luck ?? 1) > 1.4) { const a = Math.min(12, r.alpha * 0.3); r.alpha -= a; s.alpha += a; note = `${r.name} 공물 +${a.toFixed(1)} g`; }
       else { s.rebel = r.id; s.nextRaid = Math.min(s.nextRaid, 4); note = `${r.name} 거절 · 함대 출격`; }
       break;
     }
@@ -1427,7 +1427,7 @@ export const demo = {
     let note = '';
     if (id === 'shield') { s.shield = 100; note = '방어막 100%'; }
     else if (id === 'bribe') { s.nextRaid += BLACK.bribe; note = `다음 습격 ${demo.nextRaider()?.in ?? s.nextRaid}블록 뒤`; }
-    else if (id === 'scrap') { const n = Math.min(BLACK.scrapMax, Math.floor(s.ore)); s.ore -= n; const got = Math.round(n * BLACK.scrapRate * 10) / 10; s.alpha += got; note = `광석 ${n} → +${got} α`; }
+    else if (id === 'scrap') { const n = Math.min(BLACK.scrapMax, Math.floor(s.ore)); s.ore -= n; const got = Math.round(n * BLACK.scrapRate * 10) / 10; s.alpha += got; note = `광석 ${n} → +${got} g`; }
     else if (id === 'cool') { s.cd = {}; note = '능력 재사용 가능'; }
     else { for (const x of s.structs) if (x.hp > 0 && x.hp < x.max) x.hp = x.max; note = '구조체 수리 완료'; }
     b.offers = b.offers.filter((x) => x.id !== id); b.deals = (b.deals ?? 0) + 1;
@@ -1444,7 +1444,7 @@ export const demo = {
     if (o.kind === 'deliver') {
       if (s.ore < o.need) return `광석 ${o.need} 단위 필요 (보유 ${Math.floor(s.ore)})`;
       s.ore -= o.need; s.alpha += o.reward; j.done = (j.done ?? 0) + 1;
-      chronicle('cheong', `납품 의뢰 · 광석 ${o.need} → +${o.reward} α`);
+      chronicle('cheong', `납품 의뢰 · 광석 ${o.need} → +${o.reward} g`);
     } else {
       if (j.active) return '이미 진행 중인 방어 의뢰가 있습니다';
       // Only raids that start after you sign count (no signing for a fight already won).
@@ -1822,8 +1822,8 @@ export const demo = {
       if (!won || !s.boss) { if (s.boss) s.boss.engaged = undefined; persist(); for (const f of changeFns) f(); return { ore: 0, alpha: 0, promoted }; }
       const g = VOID.reward + 10 * s.boss.n;
       s.alpha += g; s.voidKills = (s.voidKills ?? 0) + 1; s.boss = null; s.nextBoss = s.height + VOID.every;
-      chronicle('hwang', `공허 함대 격파 · 전리품 +${g} α`);
-      log('raid_status', `공허 함대 격파 +${g} α`);
+      chronicle('hwang', `공허 함대 격파 · 전리품 +${g} g`);
+      log('raid_status', `공허 함대 격파 +${g} g`);
       persist(); for (const f of changeFns) f();
       return { ore: 0, alpha: g, promoted };
     }
@@ -1837,9 +1837,9 @@ export const demo = {
       const b = s.bounty; s.bounty = null;
       b.reward = Math.round(b.reward * (doc('war') ? 1.5 : 1));
       s.alpha += b.reward; s.bountiesClaimed = (s.bountiesClaimed ?? 0) + 1; raceAdd(25);
-      chronicle('cheong', `현상금 ${b.reward} α 수령 · ${r.name} 약탈`);
+      chronicle('cheong', `현상금 ${b.reward} g 수령 · ${r.name} 약탈`);
       const patron = rivals().find((x) => x.id === b.patron);
-      log('raid_status', `현상금 +${b.reward} α`);
+      log('raid_status', `현상금 +${b.reward} g`);
       emit('bounty', `${patron?.name ?? '의뢰인'}이(가) 현상금 ${b.reward} α를 지급했습니다`);
     }
     // A counter-raid inside the window takes more; win or lose, the opening is spent.
@@ -1865,8 +1865,8 @@ export const demo = {
     if (!finite(g) || g <= 0) return;
     adoptStored(); // another tab may have moved on: act on the newest base
     s.alpha += g;
-    chronicle('cheong', `${why} · +${g} α`);
-    log('event', `${why} +${g} α`);
+    chronicle('cheong', `${why} · +${g} g`);
+    log('event', `${why} +${g} g`);
     persist(); for (const f of changeFns) f();
   },
   /** Pay alpha for something outside the base (scouting); false when short. */

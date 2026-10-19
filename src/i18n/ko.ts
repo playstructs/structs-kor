@@ -4,7 +4,7 @@ export const AMBIT: Record<string, string> = { space: '우주', air: '공중', l
 export const AMBITS = ['space', 'air', 'land', 'water'] as const;
 
 export const STRUCT_TYPE: Record<number, string> = {
-  1: 'CMD 함선', 2: '전함', 3: '스타파이터', 4: '프리깃',
+  1: '지휘함', 2: '전함', 3: '스타파이터', 4: '프리깃',
   5: '추격 전투기', 6: '스텔스 폭격기', 7: '고고도 요격기',
   8: '자주포', 9: '탱크', 10: 'SAM 발사대',
   11: '순양함', 12: '구축함', 13: '잠수함',
@@ -40,6 +40,6 @@ export const ORDER_KO: Record<string, string> = {
   MsgReactorDefuse: '리액터 회수', MsgAgreementOpen: '전력 계약', MsgAgreementClose: '계약 해지', MsgAgreementDurationIncrease: '계약 연장',
   MsgProviderCreate: '공급자 등록', MsgProviderDelete: '공급자 삭제', MsgGuildMembershipRequest: '가입 신청', MsgPlayerUpdateName: '이름 변경',
   MsgPlayerUpdatePfp: '초상화 변경', MsgPlanetUpdateName: '행성 이름 변경', MsgAllocationCreate: '할당 생성', MsgAllocationDelete: '할당 삭제',
-  MsgGuildBankMint: '토큰 발행', MsgGuildBankRedeem: '토큰 상환', MsgGuildBankConvert: '토큰 교환', MsgSubstationPlayerConnect: '변전소 연결',
+  MsgGuildBankMint: '화폐 만들기', MsgGuildBankRedeem: '화폐 되돌림', MsgGuildBankConvert: '화폐 교환', MsgSubstationPlayerConnect: '변전소 연결',
 };
 export const orderName = (msg: string) => ORDER_KO[msg] ?? msg.replace(/^Msg/, '');

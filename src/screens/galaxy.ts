@@ -180,24 +180,24 @@ const screen: Screen = {
       const v = demo.boss;
       if (sel === 'void' && v) return html`<section class="card game-panel accent intel void-intel"><div class="card-head"><h2>공허 함대</h2><span class="chip jeok mono">${v.left}블록 남음</span></div>
         <p class="note">은하 바깥에서 온 함대입니다. ${v.left}블록 뒤 떠나면서 누군가를 덮칩니다 — 당신일 수도, 경쟁 세력일 수도 있습니다.</p>
-        <div class="g2" style="gap:8px"><div class="stat"><small>함대</small><strong class="c-jeok">${v.fleet}기</strong></div><div class="stat"><small>격파 전리품</small><strong class="c-hwang">${v.reward} α</strong></div></div>
+        <div class="g2" style="gap:8px"><div class="stat"><small>함대</small><strong class="c-jeok">${v.fleet}기</strong></div><div class="stat"><small>격파 전리품</small><strong class="c-hwang">${v.reward} g</strong></div></div>
         <a class="btn danger lg" href="${href('/sim?raid=void')}">요격 출격</a>
         <p class="note">놓아두면: 덮친 세력의 함대 −2, 광석 절반. 당신을 덮치면 광석 절반과 구조체 손상.</p></section>`;
       const r = demo.rivals().find((x) => x.id === sel);
       if (!r) return html`<section class="card game-panel"><h2>정보</h2><p class="note">행성을 눌러 세력의 정보를 확인하세요. 붉은 점선은 진행 중인 습격 경로입니다.</p>
         ${hegemonyMeter()}
         <div class="stat"><small>내 세력</small><strong>${n(Math.round(demo.netWorth()))}</strong></div>
-        <div class="g2" style="gap:8px"><div class="stat"><small>공물 · 블록당</small><strong class="c-hwang">+${demo.rates().tribute.toFixed(3)} α</strong></div>
+        <div class="g2" style="gap:8px"><div class="stat"><small>공물 · 블록당</small><strong class="c-hwang">+${demo.rates().tribute.toFixed(3)} g</strong></div>
         <div class="stat"><small>속국</small><strong>${demo.rivals().filter((r) => r.vassal != null).length} / ${demo.vassalCap()}</strong></div></div>
         <p class="note">세력을 ${DOMINION.raidsToSubjugate}번 약탈하면 복속을 요구할 수 있습니다. 복속한 세력은 습격하지 않고 매 블록 공물을 바칩니다. 함대가 다시 커지면 반란을 일으킵니다.</p></section>`;
       if (r.vassal != null) {
         const loy = demo.loyalty(r);
         return html`<section class="card game-panel accent intel"><div class="card-head">${raw(portraitHtml(seededPfp(r.id), 56))}<h2>${r.name}</h2><span class="chip hwang mono">♛ 복속</span></div>
           <div class="g2" style="gap:8px">
-            <div class="stat"><small>공물 · 블록당</small><strong class="c-hwang">+${demo.tributeOf(r).toFixed(3)} α</strong></div>
+            <div class="stat"><small>공물 · 블록당</small><strong class="c-hwang">+${demo.tributeOf(r).toFixed(3)} g</strong></div>
             <div class="stat"><small>복속 기간</small><strong>${n(demo.state.height - r.vassal)}블록</strong></div>
             <div class="stat"><small>함대</small><strong class="${r.fleet >= DOMINION.rebelFleet ? 'c-jeok' : ''}">${r.fleet}기</strong></div>
-            <div class="stat"><small>누적 공물 (전체)</small><strong>${demo.tributeTotal.toFixed(1)} α</strong></div>
+            <div class="stat"><small>누적 공물 (전체)</small><strong>${demo.tributeTotal.toFixed(1)} g</strong></div>
           </div>
           <div class="loyal"><span class="label ${loy < 0.25 ? 'c-jeok' : 'dim'}">충성도 ${Math.round(loy * 100)}%${loy <= 0 ? ' · 반란 위험!' : ''}</span><div class="bar"><i style="width:${Math.round(loy * 100)}%;background:${loy < 0.25 ? 'var(--jeok)' : loy < 0.6 ? 'var(--hwang)' : 'var(--cheong)'}"></i></div></div>
           <button class="btn gold" data-act="disarm" ${r.fleet <= 2 ? 'disabled' : ''} style="justify-content:space-between">함선 해체 명령 <span class="mono">${DOMINION.disarmCost} g · 함대 −1</span></button>
@@ -206,7 +206,7 @@ const screen: Screen = {
       const sc = scouted()[r.id] === raidSeed(r);
       const fleet = sc ? rivalFleet(r) : [];
       const threat = demo.rivalWorth(r) / Math.max(1, demo.netWorth());
-      return html`<section class="card game-panel accent intel"><div class="card-head">${raw(portraitHtml(seededPfp(r.id), 56))}<h2>${r.name}</h2><span class="chip jeok mono">${r.tag}</span>${demo.pactLeft(r.id) ? html`<span class="chip cheong mono">불가침 ${demo.pactLeft(r.id)}블록</span>` : ''}${demo.bounty?.target === r.id ? html`<span class="chip hwang mono">현상금 ${demo.bountyPayout()} α · ${demo.bounty.left}블록</span>` : ''}</div>
+      return html`<section class="card game-panel accent intel"><div class="card-head">${raw(portraitHtml(seededPfp(r.id), 56))}<h2>${r.name}</h2><span class="chip jeok mono">${r.tag}</span>${demo.pactLeft(r.id) ? html`<span class="chip cheong mono">불가침 ${demo.pactLeft(r.id)}블록</span>` : ''}${demo.bounty?.target === r.id ? html`<span class="chip hwang mono">현상금 ${demo.bountyPayout()} g · ${demo.bounty.left}블록</span>` : ''}</div>
         <div class="g2" style="gap:8px">
           <div class="stat"><small>세력</small><strong>${n(Math.round(demo.rivalWorth(r)))}</strong></div>
           <div class="stat"><small>위협도</small><strong class="${threat > 1.2 ? 'c-jeok' : threat > 0.8 ? 'c-warn' : 'c-cheong'}">${threat > 1.2 ? '높음' : threat > 0.8 ? '보통' : '낮음'}</strong></div>
@@ -220,7 +220,7 @@ const screen: Screen = {
           : html`<button class="btn ghost" data-act="scout" style="justify-content:space-between">정찰기 파견 <span class="mono c-hwang">1 g · <kbd>S</kbd></span></button>`}
         ${demo.ally?.id === r.id ? html`<div class="notice">동맹 · ${demo.ally.left}블록 남음. 이 세력은 당신을 습격하지 않고, 당신의 습격에 빈 슬롯만큼 함선을 최대 ${ALLY.ships.length}척 보냅니다. 공작을 벌이면 동맹이 깨집니다.</div>`
           : html`<button class="btn ghost" data-act="ally" ${demo.ally || demo.state.alpha < ALLY.cost || r.id === '1-666' ? 'disabled' : ''} style="justify-content:space-between">${r.id === '1-666' ? '동맹 불가 · 누구와도 손잡지 않음' : `동맹 제안 · ${ALLY.term}블록`} <span class="mono">${ALLY.cost} g</span></button>`}
-        ${r.id !== '1-666' ? (() => { const st = demo.stake(r.id); return html`<div class="invest"><span class="label dim">투자${st.g ? html` · <span class="c-hwang mono">지분 ${n(st.g, 1)} g · +${st.perBlock.toFixed(3)} α/블록</span>` : ''}</span>
+        ${r.id !== '1-666' ? (() => { const st = demo.stake(r.id); return html`<div class="invest"><span class="label dim">투자${st.g ? html` · <span class="c-hwang mono">지분 ${n(st.g, 1)} g · +${st.perBlock.toFixed(3)} g/블록</span>` : ''}</span>
           <div class="invest-row"><button class="btn ghost" data-act="invest" data-g="5" ${demo.state.alpha < 5 || st.g + 5 > INVEST.max ? 'disabled' : ''}>+5 g</button><button class="btn ghost" data-act="invest" data-g="20" ${demo.state.alpha < 20 || st.g + 20 > INVEST.max ? 'disabled' : ''}>+20 g</button><button class="btn ghost" data-act="divest" ${st.g ? '' : 'disabled'}>매각 ${st.g ? `+${n(st.g * (1 - INVEST.fee), 1)} g` : ''}</button></div>
           <small class="dim">이 세력의 금고에서 블록마다 지분의 ${(INVEST.rate * 100).toFixed(1)}%가 배당됩니다. 이 세력을 약탈하면 지분 ${Math.round(INVEST.raidHit * 100)}%가 날아갑니다.</small></div>`; })() : ''}
         <div class="ops"><span class="label dim">공작${(r.sabotaged ?? 0) > demo.state.height ? html` · <span class="c-cheong">사보타주 ${(r.sabotaged ?? 0) - demo.state.height}블록</span>` : ''}</span>
@@ -229,18 +229,18 @@ const screen: Screen = {
           <small class="dim">발각되면 불가침이 깨지고 보복 함대가 옵니다.</small></div>
         <div class="loyal"><span class="label dim">복속까지 약탈 ${Math.min(r.raided, DOMINION.raidsToSubjugate)} / ${DOMINION.raidsToSubjugate}</span><div class="bar"><i style="width:${Math.min(100, (r.raided / DOMINION.raidsToSubjugate) * 100)}%;background:var(--hwang)"></i></div></div>
         ${r.raided >= DOMINION.raidsToSubjugate ? html`<button class="btn gold lg" data-act="subjugate" style="justify-content:space-between">♛ 복속 요구 <span class="mono">주둔군 ${DOMINION.cost} g · 함대 4기로</span></button>` : ''}
-        ${demo.ally?.id === r.id ? html`<p class="note">동맹은 습격할 수 없습니다.</p>` : html`<a class="btn danger lg" href="${href('/sim?raid=' + r.id)}">${demo.revenge?.rival === r.id ? `보복 출격 (${demo.revenge.left}블록) · 예상 노획 ${n(Math.floor(Math.min(r.ore, r.ore * 0.6 * REVENGE.bonus)))}` : `습격 출격 · 예상 노획 ${n(Math.floor(r.ore * 0.6))}`}${demo.bounty?.target === r.id ? ` + 현상금 ${demo.bountyPayout()} α` : ''}${demo.pactLeft(r.id) ? ' · 불가침 파기' : ''}${demo.stake(r.id).g ? ` · 지분 −${n(demo.stake(r.id).g * INVEST.raidHit, 1)} g` : ''}</a>`}
+        ${demo.ally?.id === r.id ? html`<p class="note">동맹은 습격할 수 없습니다.</p>` : html`<a class="btn danger lg" href="${href('/sim?raid=' + r.id)}">${demo.revenge?.rival === r.id ? `보복 출격 (${demo.revenge.left}블록) · 예상 노획 ${n(Math.floor(Math.min(r.ore, r.ore * 0.6 * REVENGE.bonus)))}` : `습격 출격 · 예상 노획 ${n(Math.floor(r.ore * 0.6))}`}${demo.bounty?.target === r.id ? ` + 현상금 ${demo.bountyPayout()} g` : ''}${demo.pactLeft(r.id) ? ' · 불가침 파기' : ''}${demo.stake(r.id).g ? ` · 지분 −${n(demo.stake(r.id).g * INVEST.raidHit, 1)} g` : ''}</a>`}
         <p class="note">약탈 성공 시 이 세력의 함대가 1기 줄고, 다음 함대 구성이 바뀝니다.</p></section>`;
     };
 
     const news = (): Safe => {
       const list = demo.news;
-      return html`<section class="card game-panel"><div class="card-head"><h2>은하 전황</h2><span class="end label c-hwang">WIRE</span></div>
+      return html`<section class="card game-panel"><div class="card-head"><h2>은하 전황</h2></div>
         <span class="label dim">세력 추이</span>${powerChart()}
         ${list.length ? html`<ol class="newswire">${list.map((x) => html`<li><span class="mono faint">#${n(x.h)}</span> ${x.text}</li>`)}</ol>` : html`<p class="note">세력들이 서로 습격하면 여기에 소식이 올라옵니다. 약해진 세력은 복속할 기회입니다.</p>`}</section>`;
     };
     const view = (): Safe => html`
-      <div class="card-head"><h1 style="font-size:28px">은하 지도</h1><span class="label c-cheong">GALAXY</span><span class="end mono dim">블록 #${n(demo.state.height)}</span></div>
+      <div class="card-head"><h1 style="font-size:28px">은하 지도</h1><span class="end mono dim">블록 #${n(demo.state.height)}</span></div>
       <div class="gx-wrap"><section class="card game-panel gx-card">${map()}<span class="gx-hint mono">휠·<kbd>+</kbd><kbd>−</kbd> 확대 · 드래그 이동 · <kbd>0</kbd> 전체</span></section><aside>${intel()}${news()}</aside></div>`;
 
     const paint = () => {
@@ -303,7 +303,7 @@ const screen: Screen = {
         const e = demo.subjugate(r.id);
         if (e) { sfx.play('error'); toast(e); return; }
         sfx.play('victory');
-        banner({ kicker: '복속', title: `${r.name} 무릎을 꿇다`, sub: `매 블록 공물 +${demo.tributeOf(r).toFixed(3)} α`, tone: 'gold', ms: 2600 });
+        banner({ kicker: '복속', title: `${r.name} 무릎을 꿇다`, sub: `매 블록 공물 +${demo.tributeOf(r).toFixed(3)} g`, tone: 'gold', ms: 2600 });
         career.award(60, `${r.name} 복속`);
         setTimeout(() => transmit(r.id, 'submit'), 1200);
         paint();
@@ -369,7 +369,7 @@ async function realGalaxy(root: HTMLElement, pid: string): Promise<() => void> {
     const p = others.find((x) => x.id === sel);
     const rank = [...leaders].findIndex((l) => l.player_id === pid);
     return html`
-      <div class="card-head"><h1 style="font-size:28px">은하 지도</h1><span class="label c-cheong">GALAXY</span><span class="end mono dim">행성 ${n(planets)}개 · 상위 사령관 ${others.length}명</span></div>
+      <div class="card-head"><h1 style="font-size:28px">은하 지도</h1><span class="end mono dim">행성 ${n(planets)}개 · 상위 사령관 ${others.length}명</span></div>
       <div class="gx-wrap"><section class="card game-panel gx-card">${drawGalaxy(nodes, route, sel, ref, Math.min(600, Math.max(200, planets)))}</section>
       <aside>${p ? html`<section class="card game-panel accent intel"><div class="card-head">${raw(portraitHtml(p.pfp, 56))}<h2>${p.username || p.id}</h2>${p.tag ? html`<span class="chip jeok mono">${p.tag}</span>` : ''}</div>
           <div class="g2" style="gap:8px">

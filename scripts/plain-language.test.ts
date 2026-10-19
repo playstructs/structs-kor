@@ -21,6 +21,13 @@ test('no chain or crypto vocabulary in what players read', () => {
   assert.deepEqual(hits, []);
 });
 
+test('no finance jargon or English screen labels in what players read', () => {
+  const words = ['에스크로', '슬리피지', '담보율', '발행량', '토큰', '위약금', '수수료', '알파 환산', '거래소', '튜토리얼', 'CMD 함선', 'FTL', 'kW·일', 'PID #'];
+  const english = /<span class="(?:end )?label[^"]*">[A-Z][A-Z ·]{3,}<\/span>/;
+  const hits = ui.flatMap((p) => [...words.filter((w) => code(p).includes(w)).map((w) => `${p}: "${w}"`), ...(english.test(code(p)) ? [`${p}: English label`] : [])]);
+  assert.deepEqual(hits, []);
+});
+
 test('orders send without a confirmation prompt (only wiping the account from the browser asks)', () => {
   const prompts = ui.flatMap((p) => [...code(p).matchAll(/\bconfirm\(|await ask\(/g)].map(() => p));
   const allowed = new Set(['src/screens/profile.ts', 'src/screens/chat.ts', 'src/screens/console.ts']); // wallet wipe; chat rooms; demo era (retiring)

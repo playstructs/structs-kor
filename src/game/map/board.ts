@@ -55,7 +55,6 @@ export interface BoardOpts {
 
 type Col = 'DC' | 'DP' | 'DF' | 'X' | 'AF' | 'AC';
 const TILE = 128, ROWS = 2;
-const AMBIT_LABEL: Record<Ambit, string> = { space: 'SPACE', air: 'AIR', land: 'LAND', water: 'WATER' };
 
 import { planAttack, type AnimEvent } from './plan';
 
@@ -172,7 +171,7 @@ export class Board {
       html += transition(prev, ambit);
       prev = ambit;
       for (let r = 0; r < ROWS; r++) {
-        html += `<div class="bd-row">${r === 0 ? `<div class="bd-band"><span>${AMBIT_LABEL[ambit]}</span><b>${AMBIT_KO[ambit]}</b></div>` : ''}`;
+        html += `<div class="bd-row">${r === 0 ? `<div class="bd-band"><b>${AMBIT_KO[ambit]}</b></div>` : ''}`;
         for (let i = 0; i < n; i++) {
           const col = cols[i], side: BoardSide = i < divider ? 'defender' : 'attacker';
           const bg = `background-color:${AMBIT_BG[ambit]};background-image:url('${tileUrl(ambit, r === 0 ? 1 : 3, this.hpos(i))}')`;
@@ -363,7 +362,7 @@ export class Board {
       ? `<img src="${import.meta.env.BASE_URL}img/structs/deployment-indicator/deployment-indicator.gif" style="z-index:200" alt="">`
       : stillLayers(s.typeId, hp, s.maxHealth, s.hidden).map((l) => `<img src="${l.src}" style="z-index:${l.z}" alt="">`).join('');
     const pips = Array.from({ length: s.maxHealth }, (_, i) => `<i class="${i < hp ? 'on' : ''}"></i>`).join('');
-    const badges = [offline ? '<span class="bd-badge off" title="오프라인">OFF</span>' : '', s.protects ? '<span class="bd-badge def" title="방어 중">DEF</span>' : '', s.isCommand ? '<span class="bd-badge cmd" title="지휘함">CMD</span>' : '', s.hot && !offline ? '<span class="bd-badge hot" title="과부하 운전">OC</span>' : '', s.vet ? `<span class="bd-badge vet" title="베테랑">${'★'.repeat(s.vet)}</span>` : ''].join('');
+    const badges = [offline ? '<span class="bd-badge off" title="전원 꺼짐">꺼짐</span>' : '', s.protects ? '<span class="bd-badge def" title="아군을 지키는 중">방어</span>' : '', s.isCommand ? '<span class="bd-badge cmd" title="지휘함">지휘</span>' : '', s.hot && !offline ? '<span class="bd-badge hot" title="과부하 운전">과열</span>' : '', s.vet ? `<span class="bd-badge vet" title="베테랑">${'★'.repeat(s.vet)}</span>` : ''].join('');
     const plate = w ? `<div class="bd-work ${w.kind.toLowerCase()}${w.done ? ' done' : ''}" title="${WORK[w.kind].ko} · ${esc(w.label)}"><i class="si">${WORK[w.kind].glyph}</i><span>${WORK[w.kind].ko}</span><em>${esc(w.label)}</em>${w.p != null ? `<b><i style="width:${Math.round(Math.max(0, Math.min(1, w.p)) * 100)}%"></i></b>` : ''}</div>` : '';
     mount.innerHTML = `<div class="bd-still${offline ? ' bd-offline' : ''}${s.hot && !offline ? ' bd-hot' : ''}${s.hidden ? ' bd-stealth' : ''}">${layers}</div><div class="bd-anims"></div>`;
     let hud = cell.querySelector<HTMLElement>('.bd-hud');

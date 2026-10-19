@@ -4,23 +4,26 @@
 
 export interface Command { name: string; args: string; help: string; aliases?: string[] }
 export const COMMANDS: Command[] = [
-  { name: 'help', args: '', help: '명령어와 단축키 목록' },
-  { name: 'me', args: '<행동>', help: '행동 문장으로 보내기 (예: /me 방어막을 올린다)' },
-  { name: 'msg', args: '<플레이어> [메시지]', help: '다이렉트 메시지 열기', aliases: ['dm', 'w'] },
-  { name: 'group', args: '<플레이어> <플레이어>…', help: '여러 명과 그룹 대화 만들기' },
-  { name: 'join', args: '<#대화방>', help: '대화방 참여' },
-  { name: 'leave', args: '', help: '지금 대화방에서 나가기' },
-  { name: 'topic', args: '', help: '대화방 주제 보기' },
-  { name: 'who', args: '', help: '이 방의 참여자' },
-  { name: 'whois', args: '<플레이어|ID>', help: '객체 카드 보기' },
-  { name: 'share', args: '<ID>', help: '객체를 카드로 공유 (예: /share 2-14)' },
-  { name: 'pay', args: '<플레이어> [g]', help: '알파 보내기', aliases: ['send'] },
-  { name: 'rent', args: '<공급자 ID>', help: '전력 임대 창 열기' },
-  { name: 'sim', args: '[플레이어]', help: '전투 시뮬레이터로 도전' },
+  { name: 'help', args: '', help: '명령어와 단축키 목록', aliases: ['도움', '명령어'] },
+  { name: 'me', args: '<행동>', help: '행동 문장으로 보내기 (예: /행동 방어막을 올린다)', aliases: ['행동'] },
+  { name: 'msg', args: '<플레이어> [메시지]', help: '다이렉트 메시지 열기', aliases: ['귓', '귓속말', 'dm', 'w'] },
+  { name: 'group', args: '<플레이어> <플레이어>…', help: '여러 명과 그룹 대화 만들기', aliases: ['그룹'] },
+  { name: 'join', args: '<#대화방>', help: '대화방 참여', aliases: ['참여'] },
+  { name: 'leave', args: '', help: '지금 대화방에서 나가기', aliases: ['나가기'] },
+  { name: 'topic', args: '', help: '대화방 주제 보기', aliases: ['주제'] },
+  { name: 'who', args: '', help: '이 방의 참여자', aliases: ['누구'] },
+  { name: 'whois', args: '<플레이어|ID>', help: '객체 카드 보기', aliases: ['정보', '카드'] },
+  { name: 'share', args: '<ID>', help: '객체를 카드로 공유 (예: /share 2-14)', aliases: ['공유'] },
+  { name: 'pay', args: '<플레이어> [g]', help: '알파 보내기', aliases: ['송금', 'send'] },
+  { name: 'rent', args: '<공급자 ID>', help: '전력 임대 창 열기', aliases: ['임대'] },
+  { name: 'sim', args: '[플레이어]', help: '전투 시뮬레이터로 도전', aliases: ['모의전'] },
   { name: 'duel', args: '[플레이어]', help: '실시간 대전 신청 (DM에서는 상대에게)', aliases: ['대전'] },
-  { name: 'base', args: '', help: '내 기지 현황을 상황 카드로 공유' },
-  { name: 'search', args: '<검색어>', help: '메시지 검색', aliases: ['find'] },
+  { name: 'base', args: '', help: '내 기지 현황을 상황 카드로 공유', aliases: ['기지'] },
+  { name: 'search', args: '<검색어>', help: '메시지 검색', aliases: ['검색', 'find'] },
 ];
+
+/** The name a Korean player types: the first Hangul alias, else the English name. */
+export const koName = (c: Command) => c.aliases?.find((a) => /[가-힣]/.test(a)) ?? c.name;
 
 export type Parsed =
   | { kind: 'text'; body: string }
@@ -56,7 +59,7 @@ export function complete(text: string, caret: number, names: string[], ids: stri
   if (!m) return null;
   const word = m[2], start = caret - word.length;
   let options: string[] = [];
-  if (start === 0 && word.startsWith('/')) options = COMMANDS.map((c) => '/' + c.name).filter((c) => c.startsWith(word.toLowerCase()));
+  if (start === 0 && word.startsWith('/')) options = COMMANDS.flatMap((c) => [koName(c), c.name]).map((n) => '/' + n).filter((c, i, all) => c.startsWith(word.toLowerCase()) && all.indexOf(c) === i);
   else if (/^\d{1,2}-\d*$/.test(word)) options = ids.filter((i) => i.startsWith(word) && i !== word);
   else if (word.startsWith('@')) options = names.filter((n) => n.toLowerCase().startsWith(word.slice(1).toLowerCase())).map((n) => '@' + n);
   else options = names.filter((n) => n.length > word.length && n.toLowerCase().startsWith(word.toLowerCase()));

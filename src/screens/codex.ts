@@ -14,10 +14,10 @@ const SECTIONS: [string, string, Entry[]][] = [
   ['사령관 도구', '함께 싸우는 법: 통신, 공유, 명령, 함대 운영.', [
     { icon: 1, title: '객체 카드', body: html`구조체의 모든 것은 ID입니다: 플레이어 <b>1-</b>, 행성 <b>2-</b>, 구조체 <b>5-</b>, 함대 <b>9-</b>, 길드 <b>0-</b>, 변전소 <b>4-</b>, 공급자 <b>10-</b>. 통신에 ID를 쓰면 실시간 카드가 붙고, 카드 버튼으로 바로 송금·메시지·임대·관전합니다. 모든 객체는 자기 페이지(<b>/o/2-14</b>)가 있고, 행성은 전투 보드로 관전합니다.`, go: ['/o', '객체 찾기'] },
     { icon: 17, title: '공유', body: html`객체나 상황(기지 현황, 습격, 전투 기록, 거래 제안, 표적, 길드 모집)을 카드 한 장으로 공유합니다. 통신 대화방, 링크 복사, 기기 공유, PNG 카드 이미지. 상황 링크(<b>/s/…</b>)는 그 순간을 그대로 담아 누구나 열 수 있습니다.`, go: ['/chat', '통신'] },
-    { icon: 16, title: '명령 팔레트', body: html`<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>. ID만 쓰면 카드, <b>낱말 + ID</b>나 <b>ID + 낱말</b>로 명령: 공유 · 보내기 · 메시지 · 방 · 임대 · 감시 · 길드 · 시뮬 · 기지 · 복제 · 회수 · 규칙 · 시장 · 은행 · 자산 · 계약 · 통계 · 표적 · 원한 · 가입 · 검색. 영어(pay, dm, rent…)와 초성(ㄱㄹㅅ → 거래소)도 됩니다.` },
-    { icon: 13, title: '통신 명령어', body: html`/help · /me · /msg · /group · /join · /leave · /topic · /who · /whois · /share · /pay · /rent · /sim · /base · /search. <kbd>Tab</kbd> 자동완성(명령어 · ID · 이름 · @언급), <kbd>↑</kbd> 보낸 메시지·마지막 메시지 수정, 답장 · 수정 · 삭제 · 고정 · 게임 아이콘 반응. 행성과 함대마다 통신방이 있습니다.`, go: ['/chat', '통신'] },
-    { icon: 17, title: '송금과 은행', body: html`알파와 길드 토큰을 플레이어 ID로 보냅니다. 길드 은행은 알파를 담보로 토큰을 발행하고, 담보율로 교환·상환합니다. 모든 전력 제안은 알파 환산 가격으로도 보입니다.`, go: ['/market?tab=bank', '길드 은행'] },
-    { icon: 8, title: '레플리칸트 함대', body: html`같은 백업 코드에서 나온 사령관들. 연결당 전력이 4 kW 이상이면 복제, 역할(생산·미끼·레이더)을 정하고, 알파를 한 번에 회수합니다. 복무 규칙(자동 회수 · 자동 복제)은 이 탭이 열려 있는 동안 2분마다 실행되고 근무 일지에 남습니다.`, go: ['/replicants', '레플리칸트'] },
+    { icon: 16, title: '명령 팔레트', body: html`<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>. ID만 쓰면 카드, <b>낱말 + ID</b>나 <b>ID + 낱말</b>로 명령: 공유 · 보내기 · 메시지 · 방 · 임대 · 감시 · 길드 · 시뮬 · 기지 · 복제 · 회수 · 규칙 · 시장 · 은행 · 보유품 · 계약 · 통계 · 표적 · 원한 · 가입 · 검색. 영어(pay, dm, rent…)와 초성(ㅅㅈ → 시장)도 됩니다.` },
+    { icon: 13, title: '통신 명령어', body: html`/도움 · /행동 · /귓 · /그룹 · /참여 · /나가기 · /주제 · /누구 · /정보 · /공유 · /송금 · /임대 · /모의전 · /대전 · /기지 · /검색 (영어 /help, /msg, /pay… 도 됩니다). <kbd>Tab</kbd> 자동완성(명령어 · ID · 이름 · @언급), <kbd>↑</kbd> 보낸 메시지·마지막 메시지 수정, 답장 · 수정 · 삭제 · 고정 · 게임 아이콘 반응. 행성과 함대마다 통신방이 있습니다.`, go: ['/chat', '통신'] },
+    { icon: 17, title: '송금과 은행', body: html`알파와 길드 화폐를 플레이어 ID로 보냅니다. 길드 은행은 맡긴 알파만큼 길드 화폐를 만들고, 교환 비율로 알파와 바꿔 줍니다. 모든 전력 판매는 알파로 친 가격으로도 보입니다.`, go: ['/market?tab=bank', '길드 은행'] },
+    { icon: 8, title: '레플리칸트 함대', body: html`같은 백업 코드에서 나온 사령관들. 연결당 전력이 4 kW 이상이면 복제, 역할(생산·미끼·습격대)을 정하고, 알파를 한 번에 회수합니다. 복무 규칙(자동 회수 · 자동 복제)은 이 탭이 열려 있는 동안 2분마다 실행되고 근무 일지에 남습니다.`, go: ['/replicants', '레플리칸트'] },
     { icon: 18, title: '길드 운영', body: html`길드원 명단(계급 · 추방), 가입 요청 승인 · 초대, 다른 길드 찾기와 가입 신청, 길드장 설정(이름 · 주소 · 가입 변전소 · 최소 주입 · 기본 계급). 권한이 있는 사람만 바꿀 수 있습니다.`, go: ['/guild', '길드'] },
     { icon: 3, title: '작전 상황실', body: html`표적 점수(광석 · 약한 방어막 · 원한 · 우선 길드), 원한 · 우선 길드 · 공격 금지 목록, 내 행성 사건 기록, 진행 중인 습격. 같은 길드와 공격 금지는 표적에서 빠지고, 명령은 직접 내려야 합니다.`, go: ['/war', '상황실'] },
     { icon: 19, title: '알림', body: html`내 정보에서 시스템 알림을 켜면 탭이 뒤에 있어도 습격 · 다이렉트 메시지 · 언급 · 복무 규칙을 운영체제 알림으로 받습니다. 채널마다 끌 수 있습니다.`, go: ['/profile', '내 정보'] },
@@ -25,19 +25,19 @@ const SECTIONS: [string, string, Entry[]][] = [
   ['경제', '광석을 캐고, 알파로 정제하고, 전력을 판다.', [
     { icon: 14, title: '채굴과 정제', body: html`추출기가 광석을 캐고(블록당 ${RATE.mine}), 정제소가 알파로 바꿉니다(블록당 ${RATE.refine}). <b>광석은 약탈당하지만 알파는 안전합니다.</b> 습격 전에 정제하세요.`, go: ['/console', '함교'] },
     { icon: 20, title: '전력', body: html`리액터 ${RATE.baseKw} kW와 발전기마다 ${RATE.genKw} kW. 구조체와 판매 계약이 용량을 넘으면 정전: 판매 계약부터 끊기고, 그다음 구조체가 꺼집니다.`, go: ['/energy', '전력망'] },
-    { icon: 17, title: '전력 거래', body: html`남는 전력을 블록당 알파에 팝니다. 한 계약 최대 ${RATE.maxDealKw} kW, 시장 전체 ${RATE.marketDepthKw} kW. 큰 판매는 가격을 떨어뜨립니다. 사들인 전력은 되팔 수 없습니다.`, go: ['/market', '거래소'] },
+    { icon: 17, title: '전력 거래', body: html`남는 전력을 블록당 알파에 팝니다. 한 계약 최대 ${RATE.maxDealKw} kW, 시장 전체 ${RATE.marketDepthKw} kW. 큰 판매는 가격을 떨어뜨립니다. 사들인 전력은 되팔 수 없습니다.`, go: ['/market', '시장'] },
     { icon: 15, title: '과부하 운전', body: html`추출기·정제소 생산 ×${OC.out}, 전력 ×${OC.power}. 발전기는 발전 ×${OC.gen}. 블록마다 ${pct(OC.wear)} 확률로 손상. 구조체를 고르고 <kbd>V</kbd>.`, go: ['/console', '함교'] },
-    { icon: 18, title: '의뢰 게시판', body: html`${JOBS.every}블록마다 세력들이 의뢰를 올립니다. 납품: 광석을 정제가보다 10–25% 비싸게 즉시 사 줍니다 (습격 전에 광석을 비우기 좋습니다). 방어: ${JOBS.defendFor}블록 안에 습격을 2번 막으면 보수.`, go: ['/market', '거래소'] },
-    { icon: 16, title: '암시장', body: html`약 ${BLACK.every}블록마다 밀수선이 ${BLACK.stays}블록 동안 들어와 세 가지 거래를 한 번씩만 엽니다. 값은 매번 다릅니다: ${Object.values(BLACK_DEALS).map((d) => `${d.name}(${d.what})`).join(' · ')}.`, go: ['/market', '거래소'] },
+    { icon: 18, title: '의뢰 게시판', body: html`${JOBS.every}블록마다 세력들이 의뢰를 올립니다. 납품: 광석을 정제가보다 10–25% 비싸게 즉시 사 줍니다 (습격 전에 광석을 비우기 좋습니다). 방어: ${JOBS.defendFor}블록 안에 습격을 2번 막으면 보수.`, go: ['/market', '시장'] },
+    { icon: 16, title: '암시장', body: html`약 ${BLACK.every}블록마다 밀수선이 ${BLACK.stays}블록 동안 들어와 세 가지 거래를 한 번씩만 엽니다. 값은 매번 다릅니다: ${Object.values(BLACK_DEALS).map((d) => `${d.name}(${d.what})`).join(' · ')}.`, go: ['/market', '시장'] },
     { icon: 17, title: '투자', body: html`은하 지도에서 세력에 알파를 맡기면(최대 ${INVEST.max} g) 그 세력 금고에서 블록마다 지분의 ${(INVEST.rate * 100).toFixed(1)}%를 배당받습니다(사보타주 중엔 절반). 지분은 내 세력으로 칩니다. 그 세력을 약탈하면 지분 ${Math.round(INVEST.raidHit * 100)}%를 잃고, 매각하면 ${Math.round(INVEST.fee * 100)}%를 떼입니다. 붉은 연합은 받지 않습니다.`, go: ['/galaxy', '은하 지도'] },
-    { icon: 17, title: '대출', body: html`청룡 상단에서 최대 ${LOAN.max} g. ${LOAN.term}블록 뒤 ${pct(LOAN.rate)}를 더해 갚습니다. 불이행하면 광석을 두 배로 압류하고 함대를 보내며, 한동안 다시 빌릴 수 없습니다.`, go: ['/market', '거래소'] },
+    { icon: 17, title: '대출', body: html`청룡 상단에서 최대 ${LOAN.max} g. ${LOAN.term}블록 뒤 ${pct(LOAN.rate)}를 더해 갚습니다. 불이행하면 광석을 두 배로 압류하고 함대를 보내며, 한동안 다시 빌릴 수 없습니다.`, go: ['/market', '시장'] },
   ]],
   ['세력', '은하의 다른 세력을 꺾고, 부리고, 늦춘다.', [
     { icon: 3, title: '습격', body: html`은하 지도에서 세력을 고르고 출격. 이기면 비축 광석을 약탈하고 그 세력의 함대가 1기 줄어 다음엔 더 쉬워집니다. 정찰(1 g)하면 맞설 함대와 예상 승률을 볼 수 있습니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 9, title: '베테랑', body: html`습격과 기지 방어전에서 적을 격파한 내 함선·방어포는 전과가 쌓여 베테랑이 됩니다(방어전이 끝나면 함교에 전투 보고): ★ 3격파 · ★★ 8격파 · ★★★ 15격파. ★★부터 기지 방어 사격 피해 +1. 동맹 함선의 전과는 쌓이지 않습니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 1, title: '연합 전선', body: html`패권 지수가 ${Math.round(COALITION.at * 100)}%를 넘으면 은하가 뭉칩니다. 습격의 ${Math.round(COALITION.chance * 100)}%가 두 세력의 연합 함대로 오고, 호위함이 ${COALITION.extra}척 많습니다. 막아내면 두 세력 모두 함대를 잃습니다.`, go: ['/console', '함교'] },
     { icon: 3, title: '보복', body: html`습격을 막아내면 그 세력이 ${REVENGE.window}블록 동안 드러납니다. 그 안에 반격해 이기면 노획 +${Math.round((REVENGE.bonus - 1) * 100)}%. 이기든 지든 기회는 한 번입니다.`, go: ['/galaxy', '은하 지도'] },
-    { icon: 3, title: '개장', body: html`함대 함선마다 모듈 하나: ${Object.values(REFITS).map((r) => `${r.name}(${r.what}, ${r.cost} α)`).join(' · ')}. 바꾸면 다시 값을 치르고, 함선이 파괴되면 모듈도 사라집니다. 함교에서 함선을 눌러 고릅니다.`, go: ['/console', '함교'] },
+    { icon: 3, title: '개장', body: html`함대 함선마다 모듈 하나: ${Object.values(REFITS).map((r) => `${r.name}(${r.what}, ${r.cost} g)`).join(' · ')}. 바꾸면 다시 값을 치르고, 함선이 파괴되면 모듈도 사라집니다. 함교에서 함선을 눌러 고릅니다.`, go: ['/console', '함교'] },
     { icon: 1, title: '복속', body: html`${DOMINION.raidsToSubjugate}번 약탈한 세력에게 복속을 요구(${DOMINION.cost} g). 속국은 성장의 ${pct(DOMINION.tribute)}를 공물로 바치고 습격하지 않습니다. 함대가 ${DOMINION.rebelFleet}기가 되면 반란 위험: 함선 해체(${DOMINION.disarmCost} g)로 막으세요.`, go: ['/galaxy', '은하 지도'] },
     { icon: 4, title: '동맹', body: html`${ALLY.cost} g로 한 세력과 ${ALLY.term}블록 동맹. 동맹은 습격·거점 공격·현상금 대상에서 빠지고, 당신의 습격에 빈 슬롯만큼 함선을 최대 ${ALLY.ships.length}척 보냅니다. 공작을 벌이면 깨집니다. 붉은 연합은 동맹을 맺지 않습니다.`, go: ['/galaxy', '은하 지도'] },
     { icon: 6, title: '공작', body: html`${(Object.keys(OPS) as OpId[]).map((k) => `${OPS[k].name} ${OPS[k].cost} g · 성공 ${pct(OPS[k].odds)}(첩보망 연구로 상승) · ${OPS[k].what}`).join(' / ')}. 발각되면 불가침이 깨지고 보복 함대가 옵니다.`, go: ['/galaxy', '은하 지도'] },
@@ -55,16 +55,16 @@ const SECTIONS: [string, string, Entry[]][] = [
   ]],
   ['성장', '오래 버틴 제국이 강하다.', [
     { icon: 15, title: '연구와 교리', body: html`연구는 영구 강화: 경제·전력·방어, 그리고 장교에게 열리는 패권(첩보망·거점 공병·제국 관료제). 교리는 하나만: ${DOCTRINES.map((d) => `${d.name}(${d.perks.join(', ')})`).join(' · ')}. 첫 선택은 무료, 전환 ${DOCTRINE_SWITCH} g.`, go: ['/research', '연구소'] },
-    { icon: 8, title: '레플리칸트', body: html`${REPS.map((r) => `${r.role}(${r.hire} g, 급여 ${r.upkeep} α/블록)`).join(' · ')}. 급여를 못 주면 떠납니다.`, go: ['/replicants', '레플리칸트'] },
-    { icon: 18, title: '길드 전', body: html`세 길드가 ${RACE.season}블록 시즌으로 겨룹니다. 기부·격퇴·현상금이 점수. 시즌 시작 전부터 있던 우승 길드원은 ${RACE.prize} α.`, go: ['/guild', '길드'] },
-    { icon: 20, title: '패권과 시대', body: html`패권 지수 = 은하 전체 세력 중 내 몫. 칭호: ${HEGEMONY.map((h) => `${h.title} ${pct(h.at)}`).join(' → ')}. 월드 엔진(${ENGINE.map((e) => e.cost).join(' / ')} α)을 완공하면 새 시대를 열어 생산 +15%로 다시 시작합니다. 연구·교리·길드·거점·레플리칸트는 그대로 남습니다.`, go: ['/record', '전적'] },
+    { icon: 8, title: '레플리칸트', body: html`${REPS.map((r) => `${r.role}(${r.hire} g, 급여 ${r.upkeep} g/블록)`).join(' · ')}. 급여를 못 주면 떠납니다.`, go: ['/replicants', '레플리칸트'] },
+    { icon: 18, title: '길드 전', body: html`세 길드가 ${RACE.season}블록 시즌으로 겨룹니다. 기부·격퇴·현상금이 점수. 시즌 시작 전부터 있던 우승 길드원은 ${RACE.prize} g.`, go: ['/guild', '길드'] },
+    { icon: 20, title: '패권과 시대', body: html`패권 지수 = 은하 전체 세력 중 내 몫. 칭호: ${HEGEMONY.map((h) => `${h.title} ${pct(h.at)}`).join(' → ')}. 월드 엔진(${ENGINE.map((e) => e.cost).join(' / ')} g)을 완공하면 새 시대를 열어 생산 +15%로 다시 시작합니다. 연구·교리·길드·거점·레플리칸트는 그대로 남습니다.`, go: ['/record', '전적'] },
   ]],
 ];
 
 const screen: Screen = {
   render(root) {
     mount(root, html`
-      <div class="card-head"><h1 style="font-size:28px">교본</h1><span class="label c-cheong">CODEX</span><span class="end note">모든 수치는 게임에서 그대로 읽어 옵니다</span></div>
+      <div class="card-head"><h1 style="font-size:28px">교본</h1><span class="end note">모든 수치는 게임에서 그대로 읽어 옵니다</span></div>
       ${SECTIONS.map(([name, sub, entries]) => html`<section class="codex-sec"><h2>${name}</h2><p class="note">${sub}</p>
         <div class="codex-grid">${entries.map((e) => html`<article class="codex-card">
           <div class="tech-top">${raw(spriteHtml(e.icon, 48))}<b>${e.title}</b></div>

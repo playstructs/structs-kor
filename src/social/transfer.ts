@@ -54,7 +54,7 @@ export async function openTransfer(o: PayOpts = {}) {
   const balance = () => (denom === 'ualpha' ? Number(fromRow?.alpha ?? NaN) / 1e6 : NaN);
   const valid = () => !!toAddr && !!grams() && (!Number.isFinite(balance()) || grams()! <= balance() + 1e-9) && toAddr !== selfAddr();
 
-  const face = (p: PlayerRow | null, addr: string, label: string) => html`<div class="pay-party">${raw(portraitHtml(p?.pfp || seededPfp(p?.id || addr), 44))}<div><b>${p?.username || p?.id || '주소'}</b><small class="mono">${p ? `PID #${p.id}` : ''} ${addr ? addr.slice(0, 14) + '…' + addr.slice(-6) : ''}</small></div><span class="label">${label}</span></div>`;
+  const face = (p: PlayerRow | null, addr: string, label: string) => html`<div class="pay-party">${raw(portraitHtml(p?.pfp || seededPfp(p?.id || addr), 44))}<div><b>${p?.username || p?.id || '주소'}</b><small class="mono">${p ? `사령관 ${p.id}` : ''} ${addr ? addr.slice(0, 14) + '…' + addr.slice(-6) : ''}</small></div><span class="label">${label}</span></div>`;
 
   const view = (): Safe => {
     if (step === 'sent') return html`<div class="pay-done"><i class="si icon-success"></i><h3>보냈습니다</h3><p class="mono">${n(grams() ?? 0, 6)} ${unit()} → ${to?.username || toAddr.slice(0, 16)}</p><div class="sheet-actions"><button class="btn ghost" data-act="again">한 번 더</button><button class="btn primary" data-act="close" autofocus>닫기</button></div></div>`;
@@ -66,7 +66,7 @@ export async function openTransfer(o: PayOpts = {}) {
       ${recent().length ? html`<div class="pay-recent">${recent().filter((r) => r.id !== me).map((r) => html`<button class="pill" data-act="pick" data-id="${r.id}">${r.name}</button>`)}</div>` : ''}
       ${to || toAddr ? face(to, toAddr, '받는 사람') : ''}
       <div class="g2" style="gap:10px">
-        <label class="field"><span>자산</span><select class="input" name="denom" data-act="denom" data-on="change"><option value="ualpha">알파 매터</option>${tokens.map((t) => html`<option value="${t.denom}" ${t.denom === denom ? 'selected' : ''}>${t.denom.replace('uguild.', '길드 토큰 ')}</option>`)}</select></label>
+        <label class="field"><span>보낼 것</span><select class="input" name="denom" data-act="denom" data-on="change"><option value="ualpha">알파 매터</option>${tokens.map((t) => html`<option value="${t.denom}" ${t.denom === denom ? 'selected' : ''}>${t.denom.replace('uguild.', '길드 화폐 ')}</option>`)}</select></label>
         <label class="field"><span>수량 (${unit()}${denom === 'ualpha' ? ' · 1.5k = 1500 g' : ''})</span><input class="input mono" name="amount" value="${amountText}" inputmode="decimal" placeholder="0" data-act="amount"></label>
       </div>
       ${Number.isFinite(bal) ? html`<p class="note">보유 ${n(bal, 4)} g · <button class="linkish" data-act="all">전부 보내기</button></p>` : ''}
@@ -97,7 +97,7 @@ export async function openTransfer(o: PayOpts = {}) {
       busy = false; repaint();
     },
   };
-  const sheet = openSheet({ kicker: '송금 · SEND', title: denom === 'ualpha' ? '알파 보내기' : '토큰 보내기', tone: 'hwang' }, view(), handlers);
+  const sheet = openSheet({ kicker: '송금', title: denom === 'ualpha' ? '알파 보내기' : '길드 화폐 보내기', tone: 'hwang' }, view(), handlers);
   await Promise.all([loadFrom(), lookup(), guildApi.bank().then((b) => { tokens = b; }).catch(() => null)]);
   repaint();
 }

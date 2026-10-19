@@ -65,5 +65,5 @@ export const denomLabel = (d: string) => {
   if (!d.startsWith('uguild.')) return d;
   const id = d.slice(7), name = guildNames.get(id);
   if (!name) askNames();
-  return name ? `${name} 토큰` : `길드 ${id} 토큰`;
+  return name ? `${name} 화폐` : `길드 ${id} 화폐`;
 };

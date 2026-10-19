@@ -50,7 +50,7 @@ async function playerCard(id: string): Promise<RefCard | null> {
   if (p.planet_id) actions.unshift('planet');
   if (p.fleet_id) actions.splice(1, 0, 'fleet');
   return {
-    id, kind: 'player', glyph: 'icon-member', title: p.username || id, subtitle: `${p.tag ? `[${p.tag}] ` : ''}PID #${id}`,
+    id, kind: 'player', glyph: 'icon-member', title: p.username || id, subtitle: `${p.tag ? `[${p.tag}] ` : ''}사령관 ${id}`,
     pfp: p.pfp || seededPfp(id), rows: [['알파', `${micro(p.alpha, 2)} g`], ['광석', n(p.ore)], ['전력', `${watts(load)} / ${watts(cap)}`]],
     meter: cap > 0 ? { label: '전력 사용', pct: Math.min(100, (load / cap) * 100), tone: load > cap ? 'var(--jeok)' : undefined } : undefined,
     actions, planetId: p.planet_id || undefined, fleetId: p.fleet_id || undefined, guildId: p.guild_id || undefined, owner: id,
@@ -120,7 +120,7 @@ async function reactorCard(id: string): Promise<RefCard | null> {
   if (!o) return null;
   return {
     id, kind: 'reactor', glyph: 'icon-computer', title: `리액터 ${id}`, subtitle: `길드 ${str(pick(o, 'guild_id', 'guildId')) || '—'}`,
-    rows: [['운영 노드', str(pick(o, 'validator')).slice(0, 18) || '—'], ['수수료', pick(o, 'default_commission', 'defaultCommission') != null ? n(num(pick(o, 'default_commission', 'defaultCommission')) * 100, 1) + '%' : '—']],
+    rows: [['운영자', str(pick(o, 'validator')).slice(0, 18) || '—'], ['리액터 몫', pick(o, 'default_commission', 'defaultCommission') != null ? n(num(pick(o, 'default_commission', 'defaultCommission')) * 100, 1) + '%' : '—']],
     actions: [], guildId: str(pick(o, 'guild_id', 'guildId')) || undefined,
   };
 }
@@ -131,7 +131,7 @@ async function guildCard(id: string): Promise<RefCard | null> {
   const [count, bank] = await Promise.all([guildApi.memberCount(id).then((c) => c.count).catch(() => null), guildApi.bank().then((b) => b.find((x) => x.guild_id === id) ?? null).catch(() => null)]);
   return {
     id, kind: 'guild', glyph: 'icon-guild', title: g.name || `길드 ${id}`, subtitle: `${g.tag ? `[${g.tag}] ` : ''}${id}`,
-    rows: [['길드원', count == null ? '—' : n(count)], ['주 리액터', g.primary_reactor_id || '—'], ['담보율', bank ? n(bank.ratio, 3) : '—'], ['길드장', await playerLabel(g.owner)]],
+    rows: [['길드원', count == null ? '—' : n(count)], ['주 리액터', g.primary_reactor_id || '—'], ['교환 비율', bank ? n(bank.ratio, 3) : '—'], ['길드장', await playerLabel(g.owner)]],
     actions: ['guild', 'join'], owner: g.owner, guildId: id,
   };
 }
@@ -149,7 +149,7 @@ async function providerCard(id: string): Promise<RefCard | null> {
   return {
     id, kind: 'provider', glyph: 'icon-transfers', title: `전력 공급자 ${id}`, subtitle: `판매 ${await playerLabel(p.owner)}`,
     badge: open ? { text: '공개', tone: 'cheong' } : /^guild/i.test(p.access_policy) ? { text: '길드 전용', tone: 'hwang' } : { text: '비공개', tone: 'jeok' },
-    rows: [['요율', `${micro(perKwDay(p.rate_amount), 4)} ${p.rate_denom === 'ualpha' ? 'α' : p.rate_denom} / kW·일`], ['용량', `${n(num(p.capacity_minimum) / KW, 1)}–${n(num(p.capacity_maximum) / KW, 1)} kW`], ['기간', `${n(num(p.duration_minimum) / BLOCKS_PER_DAY, 1)}–${n(num(p.duration_maximum) / BLOCKS_PER_DAY, 1)}일`], ['변전소', p.substation_id || '—']],
+    rows: [['요율', `${micro(perKwDay(p.rate_amount), 4)} ${p.rate_denom === 'ualpha' ? 'g' : p.rate_denom} / kW 하루`], ['용량', `${n(num(p.capacity_minimum) / KW, 1)}–${n(num(p.capacity_maximum) / KW, 1)} kW`], ['기간', `${n(num(p.duration_minimum) / BLOCKS_PER_DAY, 1)}–${n(num(p.duration_maximum) / BLOCKS_PER_DAY, 1)}일`], ['변전소', p.substation_id || '—']],
     actions: open ? ['rent'] : [], owner: p.owner, provider: p,
   };
 }

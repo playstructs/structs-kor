@@ -10,7 +10,7 @@ export const RANKS = ['이병', '일병', '상병', '병장', '하사', '중사'
 export const threshold = (i: number) => (i <= 0 ? 0 : Math.round(60 * Math.pow(i, 1.75)));
 /** What each rank unlocks, said on promotion (flavour; the chain has no ranks). */
 const PERKS: Record<number, string> = {
-  3: '함교 위협 레이더 해금', 7: '장교 진급 · 일일 교전 랭킹 표시', 10: '전력망 워게임 고급 분석', 11: '대위 이상 · 길드 작전 지휘', 13: '장성 진급 · 금빛 휘장', 17: '은하 원수',
+  3: '함교 위협 습격대 해금', 7: '장교 진급 · 일일 교전 랭킹 표시', 10: '전력망 워게임 고급 분석', 11: '대위 이상 · 길드 작전 지휘', 13: '장성 진급 · 금빛 휘장', 17: '은하 원수',
 };
 
 export interface Stats { simWins: number; simStars: number; simBattles: number; dailyPlays: number; shotsHit: number; kills: number; contracts: number; research: number; gauntlets: number; perfect: number; /** Real raids on your planet beaten back (alerts.ts). */ repelled: number }

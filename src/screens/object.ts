@@ -42,7 +42,7 @@ function situationScreen(root: HTMLElement, code: string) {
   if (!s) { mount(root, html`<section class="card danger" style="max-width:560px;margin:40px auto"><h1>상황 링크가 잘못되었습니다</h1><p class="note">링크가 잘렸거나 손상되었습니다.</p></section>`); return; }
   const me = session.playerId;
   const paint = () => mount(root, html`
-    <div class="card-head"><h1 style="font-size:28px">공유된 상황</h1><span class="label c-cheong">SITUATION</span><button class="btn ghost end" data-act="share">다시 공유</button></div>
+    <div class="card-head"><h1 style="font-size:28px">공유된 상황</h1><button class="btn ghost end" data-act="share">다시 공유</button></div>
     <div class="obj-wrap"><div class="obj-main">${raw(situationHtml(s, base()))}</div>
       <aside class="obj-side">${(s.ids ?? []).length ? html`<h2 style="font-size:18px">관련 객체</h2>${(s.ids ?? []).map((id) => raw(refSlot(id, { base: base(), me })))}` : ''}</aside></div>`, { share: () => share({ kind: 'situation', s }) });
   paint();

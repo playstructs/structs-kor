@@ -28,7 +28,7 @@ type Tab = 'roster' | 'squads' | 'orders';
 const ROLE: Record<Role, { name: string; builds: string; c1: string; c2: string; head: string }> = {
   productive: { name: '생산형', builds: '추출기 · 정제소 · 필드 발전기', c1: '#43CDB6', c2: '#1C5F6A', head: '#133546' },
   bait: { name: '미끼형', builds: '추출기만 · 광석 축적', c1: '#EBAA49', c2: '#785B02', head: '#3A2F12' },
-  raider: { name: '레이더형', builds: '스타파이터 · 추격 전투기 · 탱크 · 구축함', c1: '#EE7D69', c2: '#5D0C15', head: '#2E1F3E' },
+  raider: { name: '습격대형', builds: '스타파이터 · 추격 전투기 · 탱크 · 구축함', c1: '#EE7D69', c2: '#5D0C15', head: '#2E1F3E' },
 };
 const ROLES = Object.keys(ROLE) as Role[];
 const sw = (on: boolean, act: string, label: string) => html`<button class="sw" aria-pressed="${on}" aria-label="${label}" data-act="${act}"></button>`;
@@ -98,7 +98,7 @@ const screen: Screen = {
         const ro = ROLE[roleOf(r)];
         return html`<article class="rep-cardx ${selected.has(r.player_id) ? 'sel' : ''} ${needsAttention(r) ? 'warn' : ''}" style="--c1:${ro.c1};--c2:${ro.c2};--hd:${ro.head}">
           <header><label class="rep-pick"><input type="checkbox" data-act="pick" data-id="${r.player_id}" ${selected.has(r.player_id) ? 'checked' : ''} aria-label="${nameOf(r, i)} 선택"></label><div><b>${nameOf(r, i)}</b><small class="mono">#${r.hd_index ?? '?'} · ${r.player_id}</small></div><span class="rep-role">${ro.name}</span></header>
-          <div class="rep-mid">${raw(portraitHtml(seededPfp('rep:' + r.address), 60, nameOf(r, i)))}<div class="rep-reads">${battery(r)}<span class="mono c-hwang">${micro(r.alpha, 2)} g α</span><span class="mono">${n(r.ore)} 광석</span></div></div>
+          <div class="rep-mid">${raw(portraitHtml(seededPfp('rep:' + r.address), 60, nameOf(r, i)))}<div class="rep-reads">${battery(r)}<span class="mono c-hwang">${micro(r.alpha, 2)} g 알파</span><span class="mono">${n(r.ore)} 광석</span></div></div>
           <footer>
             ${r.planet_id ? html`<a class="hud-btn" href="${href(`/o/${r.planet_id}`)}" title="행성 ${r.planet_id}" aria-label="행성"><i class="si icon-planet"></i></a>` : html`<span class="chip jeok" title="행성 없음">행성 없음</span>`}
             <a class="hud-btn" href="${href(`/o/${r.player_id}`)}" title="카드" aria-label="카드"><i class="si icon-member"></i></a>
@@ -125,19 +125,19 @@ const screen: Screen = {
           <div class="order-row"><div><b class="c-white">규칙 활성화</b><br><span class="dim" style="font-size:12px">아래 자동 규칙을 이 브라우저에서 실행</span></div>${sw(d.enabled, 'tEnabled', '규칙 활성화')}</div>
           <div class="order-row"><div><b class="c-white">자동 회수</b><br><span class="dim" style="font-size:12px">알파가 ${n(d.sweepAbove, 2)} g를 넘으면 사령관에게 송금 (2분마다)</span></div>${sw(d.autoSweep, 'tAutoSweep', '자동 회수')}</div>
           <div class="order-row"><div><b class="c-white">자동 복제</b><br><span class="dim" style="font-size:12px">연결당 전력이 4 kW 이상이면 최대 ${n(d.maxReps)}명까지 복제</span></div>${sw(d.autoReplicate, 'tAutoRep', '자동 복제')}</div>
-          <div class="order-row"><div><b class="c-white">사령관 자동 조종</b><br><span class="dim" style="font-size:12px">내 계정도 같은 규칙으로 운영 (Structs Desktop)</span></div>${sw(d.autopilot, 'tAuto', '사령관 자동 조종')}</div>
+          <div class="order-row"><div><b class="c-white">사령관 자동 조종</b><br><span class="dim" style="font-size:12px">내 사령관도 같은 규칙으로 자동 운영</span></div>${sw(d.autopilot, 'tAuto', '사령관 자동 조종')}</div>
           <div class="stat-grid">
             <label class="field"><span>회수 기준 (g)</span><input class="input mono" type="number" min="0" step="0.1" name="sweepAbove" value="${d.sweepAbove}" data-act="num" data-k="sweepAbove" data-on="change"></label>
             <label class="field"><span>각자 남길 양 (g)</span><input class="input mono" type="number" min="0" step="0.1" name="keep" value="${d.keep}" data-act="num" data-k="keep" data-on="change"></label>
             <label class="field"><span>최대 인원</span><input class="input mono" type="number" min="1" max="60" name="maxReps" value="${d.maxReps}" data-act="num" data-k="maxReps" data-on="change"></label>
-            <label class="field"><span>레이더 집결 행성</span><input class="input mono" name="rally" value="${d.rally}" placeholder="2-…" data-act="rally" data-on="change"></label>
+            <label class="field"><span>습격대 집결 행성</span><input class="input mono" name="rally" value="${d.rally}" placeholder="2-…" data-act="rally" data-on="change"></label>
           </div>
           <pre class="order-pre">${d.enabled ? `만약 구성 미완성   → 구조체 건설
 만약 전력 부족     → 전원 연결
 만약 광석 소진     → 새 행성 탐사 (직접 승인)
 만약 알파 > ${d.sweepAbove} g  → 사령관에게 회수${d.autoSweep ? ' ✔' : ''}
 만약 연결당 ≥ 4 kW → 복제${d.autoReplicate ? ' ✔' : ''}
-만약 역할 = 레이더 → ${d.rally || '[집결 행성]'} 집결
+만약 역할 = 습격대 → ${d.rally || '[집결 행성]'} 집결
 만약 행동 거부     → 약 1분 대기` : '규칙 꺼짐 — 아무 행동도 하지 않습니다.'}</pre>
           <button class="btn primary" data-act="runNow" ${busy ? 'disabled' : ''}>지금 한 번 실행</button>
           <p class="note">✔ 표시된 규칙은 이 탭이 열려 있고 계정이 열려 있는 동안 2분마다 실행됩니다. 행성 탐사처럼 되돌릴 수 없는 행동은 자동으로 하지 않습니다.</p>
@@ -148,7 +148,7 @@ const screen: Screen = {
     };
 
     const view = (): Safe => html`
-      <div class="card-head"><h1 style="font-size:28px">레플리칸트</h1><span class="label c-cheong">ARMADA · 함대 편성</span></div>
+      <div class="card-head"><h1 style="font-size:28px">레플리칸트</h1><span class="label c-cheong">분대 편성</span></div>
       ${consoleCard()}
       <div class="tabs" role="tablist">${([['roster', `명단 ${n(list.length)}`], ['squads', '분대'], ['orders', '복무 규칙']] as [Tab, string][]).map(([t, l]) => html`<button class="tab ${tab === t ? 'on' : ''}" role="tab" aria-selected="${tab === t}" data-act="tab" data-t="${t}">${l}</button>`)}</div>
       ${tab === 'roster' ? rosterTab() : tab === 'squads' ? squadsTab() : ordersTab()}`;

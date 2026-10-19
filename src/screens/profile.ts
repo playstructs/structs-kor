@@ -33,10 +33,14 @@ const screen: Screen = {
         <section class="card grow">
           <div class="card-head"><h1 style="font-size:28px">내 정보</h1><span class="end chip ${s.state === 'in' ? 'cheong' : 'hwang'}">${s.state === 'in' ? '● 길드 로그인됨' : '로그아웃 상태'}</span></div>
           <table class="t"><tbody>
-            <tr><td class="dim" style="width:140px">사령관 ID</td><td class="mono c-white">${c.playerId ?? '— (입대 처리 중)'}</td></tr>
-            <tr><td class="dim">길드</td><td class="mono">${GUILD_ID}</td></tr>
-            <tr><td class="dim">계정 코드</td><td class="mono dim" style="overflow-wrap:anywhere;font-size:12px">${c.address}</td></tr>
             <tr><td class="dim">레플리칸트</td><td class="mono">${wallet.accounts.filter((a) => a.index > 0).length}개 저장됨 · <a href="${href('/replicants')}">분대 명단</a></td></tr>
+          </tbody></table>
+          <!-- Numbers and the connection test are for support and bug reports, not play: folded away. -->
+          <details class="adv"><summary>고급 정보 · 문의할 때 필요</summary>
+          <table class="t"><tbody>
+            <tr><td class="dim" style="width:140px">사령관 번호</td><td class="mono c-white">${c.playerId ?? '— (입대 처리 중)'}</td></tr>
+            <tr><td class="dim">길드 번호</td><td class="mono">${GUILD_ID}</td></tr>
+            <tr><td class="dim">계정 주소</td><td class="mono dim" style="overflow-wrap:anywhere;font-size:12px">${c.address}</td></tr>
           </tbody></table>
           <section class="chain-check">
             <div class="card-head"><h2 style="font-size:20px">연결 점검</h2><span class="end note">아무것도 바뀌지 않음</span></div>
@@ -46,6 +50,8 @@ const screen: Screen = {
             <button class="btn gold" data-act="check" ${check.running || wallet.state !== 'unlocked' || !c.playerId || MOCK ? 'disabled' : ''}>${check.running ? '점검 중…' : '연결 점검'}</button>
             ${wallet.state !== 'unlocked' ? html`<small class="dim">계정 잠금을 해제해야 명령할 수 있습니다.</small>` : MOCK ? html`<small class="dim">모의 모드에서는 꺼져 있습니다.</small>` : ''}
           </section>
+          <a class="btn ghost sm" href="${href('/diag')}">시스템 진단</a>
+          </details>
           <section class="chain-check">
             <div class="card-head"><h2 style="font-size:20px">사령관 신원</h2><span class="end note">모두에게 보임</span></div>
             <div class="ident-row">${raw(portraitHtml(myPfp(), 64))}<div class="ident-forms">
@@ -74,7 +80,7 @@ const screen: Screen = {
 
         <section class="card side ${wallet.backedUp ? '' : 'warn'}" aria-label="백업 코드">
           <h2 style="font-size:22px">백업 코드</h2>
-          <p class="note">24단어 백업 코드가 곧 계정입니다. 다른 기기에서 로그인하거나 이 브라우저 데이터가 지워졌을 때 필요합니다. SN.CORP와 길드 운영진은 절대 백업 코드를 묻지 않습니다.</p>
+          <p class="note">백업 코드(단어 24개)로 사령관을 되찾을 수 있습니다. 다른 기기에서 로그인하거나 이 브라우저 데이터가 지워졌을 때 필요합니다. SN코프와 길드 운영진은 절대 백업 코드를 묻지 않습니다.</p>
           ${wallet.backedUp ? '' : html`<div class="notice">아직 백업 코드를 확인한 적이 없습니다. 이 브라우저를 잃으면 계정도 잃습니다.</div>`}
           ${err ? html`<div class="notice err" role="alert">${err}</div>` : ''}
           ${phrase ? html`

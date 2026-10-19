@@ -1,6 +1,6 @@
 /* 명령 팔레트 (Ctrl/⌘-K): one box for everything. A bare id opens its card; `WORD id` or `id WORD`
  * runs a verb on it (공유 2-14, 1-7 보내기 5); a screen name goes there. Korean words and English
- * aliases both work, and Hangul matches by initial consonants too (ㄱㄹㅅ → 거래소).
+ * aliases both work, and Hangul matches by initial consonants too (ㅅㅈ → 시장).
  * After structs-universe's ⌘K palette and command grammar. */
 import { go, href } from '../router';
 import { esc } from './dom';
@@ -29,14 +29,14 @@ const VERBS: Verb[] = [
   { word: '임대', aliases: ['rent', 'lease'], label: '전력 임대', hint: '임대 10-3', icon: 'icon-transfers', arg: 'provider', run: async (a) => { const c = cardFor(a) ?? await resolveRef(a); if (c?.provider) openRent(c.provider); else toast('공급자를 찾지 못했습니다.'); } },
   { word: '감시', aliases: ['watch', 'follow', '추적'], label: '감시 목록에 추가/해제', hint: '감시 2-14', icon: 'icon-detected', arg: 'id', run: (a) => toast(toggleWatch(a) ? `${a} 감시 시작` : `${a} 감시 해제`) },
   { word: '길드', aliases: ['guild'], label: '길드 보기', hint: '길드 0-5', icon: 'icon-guild', arg: 'id', run: (a) => go(a ? `/guild?id=${a}` : '/guild') },
-  { word: '시뮬', aliases: ['sim', 'simulator', 'battle', '전투'], label: '전투 시뮬레이터', hint: '시뮬 1-9', icon: 'icon-combat-log', arg: 'player', run: (a) => go(a ? `/sim?vs=${pidArg(a)}` : '/sim') },
+  { word: '모의전', aliases: ['sim', 'simulator', 'battle', '전투'], label: '전투 시뮬레이터', hint: '시뮬 1-9', icon: 'icon-combat-log', arg: 'player', run: (a) => go(a ? `/sim?vs=${pidArg(a)}` : '/sim') },
   { word: '기지', aliases: ['base', 'status', '현황'], label: '내 기지 현황 공유', hint: '기지', icon: 'icon-cmd-post', arg: 'none', run: async () => { const pid = session.playerId; const s = pid ? await baseSituation(pid) : null; if (s) share({ kind: 'situation', s }); else toast('로그인이 필요합니다.'); } },
   { word: '복제', aliases: ['replicate', 'clone', 'replicants', 'armada', '레플리칸트'], label: '레플리칸트 · 복제', hint: '복제', icon: 'icon-member', arg: 'none', run: () => go('/replicants') },
   { word: '회수', aliases: ['sweep'], label: '레플리칸트 알파 회수', hint: '회수', icon: 'icon-incoming', arg: 'none', run: () => go('/replicants') },
   { word: '규칙', aliases: ['orders', 'doctrine', 'policy', '자동'], label: '복무 규칙 · 자동화', hint: '규칙', icon: 'icon-computer', arg: 'none', run: () => go('/replicants?tab=orders') },
   { word: '시장', aliases: ['market', 'mkt', 'offers', '구매'], label: '전력 시장', hint: '시장', icon: 'icon-transfers', arg: 'none', run: () => go('/market') },
-  { word: '은행', aliases: ['bank', 'mint', 'redeem', 'gt', '토큰'], label: '길드 은행 · 토큰 교환', hint: '은행', icon: 'icon-guild-directory', arg: 'none', run: () => go('/market?tab=bank') },
-  { word: '자산', aliases: ['지갑', 'wallet', 'inventory', '잔액'], label: '내 자산', hint: '자산', icon: 'icon-key', arg: 'none', run: () => go('/market?tab=wallet') },
+  { word: '은행', aliases: ['bank', 'mint', 'redeem', 'gt', '화폐'], label: '길드 은행 · 화폐 교환', hint: '은행', icon: 'icon-guild-directory', arg: 'none', run: () => go('/market?tab=bank') },
+  { word: '자산', aliases: ['지갑', 'wallet', 'inventory', '잔액'], label: '내 보유품', hint: '보유품', icon: 'icon-key', arg: 'none', run: () => go('/market?tab=wallet') },
   { word: '계약', aliases: ['book', 'agreements', 'contracts'], label: '내 전력 계약', hint: '계약', icon: 'icon-transfers', arg: 'none', run: () => go('/market?tab=mine') },
   { word: '통계', aliases: ['stats', 'universe', 'galaxy stats', '랭킹', 'leaderboard'], label: '은하 통계 · 랭킹', hint: '통계', icon: 'icon-combat-log', arg: 'none', run: () => go('/stats') },
   { word: '표적', aliases: ['targets', 'war', 'raid', 'scout', '상황실', '정찰'], label: '작전 상황실 · 표적', hint: '표적', icon: 'icon-raid', arg: 'none', run: () => go('/war') },

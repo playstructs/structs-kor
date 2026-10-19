@@ -25,7 +25,7 @@ const screen: Screen = {
       const rank = career.rank.i;
       const alpha = demo.state.alpha;
       return html`
-      <div class="card-head"><h1 style="font-size:28px">연구소</h1><span class="label c-hwang">RESEARCH</span><span class="end mono c-hwang">보유 알파 ${n(alpha, 2)} g</span></div>
+      <div class="card-head"><h1 style="font-size:28px">연구소</h1><span class="end mono c-hwang">보유 알파 ${n(alpha, 2)} g</span></div>
       <p class="note">알파로 기지를 영구 강화합니다. 깊은 기술은 계급이 오르면 열립니다 — 작전 목표와 전투로 진급하세요.</p>
       <section class="doctrines"><div class="card-head"><h2>교리</h2><span class="end note">${demo.doctrine ? `전환 비용 ${DOCTRINE_SWITCH} g` : '첫 선택은 무료 · 하나만 따를 수 있습니다'}</span></div>
         <div class="doc-row">${DOCTRINES.map((d) => { const on = demo.doctrine === d.id; return html`<article class="doc ${on ? 'on' : ''}">

@@ -41,7 +41,7 @@ export async function roster(pid: string): Promise<Replicant[]> { return listRep
 /** Enlist HD index `i` with the guild (its own signup, signed by its own key). */
 export async function replicate(i: number, role: Role): Promise<void> {
   const name = `${CALLSIGNS[i % CALLSIGNS.length]}-${i}`;
-  if (MOCK) { duty(`모의: #${i} ${name} 복제 신청 (${role === 'productive' ? '생산형' : role === 'bait' ? '미끼형' : '레이더형'})`, 'cheong'); return; }
+  if (MOCK) { duty(`모의: #${i} ${name} 복제 신청 (${role === 'productive' ? '생산형' : role === 'bait' ? '미끼형' : '습격대형'})`, 'cheong'); return; }
   const k = wallet.key(i);
   const s = wallet.signMessage(i, `GUILD${GUILD_ID}ADDRESS${k.address}NONCE0`);
   await guildApi.signup({ primary_address: k.address, signature: s.signature, pubkey: s.pubkey, guild_id: GUILD_ID, username: name });

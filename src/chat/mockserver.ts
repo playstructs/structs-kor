@@ -104,12 +104,12 @@ function seed(user: string) {
   corp.pinned = [p.event_id];
   say(corp.id, '1-13', '전력 남는 분? 10-3 공급자가 싸게 팔고 있어요.', 3 * H);
   say(corp.id, '1-9', '1-7 님 정제소 5-1011 아직 돌아가나요?', 2 * H);
-  say(corp.id, '1-7', '네, 정제 중이에요. 0-5 길드 은행 담보율도 1.05로 안정적입니다.', 2 * H - 60000);
+  say(corp.id, '1-7', '네, 정제 중이에요. 0-5 길드 은행 교환 비율도 1.05로 안정적입니다.', 2 * H - 60000);
   say(corp.id, '1-21', '오늘 밤 합동 습격 갑니다. 참여할 분 함대 준비!', 40 * 60000);
   say(corp.id, '1-13', `오늘 일일 교전 해보셨어요? ${location.origin}/daily/${new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10)}`, 20 * 60000);
   const help = addRoom({ id: `!help:${HS}`, name: 'help', alias: `#help:${HS}`, topic: '처음이세요? 무엇이든 물어보세요.', members: all });
   say(help.id, '1-13', '구조체를 지으려면 함교에서 빈 칸을 누르고 건설을 고르세요.', 30 * H);
-  say(help.id, '1-7', '전력이 모자라면 거래소에서 임대하거나 리액터에 알파를 주입하세요.', 20 * H);
+  say(help.id, '1-7', '전력이 모자라면 시장에서 임대하거나 리액터에 알파를 주입하세요.', 20 * H);
   const infra = addRoom({ id: `!infra:${HS}`, name: 'infrastructure', alias: `#infrastructure:${HS}`, topic: '변전소 · 리액터 운영', members: [user, uid('1-7'), uid('1-13')] });
   say(infra.id, '1-7', '변전소 4-7 연결 12개, 여유 있습니다.', 8 * H);
   const raid = addRoom({ id: `!raid:${HS}`, name: 'raid', alias: `#raid:${HS}`, topic: '습격 작전실', members: [user, uid('1-9'), uid('1-21')] });

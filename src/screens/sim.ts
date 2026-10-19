@@ -551,7 +551,7 @@ const screen: Screen = {
           if (recordClear(mission.id, stars)) {
             setTimeout(() => career.award(mission.xp, `작전 ${mission.no} 완료 · ${mission.title}`), 1800);
             // A first clear also pays the demo base's treasury: the war chest grows with the campaign.
-            if (demo.on) { const g = Math.round(mission.xp / 10); demo.grant(g, `작전 ${mission.no} 전리품`); setTimeout(() => notify('전리품', `작전 ${mission.no} 첫 승리 · 기지 금고 +${g} α`, 'hwang', 'coin'), 2600); }
+            if (demo.on) { const g = Math.round(mission.xp / 10); demo.grant(g, `작전 ${mission.no} 전리품`); setTimeout(() => notify('전리품', `작전 ${mission.no} 첫 승리 · 기지 금고 +${g} g`, 'hwang', 'coin'), 2600); }
           }
         }
         if (raidOn) {
@@ -622,7 +622,7 @@ const screen: Screen = {
           <div class="g3" style="gap:8px">
             ${[['전적', `${career.stats.simWins}승 / ${career.stats.simBattles}전`], ['최고 별', '★'.repeat(career.stats.simStars) || '—'], ['누적 격파', String(career.stats.kills)]].map(([k, v]) => html`<div class="stat"><small>${k}</small><strong>${v}</strong></div>`)}
           </div>
-          <p class="note">함대는 본거지 밖에서 만나므로 행성 구조체는 없습니다. CMD 함선이 파괴되면 전투가 끝납니다.</p>
+          <p class="note">함대는 본거지 밖에서 만나므로 행성 구조체는 없습니다. 지휘함이 파괴되면 전투가 끝납니다.</p>
         </section></div>`,
       deploy: () => html`<section class="card game-panel" style="gap:12px"><div class="card-head"><h1 style="font-size:26px">${duel ? `실시간 대전 · ${peerName()}` : rival ? `도전 · ${rival.title}` : vsInfo ? `실전 예측 · ${vsInfo.name}` : mission ? `작전 ${mission.no} · ${mission.title}` : raidOn ? `습격 · ${raidOn.name}` : run ? `연전 ${run.round}/5 · ${ROUND_KO[run.round - 1]}` : mode === 'daily' ? `일일 교전 #${dailyNo(theDay())} · 「${nameKo(dailyScenario(theDay()))}」` : '함대 편성'}</h1><span class="mono dim">${units.length} 유닛 · 시드 ${seed}</span>
           ${raidOn ? (() => {
@@ -630,7 +630,7 @@ const screen: Screen = {
             const mine = hpOf('player'), theirs = hpOf('computer');
             const pct = odds && odds.played ? Math.round((odds.won / odds.played) * 100) : null;
             const b = demo.bounty?.target === raidOn.id ? demo.bountyPayout() : 0;
-            return html`<span class="chip hwang mono">${raidOn.id === 'void' ? `격파 전리품 ${demo.boss?.reward ?? 0} α · ${demo.boss?.left ?? 0}블록 남음` : `노획 예상 광석 ${n(Math.floor(raidOn.ore * 0.6))}${b ? ` + 현상금 ${b} α` : ''}`}</span><span class="chip ${mine < theirs * 0.7 ? 'jeok' : 'cheong'} mono">전력 ${mine} vs ${theirs}${mine < theirs * 0.7 ? ' · 열세!' : ''}</span>
+            return html`<span class="chip hwang mono">${raidOn.id === 'void' ? `격파 전리품 ${demo.boss?.reward ?? 0} g · ${demo.boss?.left ?? 0}블록 남음` : `노획 예상 광석 ${n(Math.floor(raidOn.ore * 0.6))}${b ? ` + 현상금 ${b} g` : ''}`}</span><span class="chip ${mine < theirs * 0.7 ? 'jeok' : 'cheong'} mono">전력 ${mine} vs ${theirs}${mine < theirs * 0.7 ? ' · 열세!' : ''}</span>
               <span class="chip ${pct == null ? '' : pct >= 60 ? 'cheong' : pct >= 35 ? 'hwang' : 'jeok'} mono odds" title="자동 지휘(어려움) 기준 모의 교전">${pct == null ? '승률 계산 중…' : `예상 승률 ${pct}%`}${odds && odds.played < 16 ? ` · ${odds.played}/16` : ''}</span>`;
           })() : ''}
           ${vsInfo ? (() => { const pct = odds && odds.played ? Math.round((odds.won / odds.played) * 100) : null; return html`<span class="chip hwang mono">실제 함대 · ${vsInfo!.id}</span><span class="chip ${pct == null ? '' : pct >= 60 ? 'cheong' : pct >= 35 ? 'hwang' : 'jeok'} mono odds" title="자동 지휘(어려움) 기준 모의 교전">${pct == null ? '승률 계산 중…' : `예상 승률 ${pct}%`}${odds && odds.played < 16 ? ` · ${odds.played}/16` : ''}</span>`; })() : ''}
@@ -671,7 +671,7 @@ const screen: Screen = {
         const p = stats.player, c = stats.computer;
         return html`<div class="row">
           <section class="card side game-panel debrief ${winner === 'player' ? 'win' : 'loss'}" style="align-items:center;text-align:center;justify-content:center">
-            <span class="label">DEBRIEF</span>
+            <span class="label">전투 결과</span>
             <strong class="debrief-title">${winner === 'player' ? '승리' : winner === 'computer' ? '패배' : '무승부'}</strong>
             <span class="debrief-stars" aria-label="별 3개 중 ${stars}개">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>
             <span class="mono">${blocks}턴 · 격파 ${c.lost} · 손실 ${p.lost}</span>
@@ -690,7 +690,7 @@ const screen: Screen = {
             ${rival ? (() => { const theirWin = rival.winner === 'player', mineWin = winner === 'player'; const beat = mineWin && (!theirWin || (rival.blocks != null && blocks < rival.blocks)); return html`<div class="chal-compare ${beat ? 'win' : 'loss'}"><span class="label c-hwang">도전 결과</span><div><span>상대</span><b>${theirWin ? '승리' : rival.winner === 'computer' ? '패배' : '—'}${rival.blocks != null ? ` · ${rival.blocks}턴` : ''}</b></div><div><span>나</span><b>${mineWin ? '승리' : winner === 'computer' ? '패배' : '무승부'} · ${blocks}턴</b></div><strong>${beat ? '기록을 넘었습니다!' : mineWin && theirWin ? '이겼지만 더 느렸습니다' : '아직 못 넘었습니다'}</strong></div>`; })() : ''}
             ${mission && winner === 'player' ? (() => { const next = MISSIONS[mission.no]; return next ? html`<a class="btn danger" href="${href('/sim?mission=' + next.id)}">다음 작전 · ${next.title}</a>` : html`<span class="chip hwang">작전 완수 · 붉은 연합 격파</span>`; })() : ''}
             ${mission ? html`<a class="btn ghost" href="${href('/campaign')}">작전 지도</a>` : ''}
-            ${raidOn && loot ? html`<span class="chip ${loot.ore || loot.alpha ? 'hwang' : 'jeok'} mono" style="font-size:16px">${loot.alpha ? `전리품 +${n(loot.alpha)} α` : loot.ore ? `노획 광석 +${n(loot.ore)}` : '노획 없음'}</span><a class="btn gold" href="${href('/console')}">함교로 귀환</a>` : ''}
+            ${raidOn && loot ? html`<span class="chip ${loot.ore || loot.alpha ? 'hwang' : 'jeok'} mono" style="font-size:16px">${loot.alpha ? `전리품 +${n(loot.alpha)} g` : loot.ore ? `노획 광석 +${n(loot.ore)}` : '노획 없음'}</span><a class="btn gold" href="${href('/console')}">함교로 귀환</a>` : ''}
             ${run?.offers ? html`<div class="offers"><span class="label c-hwang">증원 선택 · 1기</span>${run.offers.map((o, i) => html`<button class="offer" data-act="reinforce" data-i="${i}">${pixel(o.type, 56)}<b>${STRUCT_TYPE[o.type]}</b><span class="mono faint">${AMBIT[o.ambit]} ${o.slot + 1} · HP ${TYPES_BY_ID[o.type].maxHealth}</span></button>`)}</div>` : ''}
             ${run?.over ? html`<span class="chip ${run.won ? 'hwang' : 'jeok'}">${run.won ? '연전 제패!' : `연전 종료 · ${run.round}라운드`}</span>` : ''}
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">${run && !run.over ? '' : html`<button class="btn primary" data-act="again">${duel?.peer ? '재대결 신청' : run ? '새 연전' : '재도전'} <kbd>Enter</kbd></button>`}<button class="btn ghost" data-act="toSetup">설정으로</button><button class="btn gold" data-act="shareBattle">통신에 전투 공유</button></div>

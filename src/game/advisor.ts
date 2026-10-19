@@ -25,7 +25,7 @@ export function advise(rank = 99): Tip[] {
   }
   // A delivery on the board that would empty the pile before the raid lands.
   const del = demo.jobs?.offers.filter((o) => o.kind === 'deliver' && o.need <= st.ore).sort((a, z) => z.need - a.need)[0];
-  if (raid && raid.eta > 0 && del) tips.push({ pri: 97, tone: 'hwang', text: `의뢰 게시판에 광석 ${del.need} 단위 납품 의뢰 (+${del.reward} α). 습격 전에 넘기면 약탈당할 광석이 줄어듭니다.`, go: '/market', cta: '납품' });
+  if (raid && raid.eta > 0 && del) tips.push({ pri: 97, tone: 'hwang', text: `의뢰 게시판에 광석 ${del.need} 단위 납품 의뢰 (+${del.reward} g). 습격 전에 넘기면 약탈당할 광석이 줄어듭니다.`, go: '/market', cta: '납품' });
   // Abilities, when they'd turn a raid; at most one tip, so the base's other troubles still show.
   const cap = demo.surgeCap();
   if (raid && raid.eta > 0 && st.ore >= 20 && refining && cap >= st.ore * 0.5 && ready('surge')) tips.push({ pri: 101, tone: 'hwang', text: `습격 전에 긴급 정제[7]: 광석 ${Math.floor(Math.min(cap, st.ore))} 단위를 지금 알파로 바꿔 약탈을 피하세요.`, go: '/console', cta: '함교' });
@@ -51,7 +51,7 @@ export function advise(rank = 99): Tip[] {
     if (raid && sh && st.shield < 60) tips.push({ pri: 94, tone: 'hwang', text: `밀수선이 방어막 충전기를 ${sh.price} α에 팝니다 · 방어막 ${Math.round(st.shield)}%를 습격 전에 100%로.`, go: '/market', cta: '암시장' });
     else if (can.length) tips.push({ pri: 58, tone: 'hwang', text: `밀수선 입항 · ${bm.left}블록 뒤 출항. ${can.map((o) => BLACK_DEALS[o.id].name).join(', ')}.`, go: '/market', cta: '암시장' });
   }
-  if (raid && raid.eta > 0 && st.ore >= 20) tips.push({ pri: 100, tone: 'jeok', text: `${raid.name} 함대 ${raid.eta}블록 후 도착 · 정제되지 않은 광석 ${Math.floor(st.ore)} 단위가 노출되어 있습니다. 정제하거나 팔아 지키세요.`, go: '/market', cta: '거래소' });
+  if (raid && raid.eta > 0 && st.ore >= 20) tips.push({ pri: 100, tone: 'jeok', text: `${raid.name} 함대 ${raid.eta}블록 후 도착 · 정제되지 않은 광석 ${Math.floor(st.ore)} 단위가 노출되어 있습니다. 정제하거나 팔아 지키세요.`, go: '/market', cta: '시장' });
   const hurt = st.structs.filter((x) => x.hp > 0 && x.hp < x.max * 0.5).length, dead = st.structs.filter((x) => x.hp <= 0).length;
   if (dead + hurt) tips.push({ pri: raid ? 85 : 60, tone: 'jeok', text: `구조체 ${dead ? `${dead}기 파괴` : ''}${dead && hurt ? ' · ' : ''}${hurt ? `${hurt}기 중파` : ''}. 다음 습격 전에 수리하세요.`, go: '/console', cta: '함교' });
   const NAMES: Record<number, string> = { 14: '광석 추출기', 15: '정제소', 20: '발전기', 16: '방어막 발생기', 19: '방어포' };
@@ -70,15 +70,15 @@ export function advise(rank = 99): Tip[] {
     else if (x.vassal == null && x.raided >= DOMINION.raidsToSubjugate && st.alpha >= DOMINION.cost) tips.push({ pri: 65, tone: 'hwang', text: `${x.name}을(를) ${x.raided}번 약탈했습니다. 이제 복속을 요구할 수 있습니다.`, go: '/galaxy', cta: '복속' });
   }
   const loan = demo.loan;
-  if (loan && loan.left < 40) tips.push({ pri: st.alpha >= loan.owed ? 66 : 92, tone: st.alpha >= loan.owed ? 'hwang' : 'jeok', text: st.alpha >= loan.owed ? `청룡 상단 대출 ${loan.left}블록 뒤 만기 · 금고에서 ${loan.owed.toFixed(1)} α가 나갑니다.` : `대출 만기 ${loan.left}블록 · ${loan.owed.toFixed(1)} α가 필요한데 부족합니다! 광석 압류와 습격이 옵니다.`, go: '/market', cta: '거래소' });
+  if (loan && loan.left < 40) tips.push({ pri: st.alpha >= loan.owed ? 66 : 92, tone: st.alpha >= loan.owed ? 'hwang' : 'jeok', text: st.alpha >= loan.owed ? `청룡 상단 대출 ${loan.left}블록 뒤 만기 · 금고에서 ${loan.owed.toFixed(1)} α가 나갑니다.` : `대출 만기 ${loan.left}블록 · ${loan.owed.toFixed(1)} α가 필요한데 부족합니다! 광석 압류와 습격이 옵니다.`, go: '/market', cta: '시장' });
   // An outpost within reach.
   const site = demo.outposts.filter((o) => !o.mine).sort((a, z) => z.odds - a.odds)[0];
   if (site && site.odds >= 0.5 && st.alpha >= OUTPOST.claim) tips.push({ pri: 47, tone: 'cheong', text: `${site.name} 공략 성공률 ${Math.round(site.odds * 100)}% · 장악하면 ${site.perk}.`, go: '/galaxy', cta: '거점' });
   if (demo.event?.id === 'meteor' && st.shield < 50) tips.push({ pri: 84, tone: 'jeok', text: `유성우 · 방어막 ${Math.round(st.shield)}%. 50% 아래에선 구조체가 부서집니다 · 방어막 발생기를 켜고 버티세요.`, go: '/console', cta: '함교' });
   const v = demo.boss;
-  if (v) tips.push({ pri: 86, tone: 'jeok', text: `공허 함대 출현 · ${v.left ? `${v.left}블록 뒤` : '곧'} 누군가를 덮칩니다. 요격하면 ${v.reward} α.`, go: '/sim?raid=void', cta: '요격' });
+  if (v) tips.push({ pri: 86, tone: 'jeok', text: `공허 함대 출현 · ${v.left ? `${v.left}블록 뒤` : '곧'} 누군가를 덮칩니다. 요격하면 ${v.reward} g.`, go: '/sim?raid=void', cta: '요격' });
   const b = demo.bounty, bt = b && demo.rivals().find((x) => x.id === b.target);
-  if (b && bt && bt.vassal == null) tips.push({ pri: 68, tone: 'hwang', text: `${bt.name}에게 현상금 ${demo.bountyPayout()} α · ${b.left}블록 남음. 습격에 이기면 노획과 함께 받습니다.`, go: `/sim?raid=${bt.id}`, cta: '습격' });
+  if (b && bt && bt.vassal == null) tips.push({ pri: 68, tone: 'hwang', text: `${bt.name}에게 현상금 ${demo.bountyPayout()} g · ${b.left}블록 남음. 습격에 이기면 노획과 함께 받습니다.`, go: `/sim?raid=${bt.id}`, cta: '습격' });
   // Past the first raids they come bigger: a defence cannon (2 damage a volley) holds the line.
   const fights = st.raidsRepelled + st.raidsLost;
   const freePlanet = (['land', 'water', 'air', 'space'] as const).some((a) => [0, 1, 2, 3].some((sl) => !st.structs.some((x) => x.cat === 'planet' && x.ambit === a && x.slot === sl && x.hp > 0)));

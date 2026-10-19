@@ -16,7 +16,7 @@ import { ApiError } from '../api/http';
 import { html, mount, raw, esc, toast, type Safe } from '../ui/dom';
 import { needSession } from '../ui/gate';
 import { matrix, localpart, type Room, type Message } from '../chat/matrix';
-import { parse, playerArg, complete, COMMANDS, REACTIONS, reactionOf, type Completion } from '../chat/commands';
+import { parse, playerArg, complete, COMMANDS, REACTIONS, reactionOf, type Completion, koName } from '../chat/commands';
 import { looksLikePhrase } from '../wallet/keys';
 import { guildApi } from '../api/guild';
 import { portraitHtml, seededPfp } from '../game/portrait';
@@ -31,6 +31,9 @@ import { webRoot } from '../core/desktop';
 import { hasChallenge, challengeSlot, hydrateChallenges } from '../social/challenge';
 
 const PINNED = ['#sn-corp', '#help', '#infrastructure'];
+/** Korean names for the shared rooms (their addresses stay as the server has them). */
+const ROOM_KO: Record<string, string> = { 'sn-corp': 'SN코프 본부', help: '도움', infrastructure: '기반 시설', raid: '습격', trade: '시장', market: '시장', recruit: '모집', korea: '한국', kr: '한국', general: '자유 대화', announcements: '공지' };
+const roomName = (name: string) => { const k = name.replace(/^#/, '').split(':')[0]; return ROOM_KO[k.toLowerCase()] ?? k; };
 const GUESS = ['#sn-corp', '#help', '#infrastructure', '#raid', '#trade', '#market', '#recruit', '#korea', '#kr', '#general', '#announcements'];
 const TABS_KEY = 'structs-kor.chat.tabs', MAX_TABS = 6;
 const loadTabs = (): string[] => { try { return JSON.parse(localStorage.getItem(TABS_KEY) || '[]'); } catch { return []; } };
@@ -111,10 +114,10 @@ const screen: Screen = {
     /* ── Rail ── */
     const railItem = (r: Room) => html`<button class="comms-item ${r.id === active ? 'on' : ''} ${r.highlight ? 'hi' : ''}" data-act="open" data-id="${r.id}">
       <span class="comms-ico">${r.direct ? face([...r.memberList.keys()].find((u) => u !== matrix.me) ?? r.id, 24) : raw(`<span class="hash">#</span>`)}</span>
-      <span class="comms-nm">${r.name.replace(/^#/, '').split(':')[0]}</span>
+      <span class="comms-nm">${roomName(r.name)}</span>
       ${matrix.muted.has(r.id) ? html`<i class="si icon-disabled faint" title="알림 꺼짐"></i>` : ''}${r.unread ? html`<span class="comms-n ${r.highlight && !matrix.muted.has(r.id) ? 'hi' : ''}">${r.unread > 99 ? '99+' : r.unread}</span>` : ''}</button>`;
     const paintRail = () => {
-      const all = sorted().filter((r) => !filter || r.name.toLowerCase().includes(filter.toLowerCase()) || (r.alias ?? '').includes(filter));
+      const all = sorted().filter((r) => !filter || (r.name.toLowerCase().includes(filter.toLowerCase()) || roomName(r.name).includes(filter)) || (r.alias ?? '').includes(filter));
       const pinned = all.filter(isPinnedRoom), rest = all.filter((r) => !isPinnedRoom(r));
       const sec = (t: string, list: Room[]) => list.length ? html`<div class="comms-sec">${t}</div>${list.map(railItem)}` : '';
       mount(railEl, html`
@@ -153,7 +156,7 @@ const screen: Screen = {
         close: (el) => { tabs = tabs.filter((t) => t !== el.dataset.id); saveTabs(tabs); if (active === el.dataset.id) open(tabs[0] ?? null); else paintHead(); },
       });
       if (!r) { headEl.innerHTML = ''; pinsEl.innerHTML = ''; return; }
-      mount(headEl, html`<button class="hud-btn comms-rooms" data-act="rooms" aria-label="대화방 목록"><i class="si icon-chevron-left"></i></button><div class="comms-title"><h1>${r.direct ? '@' : '#'}${r.name.replace(/^#/, '').split(':')[0]}</h1><small>${r.topic || (r.direct ? '다이렉트 메시지' : r.local ? '로컬 넷' : '갤럭시 넷')} · ${r.members || r.memberList.size}명</small></div>
+      mount(headEl, html`<button class="hud-btn comms-rooms" data-act="rooms" aria-label="대화방 목록"><i class="si icon-chevron-left"></i></button><div class="comms-title"><h1>${r.direct ? '@' : '#'}${roomName(r.name)}</h1><small>${r.topic || (r.direct ? '1:1 대화' : r.local ? '길드 통신망' : '은하 통신망')} · ${r.members || r.memberList.size}명</small></div>
         <div class="comms-tools">
           ${r.pinned.length ? html`<button class="hud-btn ${side === 'pins' ? 'on' : ''}" data-act="side" data-s="pins" title="고정 메시지" aria-label="고정 메시지 ${r.pinned.length}"><i class="si icon-key"></i><span class="tool-n">${r.pinned.length}</span></button>` : ''}
           <button class="hud-btn ${side === 'search' ? 'on' : ''}" data-act="side" data-s="search" title="검색 (Ctrl+F)" aria-label="검색"><i class="si icon-detected"></i></button>
@@ -212,7 +215,7 @@ const screen: Screen = {
       const lastMine = [...evs].reverse().find((m) => m.mine && !m.pending);
       const seen = lastMine ? Object.entries(r.readUpTo).filter(([u, e]) => u !== matrix.me && e === lastMine.id).map(([u]) => matrix.displayName(r.id, u)) : [];
       mount(tl, html`
-        ${hiddenOlder ? html`<button class="btn ghost sm comms-more" data-act="more">이전 메시지 ${r.events.length - evs.length}개 더 보기</button>` : r.noMoreHistory ? html`<div class="comms-start">${r.name.replace(/^#/, '').split(':')[0]}의 처음입니다.</div>` : r.prevBatch ? html`<button class="btn ghost sm comms-more" data-act="more">이전 메시지 불러오기</button>` : ''}
+        ${hiddenOlder ? html`<button class="btn ghost sm comms-more" data-act="more">이전 메시지 ${r.events.length - evs.length}개 더 보기</button>` : r.noMoreHistory ? html`<div class="comms-start">${roomName(r.name)}의 처음입니다.</div>` : r.prevBatch ? html`<button class="btn ghost sm comms-more" data-act="more">이전 메시지 불러오기</button>` : ''}
         ${evs.length ? evs.map((m, i) => {
           const prev = evs[i - 1];
           const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
@@ -325,7 +328,7 @@ const screen: Screen = {
       form.querySelector<HTMLButtonElement>('.comms-send')!.textContent = editing ? '수정' : '전송';
       if (guard) {
         replyEl.classList.add('on', 'danger');
-        replyEl.innerHTML = `<div role="alertdialog" aria-label="백업 코드 경고"><b>백업 코드로 보이는 메시지입니다.</b> SN.CORP와 길드 운영진은 절대 복구 키를 요구하지 않습니다. <button type="button" class="btn danger sm" data-guard="cancel" autofocus>취소 (권장)</button> <button type="button" class="btn outline-danger sm" data-guard="force">그래도 보내기</button></div>`;
+        replyEl.innerHTML = `<div role="alertdialog" aria-label="백업 코드 경고"><b>백업 코드로 보이는 메시지입니다.</b> SN코프와 길드 운영진은 절대 복구 키를 요구하지 않습니다. <button type="button" class="btn danger sm" data-guard="cancel" autofocus>취소 (권장)</button> <button type="button" class="btn outline-danger sm" data-guard="force">그래도 보내기</button></div>`;
         replyEl.querySelector<HTMLElement>('[data-guard=cancel]')?.focus();
       } else replyEl.classList.remove('danger');
     };
@@ -342,7 +345,7 @@ const screen: Screen = {
 
     const help = () => {
       const r = room();
-      const lines = COMMANDS.map((c) => `/${c.name} ${c.args} — ${c.help}`).join('\n');
+      const lines = COMMANDS.map((c) => `/${koName(c)} ${c.args} — ${c.help}`).join('\n');
       notice(`명령어\n${lines}\n\n단축키: Ctrl+K 대화방 찾기 · Ctrl+F 검색 · Tab 자동완성 · ↑↓ 보낸 메시지 · Esc 취소`, r);
     };
     /** A line only this player sees (command output), at the bottom of the room. */

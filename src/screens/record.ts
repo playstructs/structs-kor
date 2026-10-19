@@ -28,7 +28,7 @@ const screen: Screen = {
       <section class="card game-panel record-hero">
         <div class="record-face">${raw(portraitHtml(chainPfp ?? myPfp(), 144))}<span class="record-ins">${raw(insignia(r.i, 44))}</span></div>
         <div class="record-main">
-          <span class="label c-hwang">SERVICE RECORD · 전적</span>
+          <span class="label c-hwang">전적</span>
           <h1>${r.name}</h1>
           <div class="plate-xp big"><i style="width:${Math.round(r.pct * 100)}%"></i></div>
           <span class="mono dim">${RANKS[r.i + 1] ? `${r.into} / ${r.need} XP → ${RANKS[r.i + 1]}` : '최고 계급'} · 총 ${n(r.xp)} XP</span>

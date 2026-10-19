@@ -133,3 +133,10 @@ button.order-busy::after { content: ''; position: absolute; top: 4px; right: 4px
 button.order-ok { box-shadow: 0 0 0 2px var(--cheong-hi) !important; }
 button.order-bad { box-shadow: 0 0 0 2px var(--jeok-hi, #FF6B5B) !important; }
 @media (prefers-reduced-motion: reduce) { button.order-busy::after { animation: none; } }
+
+/* Folded sections: support details on the profile, and the account delete. */
+details.adv, details.danger-zone { margin-top: 12px; }
+details.adv > summary, details.danger-zone > summary { cursor: pointer; color: var(--text-dim); font-size: 13px; padding: 6px 0; }
+details.danger-zone > summary { color: var(--jeok); }
+details.adv[open] > summary, details.danger-zone[open] > summary { margin-bottom: 8px; }
+.ab-empty { margin: 0; padding: 10px 12px; color: var(--text-dim); font-size: 13px; max-width: 340px; }

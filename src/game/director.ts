@@ -69,7 +69,7 @@ demo.onEvent((kind, text) => {
   } else if (kind === 'streak') {
     const [n, g] = text.split('|');
     // Wait for the screen to settle (this fires as the base starts up).
-    setTimeout(() => { sfx.play('coin'); banner({ kicker: '복귀 보상', title: `연속 ${n}일`, sub: `기지 금고 +${g} α · 내일도 오세요`, tone: 'gold', ms: 2600 }); }, 1500);
+    setTimeout(() => { sfx.play('coin'); banner({ kicker: '복귀 보상', title: `연속 ${n}일`, sub: `기지 금고 +${g} g · 내일도 오세요`, tone: 'gold', ms: 2600 }); }, 1500);
   } else if (kind === 'guildhelp') {
     notify('길드 지원', text, 'cheong', 'shield');
     record({ from: 'guild', who: mates()[0] ?? '길드원', text: `방어막 보냈습니다! ${text.split(' ').pop()} · 버티세요`, kind: 'guild' });
@@ -119,7 +119,7 @@ function victory() {
     ${row('속국', `${demo.rivals().filter((r) => r.vassal != null).length}곳`)}
     ${row('거점', `${demo.outposts.filter((o) => o.mine).length} / ${demo.outposts.length}`)}
     ${row('습격 격퇴', `${st.raidsRepelled}회`)}
-    ${row('누적 공물', `${demo.tributeTotal.toFixed(1)} α`)}
+    ${row('누적 공물', `${demo.tributeTotal.toFixed(1)} g`)}
     ${row('공허 함대 격파', `${st.voidKills ?? 0}회`)}
     ${row('결단', `${st.decided ?? 0}회`)}
     <p class="note">${demo.engine.done ? '월드 엔진이 가동 중입니다. 함교에서 새 시대를 열어 더 강한 은하에 도전하세요.' : '이제 월드 엔진을 완공하세요. 완공하면 새 시대를 열 수 있습니다.'}</p>
@@ -147,7 +147,7 @@ demo.onAway((r) => {
   el.innerHTML = `<div class="away-in"><span class="label c-cheong">귀환 보고 · ${mins}분 · ${r.blocks}블록</span><h2>자리를 비운 동안</h2>
     ${row('정제된 알파', `${r.alpha >= 0 ? '+' : ''}${r.alpha.toFixed(2)} g`, 'c-hwang')}
     ${row('광석 변화', `${r.ore >= 0 ? '+' : ''}${Math.round(r.ore)}`)}
-    ${r.earned ? row('전력 판매 수익', `+${r.earned.toFixed(2)} α`, 'c-cheong') : ''}
+    ${r.earned ? row('전력 판매 수익', `+${r.earned.toFixed(2)} g`, 'c-cheong') : ''}
     ${r.raids ? row('습격', `${r.raids}회 · 격퇴 ${r.repelled}`, r.repelled === r.raids ? 'c-cheong' : 'c-jeok') : row('습격', '없음', 'c-cheong')}
     ${r.rebels?.length ? row('반란', r.rebels.join(', '), 'c-jeok') : ''}
     ${r.loan ? row('대출', r.loan, r.loan.includes('불이행') ? 'c-jeok' : 'c-hwang') : ''}

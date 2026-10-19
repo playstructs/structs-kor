@@ -63,9 +63,9 @@ const screen: Screen = {
         <label class="end chk">최소 광석 <input class="input mono" style="width:80px;min-height:32px" type="number" min="0" name="minOre" value="${L.minOre}" data-act="minOre" data-on="change"></label></div>
         <div class="scroll-x"><table class="t" style="min-width:760px"><thead><tr><th class="r">점수</th><th>사령관</th><th class="r">광석</th><th class="r">방어막</th><th>이유</th><th class="r"></th></tr></thead><tbody>
         ${list.length ? list.map((t) => html`<tr><td class="r"><span class="score ${t.score >= 60 ? 'hot' : t.score >= 30 ? 'warm' : ''}">${t.score}</span></td>
-          <td><span style="display:inline-flex;align-items:center;gap:8px">${raw(portraitHtml(t.p.pfp || seededPfp(t.p.id), 28))}<span><a class="c-white" href="${href(`/o/${t.p.id}`)}"><b>${t.p.username || t.p.id}</b></a><br><span class="mono faint" style="font-size:11px">${t.p.id} · ${t.p.tag || t.p.guild_id} · ${t.p.planet_id}</span></span></span></td>
+          <td><span style="display:inline-flex;align-items:center;gap:8px">${raw(portraitHtml(t.p.pfp || seededPfp(t.p.id), 28))}<span><a class="c-white" href="${href(`/o/${t.p.id}`)}"><b>${t.p.username || t.p.id}</b></a><br><span class="faint" style="font-size:11px">${t.p.tag ? `[${t.p.tag}]` : t.p.guild_name || '무소속'}</span></span></span></td>
           <td class="r mono c-hwang">${n(t.p.ore)}</td><td class="r mono">${t.shield ?? '—'}</td><td>${t.why.join(' · ') || '—'}${t.raid ? html` <span class="chip jeok">습격받는 중</span>` : ''}</td>
-          <td class="r"><span style="display:inline-flex;gap:4px"><a class="btn ghost sm" href="${href(`/o/${t.p.planet_id}`)}">관전</a><a class="btn ghost sm" href="${href(`/sim?vs=${t.p.id}`)}">시뮬</a><a class="btn danger sm" href="${href('/galaxy')}">출격</a>
+          <td class="r"><span style="display:inline-flex;gap:4px"><a class="btn ghost sm" href="${href(`/o/${t.p.planet_id}`)}">관전</a><a class="btn ghost sm" href="${href(`/sim?vs=${t.p.id}`)}">모의전</a><a class="btn danger sm" href="${href('/galaxy')}">출격</a>
             <button class="hud-btn" data-act="shareT" data-id="${t.p.id}" title="표적 공유" aria-label="표적 공유"><i class="si icon-link-out"></i></button><button class="hud-btn" data-act="veto" data-id="${t.p.id}" title="공격 금지에 추가" aria-label="공격 금지"><i class="si icon-blocked"></i></button></span></td></tr>`)
         : html`<tr><td colspan="6" class="empty">조건에 맞는 표적이 없습니다.</td></tr>`}
         </tbody></table></div>
@@ -88,7 +88,7 @@ const screen: Screen = {
         <p class="note">상위 사령관과 원한 목록의 행성만 확인합니다. 행성을 눌러 실시간으로 관전하세요.</p></section>`;
     };
     const view = (): Safe => html`
-      <div class="card-head"><h1 style="font-size:28px">작전 상황실</h1><span class="label c-jeok">WAR ROOM</span><button class="btn ghost end" data-act="reload">다시 정찰</button></div>
+      <div class="card-head"><h1 style="font-size:28px">작전 상황실</h1><button class="btn ghost end" data-act="reload">다시 정찰</button></div>
       <div class="tabs" role="tablist">${([['targets', '표적'], ['lists', '원한 · 금지'], ['incidents', `사건 ${incidents.length || ''}`], ['raids', `습격 현황 ${targets.filter((t) => t.raid).length || ''}`]] as [Tab, string][]).map(([t, l]) => html`<button class="tab ${tab === t ? 'on' : ''}" role="tab" aria-selected="${tab === t}" data-act="tab" data-t="${t}">${l}</button>`)}</div>
       ${tab === 'targets' ? targetsTab() : tab === 'lists' ? listsTab() : tab === 'incidents' ? incidentsTab() : raidsTab()}`;
     const paint = () => {

@@ -25,7 +25,7 @@ const NAV: { path: string; label: string; icon: string }[] = [
   { path: '/console', label: '함교', icon: I('<circle cx="12" cy="12" r="8"/><path d="M2 12h20"/>') },
   { path: '/galaxy', label: '은하', icon: I('<circle cx="12" cy="12" r="2"/><path d="M12 4c5 0 8 3 8 6M12 20c-5 0-8-3-8-6M4 8c2-3 5-4 8-4M20 16c-2 3-5 4-8 4"/>') },
   { path: '/energy', label: '전력망', icon: I('<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>') },
-  { path: '/market', label: '거래소', icon: I('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>') },
+  { path: '/market', label: '시장', icon: I('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>') },
   { path: '/campaign', label: '작전', icon: I('<path d="M4 21V4h11l-1 4h6v9h-9l1-4H4"/>') },
   { path: '/daily', label: '일일 교전', icon: I('<rect x="4" y="5" width="16" height="15"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/>') },
   { path: '/sim', label: '전투', icon: I('<path d="M5 19L19 5M15 5h4v4M9 19H5v-4M5 5l5 5M19 19l-5-5"/>') },
@@ -88,7 +88,7 @@ export function shell(root: HTMLElement) {
       <div class="menu-in">
         <div class="menu-head"><span class="label c-cheong">구조체 · 지휘 메뉴</span><button class="hud-btn" type="button" data-close aria-label="메뉴 닫기"><i class="si icon-close"></i></button></div>
         <div class="menu-grid">${NAV.map((n) => `<a href="${href(n.path)}" data-path="${n.path}">${n.icon}<span>${n.label}</span><kbd class="rail-key">${keyOf(n.path)}</kbd></a>`).join('')}</div>
-        <div class="menu-tools"><button class="btn ghost" id="kbd" type="button">단축키 <kbd>?</kbd></button><a class="btn ghost" href="${href('/profile')}">내 정보</a><a class="btn ghost" href="${href('/diag')}">시스템 진단</a><a class="btn ghost" href="${href('/')}">타이틀 화면</a></div>
+        <div class="menu-tools"><button class="btn ghost" id="kbd" type="button">단축키 <kbd>?</kbd></button><a class="btn ghost" href="${href('/profile')}">내 정보</a><a class="btn ghost" href="${href('/')}">타이틀 화면</a></div>
         <footer id="foot" class="foot"></footer>
       </div>
     </nav>

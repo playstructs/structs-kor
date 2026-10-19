@@ -25,9 +25,9 @@ import { KINDS, encodeBoard, decodeBoard, type Kind, type Card, type Board } fro
 interface Store { at: number; boards: Board[] }
 const PRESETS: Record<string, Board> = {
   지휘관: { name: '지휘관', cards: [{ k: 'me', w: 1 }, { k: 'raids', w: 1 }, { k: 'comms', w: 1 }, { k: 'feed', w: 2 }, { k: 'armada', w: 1 }, { k: 'watch', w: 3 }] },
-  트레이더: { name: '트레이더', cards: [{ k: 'market', w: 2 }, { k: 'banks', w: 1 }, { k: 'me', w: 1 }, { k: 'comms', w: 1 }, { k: 'leaders', w: 1 }] },
+  트습격대: { name: '트습격대', cards: [{ k: 'market', w: 2 }, { k: 'banks', w: 1 }, { k: 'me', w: 1 }, { k: 'comms', w: 1 }, { k: 'leaders', w: 1 }] },
   '길드 운영': { name: '길드 운영', cards: [{ k: 'banks', w: 1 }, { k: 'leaders', w: 1 }, { k: 'comms', w: 1 }, { k: 'armada', w: 1 }, { k: 'feed', w: 2 }] },
-  레이더: { name: '레이더', cards: [{ k: 'raids', w: 1 }, { k: 'leaders', w: 1 }, { k: 'me', w: 1 }, { k: 'feed', w: 3 }] },
+  습격대: { name: '습격대', cards: [{ k: 'raids', w: 1 }, { k: 'leaders', w: 1 }, { k: 'me', w: 1 }, { k: 'feed', w: 3 }] },
   '봇 운영': { name: '봇 운영', cards: [{ k: 'armada', w: 1 }, { k: 'duty', w: 2 }, { k: 'tx', w: 1 }, { k: 'me', w: 1 }, { k: 'market', w: 2 }] },
 };
 const KEY = 'structs-kor.boards';
@@ -56,7 +56,7 @@ const screen: Screen = {
           return html`<div class="bw-stats"><div><small>알파</small><b class="c-hwang">${micro(me.alpha, 2)} g</b></div><div><small>광석</small><b>${n(me.ore)}</b></div><div><small>전력</small><b style="color:${load > cap ? 'var(--jeok)' : ''}">${watts(load)} / ${watts(cap)}</b></div><div><small>위협</small><b class="${myRaid ? 'c-jeok' : 'c-cheong'}">${myRaid ? '습격 중' : '없음'}</b></div></div>
             <div class="bw-acts"><a class="btn ghost sm" href="${href('/console')}">함교</a>${me.planet_id ? html`<a class="btn ghost sm" href="${href(`/o/${me.planet_id}`)}">행성</a>` : ''}</div>`;
         }
-        case 'market': return html`<table class="t bw-t"><thead><tr><th>공급자</th><th class="r">/ kW·일</th><th class="r">용량</th></tr></thead><tbody>${offers.slice(0, 6).map((p) => html`<tr><td><a href="${href(`/o/${p.id}`)}">${p.id}</a></td><td class="r mono">${micro(perKwDay(p.rate_amount), 2)} ${p.rate_denom === 'ualpha' ? 'α' : '토큰'}</td><td class="r mono">${n(Number(p.capacity_maximum) / 1e6, 1)} kW</td></tr>`)}</tbody></table>${offers.length ? '' : html`<p class="faint">판매 중인 전력이 없습니다.</p>`}<a class="btn ghost sm" href="${href('/market')}">거래소</a>`;
+        case 'market': return html`<table class="t bw-t"><thead><tr><th>공급자</th><th class="r">/ kW 하루</th><th class="r">용량</th></tr></thead><tbody>${offers.slice(0, 6).map((p) => html`<tr><td><a href="${href(`/o/${p.id}`)}">${p.id}</a></td><td class="r mono">${micro(perKwDay(p.rate_amount), 2)} ${p.rate_denom === 'ualpha' ? 'g' : '길드 화폐'}</td><td class="r mono">${n(Number(p.capacity_maximum) / 1e6, 1)} kW</td></tr>`)}</tbody></table>${offers.length ? '' : html`<p class="faint">판매 중인 전력이 없습니다.</p>`}<a class="btn ghost sm" href="${href('/market')}">시장</a>`;
         case 'banks': return html`<ul class="bw-list">${banks.map((b) => html`<li><a href="${href(`/o/${b.guild_id}`)}">${b.guild_id}</a><span class="mono" style="color:${Number(b.ratio) < 1 ? 'var(--jeok)' : 'var(--cheong)'}">${n(b.ratio, 3)}</span><small class="mono faint">${micro(b.collateral, 0)} g</small></li>`)}</ul>`;
         case 'armada': return reps ? html`<div class="bw-stats"><div><small>인원</small><b>${n(reps.n)}</b></div><div><small>알파</small><b class="c-hwang">${n(reps.alpha, 2)} g</b></div><div><small>주의</small><b class="${reps.attention ? 'c-warn' : ''}">${n(reps.attention)}</b></div></div><a class="btn ghost sm" href="${href('/replicants')}">함대 편성</a>` : html`<p class="faint">지갑을 열면 레플리칸트를 셉니다.</p>`;
         case 'raids': return html`${myRaid ? html`<div class="notice err">내 행성 습격 중 · 함대 ${myRaid.fleet_id}</div>` : html`<p class="c-cheong">내 행성은 조용합니다.</p>`}
@@ -77,7 +77,7 @@ const screen: Screen = {
     const view = (): Safe => {
       const b = board();
       return html`
-      <div class="card-head"><h1 style="font-size:28px">작전 보드</h1><span class="label c-cheong">TERMINAL</span>
+      <div class="card-head"><h1 style="font-size:28px">작전 보드</h1>
         <span class="end" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost sm" data-act="edit" aria-pressed="${editing}">${editing ? '편집 끝' : '편집'}</button><button class="btn primary sm" data-act="add">카드 추가</button><button class="btn ghost sm" data-act="shareBoard">보드 공유</button></span></div>
       <div class="board-tabrow"><div class="tabs board-tabs" role="tablist" aria-label="보드">${store.boards.map((x, i) => html`<button class="tab ${i === store.at ? 'on' : ''}" role="tab" aria-selected="${i === store.at}" data-act="ws" data-i="${i}">${x.name}</button>`)}</div><button class="tab" data-act="newWs" title="새 보드" aria-label="새 보드">+</button></div>
       ${editing ? html`<div class="board-edit"><input class="input" name="wsName" value="${b.name}" data-act="rename" data-on="change" aria-label="보드 이름">

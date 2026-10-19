@@ -65,7 +65,7 @@ const screen: Screen = {
       ${sentToApp ? html`<div class="dl-banner"><span>데스크톱 앱으로 보냈습니다. 앱이 없다면 <a href="${RELEASES}" target="_blank" rel="noopener">여기서 받으세요</a>.</span><button class="btn ghost" data-act="forget">매번 묻기</button></div>` : ''}
       <div class="g2 dl">
         <section class="card game-panel dl-today">
-          <div class="card-head"><h1 style="font-size:28px">일일 교전 <span class="mono c-hwang">#${dailyNo(day)}</span></h1><span class="label c-jeok">DAILY</span>
+          <div class="card-head"><h1 style="font-size:28px">일일 교전 <span class="mono c-hwang">#${dailyNo(day)}</span></h1>
             <span class="end mono dim">${day}${day === today ? html` · 다음 작전까지 <b class="c-cheong" id="dl-clock">${hms(msToNextDaily())}</b>` : ' · 지난 작전'}</span></div>
           <h2 class="dl-name">작전 「${nameKo(d)}」</h2>
           <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip jeok">${twist.name}</span><span class="chip">${DIFFICULTY_KO[d.difficulty]}</span><span class="chip mono">아군 ${d.units.filter((u) => u.side === 'player').length} · 적 ${d.units.filter((u) => u.side === 'computer').length}</span><span class="chip mono">충전 ${DAILY_CHARGE}</span></div>

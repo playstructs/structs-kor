@@ -41,7 +41,7 @@ const screen: Screen = {
       }
       if (board === 'guilds') {
         const max = Math.max(1, ...guilds.map((g) => Number(g.collateral_p)));
-        return html`${guilds.map((g, i) => html`<li><span class="rk mono">${i + 1}</span><span class="guild-crest">${(g.name || '?').slice(0, 3)}</span><a href="${href(`/guild?id=${g.guild_id}`)}"><b>${g.name || g.guild_id}</b><small class="mono">${g.guild_id} · ${n(g.player_count)}명 · 담보율 ${n(g.ratio, 3)}</small></a>${bar(Number(g.collateral_p), max, 'var(--cheong)')}<span class="mono">${micro(g.collateral_p, 0)} g</span></li>`)}`;
+        return html`${guilds.map((g, i) => html`<li><span class="rk mono">${i + 1}</span><span class="guild-crest">${(g.name || '?').slice(0, 3)}</span><a href="${href(`/guild?id=${g.guild_id}`)}"><b>${g.name || g.guild_id}</b><small class="mono">${g.guild_id} · ${n(g.player_count)}명 · 교환 비율 ${n(g.ratio, 3)}</small></a>${bar(Number(g.collateral_p), max, 'var(--cheong)')}<span class="mono">${micro(g.collateral_p, 0)} g</span></li>`)}`;
       }
       const list = board === 'reactors' ? reactors : providers;
       const val = (r: Record<string, unknown>) => Number(r.capacity_p ?? r.capacity ?? r.power_p ?? r.power ?? r.fuel_p ?? r.committed_capacity ?? 0);
@@ -53,7 +53,7 @@ const screen: Screen = {
       const lag = block?.lag_blocks ?? 0;
       const rate = heights.length > 1 ? (heights.at(-1)![1] - heights[0][1]) / ((heights.at(-1)![0] - heights[0][0]) / 1000) : null;
       return html`
-      <div class="card-head"><h1 style="font-size:28px">은하 통계</h1><span class="label c-cheong">UNIVERSE</span></div>
+      <div class="card-head"><h1 style="font-size:28px">은하 통계</h1></div>
       <section class="card game-panel"><h2>우주</h2><div class="stat-grid">
         <div class="stat"><small>사령관</small><strong class="mono">${sum?.players == null ? '—' : n(sum.players)}</strong></div>
         ${sum?.active_players == null ? '' : html`<div class="stat"><small>활동 중</small><strong class="mono c-cheong">${n(sum.active_players)}</strong></div>`}
@@ -70,9 +70,9 @@ const screen: Screen = {
       <section class="card game-panel"><div class="card-head"><h2>${BOARD[board]}</h2>
         <span class="end" style="display:flex;gap:6px;flex-wrap:wrap">${(Object.keys(BOARD) as Board[]).map((b) => html`<button class="pill ${board === b ? 'on' : ''}" data-act="board" data-b="${b}">${BOARD[b]}</button>`)}<button class="btn ghost sm" data-act="share">공유</button></span></div>
         <ol class="lb">${rows()}</ol></section>
-      <section class="card game-panel"><div class="card-head"><h2>실시간 스트림</h2><span class="dot ${streamState === 'live' ? 'live' : streamState === 'connecting' ? 'connecting' : ''}"></span><span class="mono dim" style="font-size:12px">${streamOn ? (streamState === 'live' ? 'GRASS 연결됨' : 'GRASS 연결 중…') : '꺼짐'}</span>
+      <section class="card game-panel"><div class="card-head"><h2>실시간 스트림</h2><span class="dot ${streamState === 'live' ? 'live' : streamState === 'connecting' ? 'connecting' : ''}"></span><span class="mono dim" style="font-size:12px">${streamOn ? (streamState === 'live' ? '연결됨' : '연결 중…') : '꺼짐'}</span>
         <span class="end" style="display:flex;gap:6px;flex-wrap:wrap">${streamOn ? (['all', 'war', 'econ', 'build'] as Lane[]).map((l) => html`<button class="pill ${lane === l ? 'on' : ''}" data-act="lane" data-l="${l}">${LANE[l]}</button>`) : ''}<button class="btn ${streamOn ? 'ghost' : 'primary'} sm" data-act="stream">${streamOn ? '끄기' : '켜기'}</button></span></div>
-        ${streamOn ? (events.filter(inLane).length ? html`<ol class="newswire stream">${events.filter(inLane).slice(0, 60).map((e) => html`<li class="${laneOf(e.category)}"><span class="mono faint">${new Date(e.at).toLocaleTimeString('ko-KR')}</span> <b>${activityLabel(e.category || e.subject.split('.')[1] || '이벤트')}</b> ${raw(linkIds(esc(e.subject.split('.').slice(2).join(' · ')), href('')))}</li>`)}</ol>` : html`<p class="note">이벤트를 기다리는 중… 은하 어딘가에서 블록마다 일이 일어납니다.</p>`) : html`<p class="note">길드의 GRASS 실시간 피드(습격, 공격, 건설, 채굴, 전력)를 켜면 은하 전체의 움직임이 여기에 흐릅니다.</p>`}
+        ${streamOn ? (events.filter(inLane).length ? html`<ol class="newswire stream">${events.filter(inLane).slice(0, 60).map((e) => html`<li class="${laneOf(e.category)}"><span class="mono faint">${new Date(e.at).toLocaleTimeString('ko-KR')}</span> <b>${activityLabel(e.category || e.subject.split('.')[1] || '이벤트')}</b> ${raw(linkIds(esc(e.subject.split('.').slice(2).join(' · ')), href('')))}</li>`)}</ol>` : html`<p class="note">이벤트를 기다리는 중… 은하 어딘가에서 블록마다 일이 일어납니다.</p>`) : html`<p class="note">실시간 소식(습격, 공격, 건설, 채굴, 전력)을 켜면 은하 전체의 움직임이 여기에 흐릅니다.</p>`}
       </section>`;
     };
     const paint = () => { if (root.isConnected) mount(root, view(), handlers); setTiles([{ label: '사령관', value: sum?.players == null ? '—' : n(sum.players) }, { label: '블록', value: block ? n(block.height) : '—', tone: 'var(--cheong-hi)' }]); };

@@ -19,7 +19,7 @@ type Mode = 'start' | 'choose' | 'import' | 'unlock';
 
 const STEPS: [EnlistStep, string, string][] = [
   ['key', '사원 인식표 발급', '이 기기에 사령관 계정을 만듭니다'],
-  ['register', '길드 입대 신청', 'SN Corp 길드에 가입을 요청합니다'],
+  ['register', '길드 입대 신청', 'SN코프 길드에 가입을 요청합니다'],
   ['chain', '사령부 등록', '은하 사령부에 입대를 등록하는 중입니다 · 보통 수십 초'],
   ['signin', '길드 접속', '길드 서버에 접속합니다'],
 ];
@@ -35,7 +35,7 @@ const screen: Screen = {
     const box = (title: string, body: Safe) => html`
       <div style="display:flex;justify-content:center;padding:40px 8px">
         <section class="card" style="width:100%;max-width:560px;box-shadow:10px 10px 0 var(--sunken)">
-          <div class="label c-cheong" style="margin:-18px -18px 0;padding:12px 18px;background:var(--cheong-bg)">SN.CORP · 사원 인증</div>
+          <div class="label c-cheong" style="margin:-18px -18px 0;padding:12px 18px;background:var(--cheong-bg)">SN코프 · 사원 인증</div>
           <h1 style="font-size:36px">${title}</h1>
           ${err ? html`<div class="notice err" role="alert">${err}${errHelp.length ? html`<ul class="cookie-help">${errHelp.map((h) => html`<li>${h}</li>`)}</ul>` : ''}</div>` : ''}
           ${body}
