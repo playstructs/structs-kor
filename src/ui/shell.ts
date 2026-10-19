@@ -16,7 +16,8 @@ import { guildApi } from '../api/guild';
 import { matrix } from '../chat/matrix';
 import { onUnread } from '../chat/background';
 
-export const LOGO = `<svg class="pix" width="30" height="30" viewBox="0 0 9 9" aria-hidden="true"><rect width="9" height="9" fill="#133546"/><rect x="1" y="1" width="3" height="3" fill="#43CDB6"/><rect x="5" y="1" width="3" height="3" fill="#EE7D69"/><rect x="1" y="5" width="3" height="3" fill="#EBAA49"/><rect x="5" y="5" width="3" height="3" fill="#C5D7D9"/></svg>`;
+/** The Structs "S" mark (structs-design-system img/sui/logo/logo-structs.gif, traced to pixels). */
+export const LOGO = `<svg class="pix" width="30" height="30" viewBox="-3.5 0 25 25" shape-rendering="crispEdges" aria-hidden="true"><path fill="#CD7BF1" d="M8 0h2v1h-2zM6 1h6v1h-6zM4 2h10v1h-10zM2 3h14v1h-14zM0 4h18v1h-18zM0 5h8v1h-8zM10 5h8v1h-8zM0 6h6v1h-6zM12 6h6v1h-6zM0 7h4v1h-4zM14 7h4v1h-4zM0 8h6v1h-6zM14 8h4v1h-4zM0 9h8v1h-8zM14 9h4v1h-4zM0 10h10v1h-10zM14 10h4v1h-4zM0 11h12v1h-12zM14 11h4v1h-4zM0 12h18v1h-18zM0 13h4v1h-4zM6 13h12v1h-12zM0 14h4v1h-4zM8 14h10v1h-10zM0 15h4v1h-4zM10 15h8v1h-8zM0 16h4v1h-4zM12 16h6v1h-6zM0 17h4v1h-4zM14 17h4v1h-4zM0 18h6v1h-6zM12 18h6v1h-6zM0 19h8v1h-8zM10 19h8v1h-8zM0 20h18v1h-18zM2 21h14v1h-14zM4 22h10v1h-10zM6 23h6v1h-6zM8 24h2v1h-2z"/></svg>`;
 
 const I = (d: string) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">${d}</svg>`;
 const NAV: { path: string; label: string; icon: string }[] = [
