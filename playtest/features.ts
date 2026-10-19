@@ -33,7 +33,7 @@ const ALL: Feature[] = [
   { id: 'build-real', area: 'bridge', name: 'Build a struct (MsgStructBuildInitiate)', path: '/console', mode: 'account', expect: '.bd-cell[data-key]', chain: true, try: 'Pick an empty slot and read the build options; build only if chain actions are allowed.' },
   { id: 'struct-power', area: 'bridge', name: 'Struct power switch', path: '/energy', mode: 'any', expect: '[data-act="power"]', try: 'Toggle a struct off and on; does the power readout follow?' },
   { id: 'raid-defense', area: 'bridge', name: 'Defend a raid: attack and guard (MsgStructAttack / DefenseSet)', path: '/console', mode: 'account', expect: '.bd-cell[data-key]', chain: true, try: 'If raiders are on your planet, arm 공격 or 방어 and read the confirmation; send only if chain actions are allowed.' },
-  { id: 'threat-radar', area: 'bridge', name: '위협 레이더 and 세력 순위', path: '/console', mode: 'any', open: '[data-act="intel"][data-k="radar"]', expect: '/위협 레이더|세력 순위/', try: 'Read the threat radar and the standings.' },
+  { id: 'threat-radar', area: 'bridge', name: '방어 현황 and 세력 순위', path: '/console', mode: 'any', open: '[data-act="intel"][data-k="radar"]', expect: '/방어 현황/', try: 'Read the threat radar and the standings.' },
 
   // ── Energy and market ──
   { id: 'energy-grid', area: 'energy', name: '전력망: capacity, load, margin', path: '/energy', mode: 'any', expect: '/전력망/', try: 'Read your grid; do the numbers add up?' },

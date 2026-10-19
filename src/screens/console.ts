@@ -249,10 +249,10 @@ const screen: Screen = {
             <div class="mission-bot"><span class="mono dim">진행 ${pct}%</span>${(t.status === 'ready' && !pow.autoSubmit) || (t.status === 'failed' && (t.tries ?? 0) >= 3) ? html`<button class="btn primary" style="min-height:30px;padding:0 10px" data-act="powSubmit" data-id="${t.id}" ${canSign ? '' : 'disabled'}>${t.status === 'failed' ? '다시 시도' : '마무리'}</button>` : ''}</div>
             ${t.error ? html`<span class="c-jeok" style="font-size:12px">${playerMessage(t.error)}</span>` : ''}</div>`;
         }) : html`<p class="note">진행 중인 작업이 없습니다. 건설·채굴·정제를 시작하면 여기서 진행됩니다.</p>`}
-        ${tasks.length ? html`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <button class="btn ${pow.running ? 'ghost' : 'primary'}" data-act="powToggle">${pow.running ? '작업 정지' : '작업 시작'}</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${tasks.length ? html`<button class="btn ${pow.running ? 'ghost' : 'primary'}" data-act="powToggle">${pow.running ? '작업 정지' : '작업 시작'}</button>` : ''}
           <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-act="powAuto" aria-label="자동 마무리" ${pow.autoSubmit ? 'checked' : ''}> 자동 마무리</label></div>
-          ${canSign ? '' : html`<p class="note">공사를 마무리하려면 계정 잠금을 해제하세요. 작업은 지금도 진행됩니다.</p>`}` : ''}
+        ${tasks.length && !canSign ? html`<p class="note">공사를 마무리하려면 계정 잠금을 해제하세요. 작업은 지금도 진행됩니다.</p>` : ''}
       </section>`;
     };
     const paintPow = () => { const h = root.querySelector('#pow-host'); if (h) h.innerHTML = powCard().s; };

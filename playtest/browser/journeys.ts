@@ -51,6 +51,35 @@ export const STEPS: Record<string, Step> = {
     h.mark('enlist', a.playerId ? 'passed' : 'failed', a.created ? `enlisted ${a.playerId}` : `reused ${a.playerId}`);
     return `${a.created ? 'enlisted' : 'signed back in as'} ${a.callsign ?? '?'} (${a.playerId})`;
   },
+  /** A new commander's first day, as the real chain plays it: explore a planet, order a first ship
+   * (which brings the command ship), and let the work finish. Under --mock the work is quick. */
+  async 'first-day'(h) {
+    if (!h.account?.playerId) return 'skip: no account';
+    const id = h.account.playerId, done: string[] = [];
+    await toBridge(h);
+    // Slow networks load the bridge late: wait for its command bar before acting.
+    await h.page.waitForSelector('.ab-bar.player', { timeout: 60_000 }).catch(() => {});
+    await skipTour(h);
+    if (await h.has('[data-act="explore"]')) {
+      await h.click('[data-act="explore"]'); await h.play(2);
+      if (await h.has('[data-act="explore"]')) h.find('onboarding.explore', 'major', '탐사 did not give the new commander a planet');
+      else done.push('explored a planet');
+    }
+    const ships = () => h.page.locator('.bd-cell.bd-has[data-key^="fleet|defender|"]').count();
+    if (!(await ships())) {
+      await h.click('[data-key="fleet|defender|space|0"]'); await h.settle(300);
+      if (await h.click('.ab-bar.player [data-act="build"][data-type="4"]')) done.push('ordered a frigate');
+      else { h.find('onboarding.build', 'major', 'the first fleet slot offered no frigate to build'); return done.join(' · ') || 'nothing to do'; }
+    }
+    // Wait for the work to finish (the mock's own record when we have it; the board otherwise).
+    const finished = () => h.page.evaluate((pid) => { try { const st = JSON.parse(localStorage.getItem(`structs-kor.mock.state.${pid}`) || 'null'); return st ? st.structs.length > 0 && st.structs.every((x: { status: number }) => x.status === 7) : null; } catch { return null; } }, id);
+    let ok: boolean | null = null;
+    for (let i = 0; i < 24 && !ok; i++) { await h.play(5); ok = await finished(); if (ok === null) break; }
+    if (ok === false) h.find('onboarding.work', 'major', 'the first build did not finish within 120 blocks of auto-finish');
+    else if (ok) done.push('the build finished');
+    if (await h.page.getByText('지휘함이 아직 없습니다').count()) h.find('onboarding.cmd', 'major', 'still told there is no command ship after the first fleet build');
+    return done.join(' · ') || 'already settled';
+  },
   async 'account-tour'(h) {
     if (!h.account) return 'skip: no account';
     const seen: string[] = [];
