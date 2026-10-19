@@ -389,7 +389,6 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
 .title-in { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 16px; width: min(460px, 100%); }
 .title-logo { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .title-logo h1 { font: 400 clamp(64px, 12vw, 104px)/1 var(--f-display); color: #fff; letter-spacing: 8px; text-shadow: 0 6px 0 #0E0D1C, 0 0 40px #43CDB655; }
-.title-logo span { font: 400 14px var(--f-caps); letter-spacing: 12px; color: var(--cheong); }
 .title-tag { margin: 0; font: 400 15px var(--f-pix); color: var(--hwang); letter-spacing: 2px; }
 .retired-note { display: grid; gap: 6px; width: 100%; padding: 10px 14px; background: #0E0D1CD9; border-left: 4px solid var(--hwang); font: 400 13px/1.6 var(--f-pix); color: var(--text-dim); }
 .retired-note b { color: var(--hwang); font-weight: 400; }

@@ -27,7 +27,7 @@ const screen: Screen = {
     <div class="title-screen">
       <div class="title-bg" id="attract" aria-hidden="true"></div>
       <div class="title-in">
-        <div class="title-logo">${raw(LOGO.replace('width="30" height="30"', 'width="72" height="72"'))}<h1>구조체</h1><span>STRUCTS</span></div>
+        <div class="title-logo">${raw(LOGO.replace('width="30" height="30"', 'width="72" height="72"'))}<h1>구조체</h1></div>
         <p class="title-tag">우주는 구조체가 지배한다</p>
         ${retiredCard()}
         <nav class="title-menu" aria-label="타이틀 메뉴">
