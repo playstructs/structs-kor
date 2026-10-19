@@ -105,22 +105,25 @@ const DESTROYED = 32, ONLINE = 4;
 /** `proofs` comes from the bridge (the proof engine and wallet stay out of this module). */
 export function adviseReal(d: Dashboard, proofs: { ready: number; stuck: number; hashing: boolean; unlocked: boolean }): Tip[] {
   const tips: Tip[] = [];
-  if (d.active_raid) tips.push({ pri: 100, tone: 'jeok', text: `행성 ${d.active_raid.planet_id}에 습격 진행 중 (함대 ${d.active_raid.fleet_id}). 내 구조체를 고른 뒤 적 구조체를 눌러 반격하세요.`, go: '/console', cta: '함교' });
+  if (d.active_raid) tips.push({ pri: 100, tone: 'jeok', text: '내 행성이 습격당하고 있습니다! 습격 경보의 "적 지휘함 조준"으로 반격하거나, 함대가 나가 있으면 귀환시키세요.', go: '/console', cta: '함교' });
   const alive = d.structs.filter((s) => !(s.status & DESTROYED) && !s.is_destroyed);
-  if (!d.player.planet_id) tips.push({ pri: 95, tone: 'hwang', text: '아직 행성이 없습니다. 기지 명령의 탐사로 정착할 첫 행성을 받으세요. 행성이 있어야 추출기·정제소를 지을 수 있습니다.', go: '/console', cta: '탐사' });
+  if (!d.player.planet_id) tips.push({ pri: 95, tone: 'hwang', text: '정착할 행성을 찾고 있습니다. 행성이 도착하면 추출기와 정제소를 지을 수 있습니다.', go: '/console', cta: '함교' });
   if (!alive.some((s) => s.type === 1)) tips.push({ pri: 90, tone: 'hwang', text: '지휘함이 아직 없습니다. 함대 슬롯에 첫 함선을 건설하면 지휘함이 함께 배치되고, 그때부터 함대가 움직이고 습격할 수 있습니다.', go: '/console', cta: '함교' });
   const building = new Set((d.work ?? []).filter((w) => w.category === 'BUILD').map((w) => w.object_id));
   const idle = alive.filter((s) => !(s.status & ONLINE) && !building.has(s.id));
   if (idle.length) tips.push({ pri: 80, tone: 'jeok', text: `꺼진 구조체 ${idle.length}기 (${[...new Set(idle.map((s) => STRUCT_TYPE[s.type] ?? s.type))].slice(0, 3).join(', ')}). 구조체를 눌러 켜세요.`, go: '/console', cta: '함교' });
   const cap = Number(d.power?.total_capacity ?? 0), load = Number(d.power?.total_load ?? 0);
   if (cap > 0 && load / cap > 0.92) tips.push({ pri: 78, tone: 'jeok', text: `전력 사용률 ${Math.round((load / cap) * 100)}% · 정전되면 가장 오래된 할당부터 끊깁니다.`, go: '/energy', cta: '전력망' });
+  const left = d.planet ? Number(d.planet.undiscovered_ore ?? 0) : null;
+  if (left != null && left <= 0) tips.push({ pri: 88, tone: 'hwang', text: '이 행성의 광맥이 다 떨어졌습니다. 기지 명령의 "새 행성"으로 다음 행성을 탐사하세요.', go: '/console', cta: '새 행성' });
+  else if (left != null && left <= 2) tips.push({ pri: 50, tone: 'cheong', text: `광맥이 ${left}만 남았습니다. 다 캐면 새 행성을 탐사해야 합니다.`, go: '/console', cta: '함교' });
   const ore = Number(d.player.ore ?? 0);
   if (ore > 0 && !alive.some((s) => s.type === 15 && s.status & ONLINE)) tips.push({ pri: 70, tone: 'hwang', text: `정제되지 않은 광석 ${ore} · 습격당하면 모두 빼앗깁니다. 정제소를 가동하세요.`, go: '/console', cta: '함교' });
   const { ready, stuck } = proofs;
   if (stuck) tips.push({ pri: 75, tone: 'jeok', text: `작업 ${stuck}건이 세 번 실패했습니다. 작업 카드에서 다시 시도하세요.`, go: '/console', cta: '함교' });
-  if (ready && proofs.unlocked) tips.push({ pri: 72, tone: 'hwang', text: `제출할 수 있는 증명 ${ready}건 · 작업 카드에서 바로 보내세요 (자동 제출이 꺼져 있으면).`, go: '/console', cta: '함교' });
+  if (ready && proofs.unlocked) tips.push({ pri: 72, tone: 'hwang', text: `마무리할 수 있는 작업 ${ready}건 · 작업 카드에서 바로 끝내세요.`, go: '/console', cta: '함교' });
   else if (ready && !proofs.unlocked) tips.push({ pri: 72, tone: 'hwang', text: `마무리할 수 있는 작업 ${ready}건 · 계정 잠금을 해제하면 자동으로 끝냅니다.`, go: '/login', cta: '잠금 해제' });
-  else if ((d.work ?? []).length && !proofs.hashing) tips.push({ pri: 60, tone: 'cheong', text: `끝내야 할 작업 ${(d.work ?? []).length}건 · 작업 카드에서 작업을 시작하세요.`, go: '/console', cta: '함교' });
+  else if ((d.work ?? []).length && !proofs.hashing) tips.push({ pri: 60, tone: 'cheong', text: `끝내야 할 작업 ${(d.work ?? []).length}건 · 작업 카드에서 다시 켜세요 (꺼 두었다면).`, go: '/console', cta: '함교' });
   if (!tips.length) tips.push({ pri: 0, tone: 'cheong', text: '전선 이상 없음. 은하 지도에서 다음 목표를 찾아보세요.', go: '/galaxy', cta: '은하 지도' });
   return tips.sort((a, b) => b.pri - a.pri).slice(0, 3);
 }

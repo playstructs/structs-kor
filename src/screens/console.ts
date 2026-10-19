@@ -20,6 +20,8 @@ import { AMBIT, STRUCT_TYPE, activityLabel } from '../i18n/ko';
 import { TYPES_BY_ID, STRUCT_TYPES, AMBITS, AMBIT_FLAG, COMMAND_SHIP_ID, type Ambit } from '../data/catalogue';
 import { Board, type BoardStruct, type BoardWork, type BoardOrder } from '../game/map/board';
 import { pending as orders, type Order } from '../api/pending';
+import { charge } from '../game/charge';
+import { harvestOff } from '../game/harvest';
 import { demo, DEMO_ID, ENGINE, OC, vetRank, ABILITIES, REFITS, type AbilityId, type RefitId } from '../game/demo';
 import { hegemonyMeter } from '../game/meter';
 import { advise, adviseReal } from '../game/advisor';
@@ -144,6 +146,7 @@ const screen: Screen = {
         },
       });
     };
+    const canSignNow = () => wallet.state === 'unlocked';
     const markRaiders = () => {
       if (!board) return;
       if (mode === 'attack') board.markTargets(liveRaiders.filter((x) => !(x.status & DESTROYED)).map((x) => x.id));
@@ -275,8 +278,8 @@ const screen: Screen = {
      * inverted until a tile is picked; Esc or the same button again cancels. */
     /* A command key (.ck): keycap, icon, label, and the value in its own strip below. Tones: gold (ready to
      * spend), offense/defense (an armed mode, sat pressed in), warn (a red rim), esc (the narrow way out). */
-    const sbtn = (o: { act: string; label: string; key?: string; icon?: string; sub?: string; tone?: string; dis?: boolean; title?: string; data?: Record<string, string>; cd?: number }): Safe =>
-      html`<button class="ck ${o.tone ?? ''}" type="button" data-act="${o.act}" ${raw(Object.entries(o.data ?? {}).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' '))} ${o.dis ? 'disabled' : ''} title="${o.title ?? o.label}"${o.key ? ` aria-keyshortcuts="${o.key}"` : ''}><span class="ck-face">${o.key ? html`<kbd>${o.key}</kbd>` : ''}${o.icon ? raw(`<i class="si icon-${o.icon}" aria-hidden="true"></i>`) : ''}<span class="lbl ${[...o.label].length > 4 ? 'long' : ''}">${o.label}</span>${o.sub ? html`<small class="val">${o.cd != null ? html`<i class="cd" style="width:${Math.round(o.cd * 100)}%"></i>` : ''}<span>${o.sub}</span></small>` : ''}</span></button>`;
+    const sbtn = (o: { act: string; label: string; key?: string; icon?: string; sub?: string; tone?: string; dis?: boolean; title?: string; data?: Record<string, string>; cd?: number; need?: number }): Safe =>
+      html`<button class="ck ${o.tone ?? ''}" type="button" data-act="${o.act}" ${raw(Object.entries(o.data ?? {}).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' '))} ${o.dis ? 'disabled data-base-dis' : ''} ${o.need ? raw(`data-need-charge="${o.need}"`) : ''} title="${o.title ?? o.label}"${o.key ? ` aria-keyshortcuts="${o.key}"` : ''}><span class="ck-face">${o.key ? html`<kbd>${o.key}</kbd>` : ''}${o.icon ? raw(`<i class="si icon-${o.icon}" aria-hidden="true"></i>`) : ''}<span class="lbl ${[...o.label].length > 4 ? 'long' : ''}">${o.label}</span>${o.sub ? html`<small class="val">${o.cd != null ? html`<i class="cd" style="width:${Math.round(o.cd * 100)}%"></i>` : ''}<span>${o.sub}</span></small>` : ''}</span></button>`;
     const escKey = (label: string, cart = false): Safe => html`<span class="ab-groove"></span>${sbtn({ act: 'close', label, key: 'Esc', icon: 'close', tone: cart ? 'esc cart' : 'esc', title: `${label} (Esc)` })}`;
     /* The build header's budget: free power as ten segments, or, while a cartridge is hovered or
      * focused, what would be left after building it. Painted in place so hovering never repaints. */
@@ -322,7 +325,7 @@ const screen: Screen = {
             const name = STRUCT_TYPE[t.id] ?? t.type, short = need > free;
             const on = free > 0 ? Math.min(5, Math.ceil((need / free) * 5)) : 5;
             const takes = buildTime(t.buildDifficulty);
-            return html`<button class="ck cart" type="button" data-act="build" data-type="${String(t.id)}" data-need="${String(need)}" ${ok ? '' : 'disabled'} title="${name} · ${need.toFixed(2)} kW · ${takes}${short ? ' · 전력 부족' : ''}"${i < 9 ? ` aria-keyshortcuts="${i + 1}"` : ''}><span class="ck-face">
+            return html`<button class="ck cart" type="button" data-act="build" data-type="${String(t.id)}" data-need="${String(need)}" data-need-charge="${String(t.buildCharge)}" ${ok ? '' : 'disabled data-base-dis'} title="${name} · ${need.toFixed(2)} kW · ${takes}${short ? ' · 전력 부족' : ''}"${i < 9 ? ` aria-keyshortcuts="${i + 1}"` : ''}><span class="ck-face">
               <span class="view" style="background-color:${AMBIT_BG[ambit]};background-image:url('${tileUrl(ambit, 2, 'middle')}')">${pixel(t.id, 64)}${short ? html`<span class="band"><span>전력 부족</span></span>` : ''}</span>
               ${i < 9 ? html`<kbd>${String(i + 1)}</kbd>` : ''}<span class="lbl">${name}</span>
               <small class="val"><span class="pips" aria-hidden="true">${Array.from({ length: 5 }, (_, k) => html`<i class="${short ? 'over' : k < on ? 'on' : ''}"></i>`)}</span><span>${need.toFixed(1)}kW</span></small></span></button>`;
@@ -343,8 +346,9 @@ const screen: Screen = {
         const busy = !isDemo && orders.busy(`s:${s.id}`), order = busy ? orders.of(`s:${s.id}`) : undefined;
         const btns: Safe[] = [];
         if (!dead && building == null) {
-          if (!isDemo && t?.primaryWeaponDamage && isFleetType(s.type)) btns.push(sbtn({ act: 'target', label: '공격', key: 'A', icon: t.primaryWeaponControl === 'guided' ? 'smart-weapon' : 'ballistic-weapon', tone: mode === 'attack' ? 'offense' : '', dis: !canSign || !online || !liveRaiders.length, title: liveRaiders.length ? '주무기로 습격 함대를 공격' : '공격할 적 함대가 없습니다', data: { m: 'attack' } }));
-          if (!isDemo) btns.push(guard ? sbtn({ act: 'guardClear', label: '방어 해제', key: 'D', icon: 'defend', tone: 'defense', dis: !canSign || busy, data: { id: s.id } }) : sbtn({ act: 'target', label: '방어', key: 'D', icon: 'defend', tone: mode === 'defend' ? 'defense' : '', dis: !canSign || busy, title: '이 구조체가 지킬 아군을 지정', data: { m: 'defend' } }));
+          if (!isDemo && t?.primaryWeaponDamage && isFleetType(s.type)) btns.push(sbtn({ act: 'target', label: '공격', key: 'A', icon: t.primaryWeaponControl === 'guided' ? 'smart-weapon' : 'ballistic-weapon', tone: mode === 'attack' ? 'offense' : '', dis: !canSign || !online || !liveRaiders.length, need: t.primaryWeaponCharge, title: liveRaiders.length ? `주무기로 습격 함대를 공격 · 충전 ${t.primaryWeaponCharge}` : '공격할 적 함대가 없습니다', data: { m: 'attack' } }));
+          if (!isDemo && t?.stealthSystems) { const hidden = (s.status & 16) !== 0; btns.push(sbtn({ act: 'stealth', label: hidden ? '은신 해제' : '은신', key: 'H', icon: 'stealth', tone: hidden ? 'defense' : '', dis: !canSign || !online || busy, need: hidden ? 0 : t.stealthActivateCharge, title: hidden ? '은신을 풉니다 (공격하면 저절로 풀립니다)' : `탐지와 조준을 피합니다 · 충전 ${t.stealthActivateCharge}`, data: { id: s.id, on: hidden ? '0' : '1' } })); }
+          if (!isDemo) btns.push(guard ? sbtn({ act: 'guardClear', label: '방어 해제', key: 'D', icon: 'defend', tone: 'defense', dis: !canSign || busy, need: t?.defendChangeCharge, data: { id: s.id } }) : sbtn({ act: 'target', label: '방어', key: 'D', icon: 'defend', tone: mode === 'defend' ? 'defense' : '', dis: !canSign || busy, need: t?.defendChangeCharge, title: '이 구조체가 지킬 아군을 지정', data: { m: 'defend' } }));
           if (isDemo && online && OC.types.includes(s.type)) btns.push(sbtn({ act: 'overclock', label: ds?.oc ? '과부하 해제' : '과부하', key: 'V', icon: 'alert', tone: ds?.oc ? 'offense' : '', sub: s.type === 20 ? `발전×${OC.gen}` : `생산×${OC.out}`, title: `${ds?.oc ? '가동 중' : '과부하 운전'} · 블록당 ${Math.round(OC.wear * 100)}% 손상 위험`, data: { id: s.id } }));
           if (ds?.cat === 'fleet') for (const m of Object.keys(REFITS) as RefitId[]) { const why = demo.refitBlocked(s.id, m); btns.push(sbtn({ act: 'refit', label: REFITS[m].name, icon: 'kinetic-barrier', tone: ds.mod === m ? 'defense' : '', sub: `${REFITS[m].cost} g`, dis: !!why, title: why ?? REFITS[m].what, data: { id: s.id, m } })); }
         }
@@ -352,7 +356,7 @@ const screen: Screen = {
         const sw = dead || building != null || busy ? 'disabled' : online ? 'on' : 'off';
         return html`<div class="ab-head ${mode ? 'inv' : ''}">${head}<span class="sub">${AMBIT[s.operating_ambit] ?? ''} ${s.slot + 1}번 슬롯</span></div>
           <div class="ab-row">
-            <div class="ab-switch"><button type="button" data-act="power" data-id="${s.id}" data-state="${sw}" aria-pressed="${online}" ${sw === 'disabled' || !canSign ? 'disabled' : ''} aria-label="${online ? '전원 끄기' : '전원 켜기'} (F)" title="${online ? '전원 끄기' : '전원 켜기'} (F)"></button><kbd>F</kbd></div>
+            <div class="ab-switch"><button type="button" data-act="power" data-id="${s.id}" data-state="${sw}" aria-pressed="${online}" data-need-charge="${t?.activateCharge ?? 0}" ${sw === 'disabled' || !canSign ? 'disabled data-base-dis' : ''} aria-label="${online ? '전원 끄기' : '전원 켜기'} (F)" title="${online ? '전원 끄기' : '전원 켜기'} (F)"></button><kbd>F</kbd></div>
             <div class="ab-props scr">
               <span title="내구도"><i class="si icon-armour"></i><b class="${dead ? 'bad' : ''}">${dead ? '파괴' : `${s.health}/${max}`}</b></span>
               <span title="전력 소비"><i class="si icon-unpowered"></i>${watts(t?.passiveDraw)}</span>
@@ -384,9 +388,11 @@ const screen: Screen = {
             <span title="알파 매터 (약탈되지 않음)" class="gold"><i class="si icon-refine"></i><b>${micro(d.player.alpha)}</b>g</span>
             <span title="광석 (약탈 위험)"><i class="si icon-ore-ready"></i><b>${n(Math.floor(Number(d.player.ore ?? 0)))}</b></span>
             <span title="전력 부하" class="${use > 0.95 ? 'bad' : use > 0.8 ? 'warn' : ''}"><i class="si icon-unpowered"></i><b>${Math.round(use * 100)}%</b></span>
+            ${isDemo ? '' : html`<span class="charge-read" title="충전: 마지막 명령 뒤로 지난 블록 수. 명령마다 충전을 쓰고 0으로 돌아갑니다 (건설 8 · 전원 2 · 사격 3–5 · 은신 2 · 방어 1)"><i class="si icon-energy"></i><b class="charge-n">${charge.value ?? '—'}</b>충전</span>`}
             <span title="이 행성에 남은 광맥 (다 캐면 새 행성을 탐사합니다)"><i class="si icon-undiscovered-ore"></i><b>${n(d.planet?.undiscovered_ore ?? 0)}</b>광맥</span>
           </div>
           <div class="ab-btns">
+            ${!isDemo && d.player.planet_id && d.planet && Number(d.planet.undiscovered_ore ?? 1) <= 0 && !orders.busy(`explore:${pid}`) ? sbtn({ act: 'explore', label: '새 행성', icon: 'undiscovered-ore', tone: 'gold', sub: '광맥 고갈', title: '이 행성의 광맥이 다 떨어졌습니다 · 새 행성을 탐사합니다' }) : ''}
             ${!isDemo && !d.player.planet_id ? (orders.busy(`explore:${pid}`) ? sbtn({ act: 'explore', label: '탐사 중', icon: 'undiscovered-ore', tone: 'gold', sub: '행성 찾는 중…', dis: true, title: '정착할 행성을 찾고 있습니다' }) : sbtn({ act: 'explore', label: '탐사', icon: 'undiscovered-ore', tone: 'gold', sub: '첫 행성', title: '행성 탐사: 정착할 행성을 찾습니다' })) : ''}
             ${sbtn({ act: 'buildNext', label: '건설', key: 'E', icon: 'deploy', sub: '빈 슬롯' })}
             ${(() => {
@@ -470,7 +476,18 @@ const screen: Screen = {
         ${r ? (() => { const f = demo.raidForecast(); if (!f) return ''; const p = (x: number) => `${Math.round(x * 100)}%`, tone = (x: number) => (x >= 0.7 ? 'cheong' : x >= 0.4 ? 'hwang' : 'jeok');
           return eta ? html`<span class="forecast" title="지금 기지로 이 습격을 40번씩 모의한 승률 (현재 방어막 기준)">예상 승률 <span class="chip ${tone(f.intercept)}">요격 ${p(f.intercept)}</span><span class="chip ${tone(f.entrench)}">참호 ${p(f.entrench)}</span><span class="chip ${tone(f.none)}">미정 ${p(f.none)}</span></span>`
             : html`<span class="forecast">승률 <span class="chip ${tone(f[r.stance ?? 'none'])}">${p(f[r.stance ?? 'none'])}</span></span>`; })() : ''}
-        <span class="end" style="display:flex;gap:8px;flex-wrap:wrap">${isDemo ? html`<button class="btn gold" data-act="refineAll" style="min-height:36px">정제소 가동 <kbd>Q</kbd></button>` : ''}<a class="btn danger" href="${href('/sim')}" style="min-height:36px">방어 시뮬레이션</a></span>
+        ${live && !isDemo ? (() => {
+          // A raid is usually decided within about two minutes: the time since it began, and the two moves
+          // that matter, one tap each (Structs Desktop's raid response).
+          const since = live.updated_at ? Math.max(0, Math.round((Date.now() - Date.parse(live.updated_at)) / 1000)) : null;
+          const stage = ({ initiated: '적 함대 도착', ongoing: '교전 중', shieldsVulnerable: '방어막 뚫림 · 약탈 직전', raidSuccessful: '약탈당함', attackerDefeated: '격퇴', attackerRetreated: '적 철수' } as Record<string, string>)[live.status] ?? live.status;
+          const away = d?.fleet && d.fleet.location_id && d.fleet.location_id !== d.player.planet_id;
+          return html`<span class="raid-clock">${stage}${since != null ? html` · <b class="mono">${Math.floor(since / 60)}:${String(since % 60).padStart(2, '0')}</b> 경과` : ''}</span>
+            <span class="end" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn danger" data-act="raidAim" style="min-height:36px" ${liveRaiders.length && canSignNow() ? '' : 'disabled'} title="가장 강한 아군 함선으로 적 지휘함을 조준합니다 · 지휘함이 무너지면 습격이 끝납니다">적 지휘함 조준 <kbd>A</kbd></button>
+              ${away ? html`<button class="btn gold" data-act="recall" style="min-height:36px" ${canSignNow() ? '' : 'disabled'} title="함대가 돌아오면 다음 블록에 습격이 끝납니다">함대 귀환</button>` : ''}
+            </span>`;
+        })() : html`<span class="end" style="display:flex;gap:8px;flex-wrap:wrap">${isDemo ? html`<button class="btn gold" data-act="refineAll" style="min-height:36px">정제소 가동 <kbd>Q</kbd></button>` : ''}<a class="btn danger" href="${href('/sim')}" style="min-height:36px">방어 모의전</a></span>`}
       </section>`;
     };
 
@@ -514,7 +531,7 @@ const screen: Screen = {
 
     const stageName = (): Safe => {
       const sh = d?.shield_health;
-      return html`<div class="stage-name"><b>${planetTitle()}</b><span>${d?.player.planet_id ? '본거지' : '행성 탐사 중'}</span><span>보호막 <span class="${(sh ?? 100) < 35 ? 'c-jeok' : 'c-cheong'}">${sh == null ? '—' : sh + '%'}</span></span></div>`;
+      return html`<div class="stage-name"><b>${d?.player.planet_id ? planetTitle() : '행성을 찾는 중'}</b><span>${d?.player.planet_id ? '본거지' : '탐사가 끝나면 도착합니다'}</span><span>보호막 <span class="${(sh ?? 100) < 35 ? 'c-jeok' : 'c-cheong'}">${sh == null ? '—' : sh + '%'}</span></span></div>`;
     };
 
     const dialog = (): Safe => {
@@ -544,6 +561,22 @@ const screen: Screen = {
       if (host && board) board.attach(host);
       syncBoard();
       tiles();
+      applyCharge();
+    };
+    /** Charge on the buttons, updated in place each block (no repaint): an order without enough charge
+     * waits, its button saying how many blocks. */
+    const applyCharge = () => {
+      if (isDemo || !root.isConnected) return;
+      const v = charge.value;
+      root.querySelectorAll<HTMLElement>('.charge-n').forEach((e) => { e.textContent = v == null ? '—' : String(v); });
+      root.querySelectorAll<HTMLButtonElement>('button[data-need-charge]').forEach((b) => {
+        const wait = charge.wait(Number(b.dataset.needCharge));
+        b.disabled = b.hasAttribute('data-base-dis') || b.classList.contains('order-busy') || wait > 0;
+        b.classList.toggle('charging', wait > 0);
+        let tag = b.querySelector<HTMLElement>('.charge-wait');
+        if (wait > 0) { if (!tag) { tag = document.createElement('span'); tag.className = 'charge-wait'; b.appendChild(tag); } tag.textContent = `충전 ${wait}블록`; }
+        else tag?.remove();
+      });
     };
 
     const tiles = () => {
@@ -588,7 +621,7 @@ const screen: Screen = {
         sfx.play('confirm'); career.award(15, '결단'); refresh();
       },
       dailyBonus: () => { claimDailyBonus(); paint(); },
-      powToggle: () => { if (pow.running) pow.stop(); else { pow.start(); sfx.play('confirm'); } paintPow(); },
+      powToggle: () => { if (pow.running) { pow.stop(); harvestOff(true); } else { harvestOff(false); pow.start(); sfx.play('confirm'); } paintPow(); },
       powAuto: (el: HTMLElement) => { pow.autoSubmit = (el as HTMLInputElement).checked; paintPow(); },
       powSubmit: (el: HTMLElement) => { void pow.submit(el.dataset.id!); },
       engine: (el: HTMLElement) => {
@@ -611,7 +644,8 @@ const screen: Screen = {
       dismissReport: () => { demo.dismissReport(); },
       nav: (el: HTMLElement) => go(el.dataset.to!),
       explore: (el: HTMLElement) => {
-        if (isDemo || !d || d.player.planet_id) return;
+        // A first planet, or the next once this one's ore is gone (Structs: a mined-out world is left behind).
+        if (isDemo || !d || (d.player.planet_id && Number(d.planet?.undiscovered_ore ?? 1) > 0)) return;
         if (wallet.state !== 'unlocked') { sfx.play('error'); toast('탐사하려면 계정 잠금을 해제하세요', 3000); return; }
         (el as HTMLButtonElement).disabled = true;
         void actions.planetExplore(pid)
@@ -624,6 +658,24 @@ const screen: Screen = {
         const s = d?.structs.find((x) => x.id === id);
         if (s) signOnce(`power|${id}`, () => (s.status & ONLINE) ? actions.structDeactivate(id) : actions.structActivate(id));
       },
+      raidAim: () => {
+        if (!d) return;
+        // The best gun we have that's online, at the raider's command ship.
+        const mine = d.structs.filter((x) => isFleetType(x.type) && (x.status & ONLINE) && !(x.status & DESTROYED) && (TYPES_BY_ID[x.type]?.primaryWeaponDamage ?? 0) > 0)
+          .sort((a, b) => (TYPES_BY_ID[b.type]?.primaryWeaponDamage ?? 0) * (TYPES_BY_ID[b.type]?.primaryWeaponShots ?? 1) - (TYPES_BY_ID[a.type]?.primaryWeaponDamage ?? 0) * (TYPES_BY_ID[a.type]?.primaryWeaponShots ?? 1));
+        if (!mine.length) { sfx.play('error'); toast('쏠 수 있는 아군 함선이 없습니다 · 함선의 전원을 켜세요', 3500); return; }
+        panel = { kind: 'struct', id: mine[0].id }; board?.select(mine[0].id);
+        mode = 'attack'; markRaiders();
+        const cmd = liveRaiders.find((x) => x.type === COMMAND_SHIP_ID && !(x.status & DESTROYED));
+        if (cmd && board) { board.ping(cmd.id); board.reveal(cmd.id); }
+        toast(cmd ? '적 지휘함을 누르면 사격합니다' : '공격할 적을 누르세요', 3000); paint();
+      },
+      recall: (el: HTMLElement) => {
+        if (!d?.fleet || !d.player.planet_id) return;
+        (el as HTMLButtonElement).disabled = true;
+        void actions.fleetMove(d.fleet.id, d.player.planet_id).then(() => { sfx.play('confirm'); notify('귀환', '함대가 본거지로 돌아옵니다 · 다음 블록에 습격이 끝납니다', 'cheong', null); }).catch((e) => { sfx.play('error'); toast('귀환 실패: ' + playerMessage((e as Error).message), 5000); (el as HTMLButtonElement).disabled = false; });
+      },
+      stealth: (el: HTMLElement) => { const id = el.dataset.id!; signOnce(`stealth|${id}`, () => (el.dataset.on === '1' ? actions.stealthOn(id) : actions.stealthOff(id))); },
       guardPick: () => { /* read on 방어 지정 */ },
       guardSet: (el: HTMLElement) => {
         const ward = root.querySelector<HTMLSelectElement>('[data-act="guardPick"]')?.value;
@@ -812,6 +864,7 @@ const screen: Screen = {
     offs.push(() => removeEventListener('structs:tour-end', onTourEnd));
     // The first planet is explored on sign-in (game/settle.ts): show it as soon as the order is in.
     const onExplored = () => { if (!isDemo) void load(); };
+    offs.push(charge.onChange(applyCharge));
     // Orders: mark the map and the panel at once; once the chain has run one, read the new state.
     offs.push(orders.onChange(() => { if (isDemo || !root.isConnected) return; syncOrders(); repaint(); }));
     const onOrder = (e: Event) => { if (!isDemo && (e as CustomEvent<Order>).detail.phase === 'done') void load(); };

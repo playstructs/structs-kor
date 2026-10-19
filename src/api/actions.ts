@@ -124,6 +124,9 @@ export async function simulate(name: string, value: MsgValue, step: (what: strin
 export const actions = {
   structActivate: (structId: string) => act('MsgStructActivate', { structId }),
   structDeactivate: (structId: string) => act('MsgStructDeactivate', { structId }),
+  /** Stealth bombers and submersibles: hide from scans and untargeted fire (attacking breaks it). */
+  stealthOn: (structId: string) => act('MsgStructStealthActivate', { structId }),
+  stealthOff: (structId: string) => act('MsgStructStealthDeactivate', { structId }),
   /** Fire one struct's weapon at another (raids and defense). */
   attack: (operatingStructId: string, targetStructId: string, weaponSystem: 'primaryWeapon' | 'secondaryWeapon' = 'primaryWeapon') =>
     act('MsgStructAttack', { operatingStructId, targetStructId: [targetStructId], weaponSystem }),

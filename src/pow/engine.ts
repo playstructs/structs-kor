@@ -5,7 +5,7 @@
  * CalculateDifficulty(age, range) leading hex zeros — so the best proof found so far is kept and
  * sent as soon as the next block's bar drops to meet it. */
 import { difficultyAt } from './sha';
-import { prefixOf, blocksUntil } from './work';
+import { prefixOf, blocksUntil, BLOCK_SECONDS } from './work';
 import { act, isSequenceError } from '../api/actions';
 import { wallet } from '../wallet/wallet';
 import { guildApi, type WorkRow } from '../api/guild';
@@ -64,7 +64,7 @@ class Engine {
       this.workers.push(slot);
     }
     // Follow the chain while hashing, so proofs go out the block they become valid.
-    this.poll = setInterval(() => { void guildApi.block().then((b) => { if (b.height > this.height) { this.height = b.height; this.check(); this.emit(); } }).catch(() => null); }, 6000);
+    this.poll = setInterval(() => { void guildApi.block().then((b) => { if (b.height > this.height) { this.height = b.height; this.check(); this.schedule(); this.emit(); } }).catch(() => null); }, 6000);
     this.schedule();
     this.emit();
   }
@@ -83,7 +83,12 @@ class Engine {
   private schedule() {
     if (!this.running) return;
     // Tasks out of automatic retries stop taking workers; the player resends them by hand.
-    const open = [...this.tasks.values()].filter((t) => (t.status === 'waiting' || t.status === 'hashing' || t.status === 'failed') && (t.tries ?? 0) < MAX_TRIES)
+    // Hash only what can pass soon: the bar falls with age, so a proof the next ten minutes' bar is still
+    // far above is wasted heat. Those wait (status 'waiting') and join when the bar comes within reach.
+    const reach = Math.floor(Math.log(Math.max(this.rate, 5e5 * this.threads) * 600) / Math.log(16));
+    const soon = (t: PowTask) => difficultyAt(this.height + 1 + Math.round(600 / BLOCK_SECONDS) - t.blockStart, t.range) <= reach;
+    for (const t of this.tasks.values()) if (t.status === 'hashing' && !soon(t)) t.status = 'waiting';
+    const open = [...this.tasks.values()].filter((t) => (t.status === 'waiting' || t.status === 'hashing' || t.status === 'failed') && (t.tries ?? 0) < MAX_TRIES && soon(t))
       .sort((a, b) => blocksUntil(a, a.best?.zeros ?? 0, this.height) - blocksUntil(b, b.best?.zeros ?? 0, this.height));
     this.workers.forEach((x, i) => {
       const t = open.length ? open[i % open.length] : null;

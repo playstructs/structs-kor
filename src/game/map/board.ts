@@ -417,7 +417,7 @@ export class Board {
     for (const k of keys) this.anchors.get(k)?.classList.add('bd-dest');
   }
   /** Pulse a tile (a hint for the tutorial and objectives). */
-  ping(key: string) { const c = this.anchors.get(key); if (!c) return; c.classList.remove('bd-ping'); void c.offsetWidth; c.classList.add('bd-ping'); }
+  ping(key: string) { const c = this.cellOf(key) ?? this.anchors.get(key); if (!c) return; c.classList.remove('bd-ping'); void c.offsetWidth; c.classList.add('bd-ping'); }
 
   private moveCursor(cell: HTMLElement | null) {
     if (!cell) return;

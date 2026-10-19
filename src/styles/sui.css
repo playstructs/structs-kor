@@ -485,3 +485,10 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
 /* Toasts never take a click meant for what's under them, and sit low except over the bridge's command bar. */
 .toast { pointer-events: none; }
 html:not([data-mode="stage"]) .toast { bottom: 24px; }
+
+/* 충전: an order waiting for charge says how many blocks (game/charge.ts). */
+button.charging { position: relative; }
+.charge-wait { position: absolute; left: 2px; right: 2px; bottom: 2px; padding: 2px 0; background: rgba(14,13,28,.88); color: var(--hwang); font: 700 10px/1 var(--f-body, sans-serif); text-align: center; pointer-events: none; }
+.ab-switch button .charge-wait { left: -10px; right: -10px; bottom: -14px; }
+.charge-read b { color: var(--hwang); }
+.raid-clock { font-size: 13px; color: var(--jeok-hi, #FF6B5B); }

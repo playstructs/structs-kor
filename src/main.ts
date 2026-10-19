@@ -10,6 +10,7 @@ import './game/music';
 import { retireDemo } from './game/retire';
 import './game/alerts';
 import './game/settle';
+import './game/harvest';
 import './ui/orderbuttons';
 import { measureBlockTime } from './pow/measure';
 import './game/medals';
