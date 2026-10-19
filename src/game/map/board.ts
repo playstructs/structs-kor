@@ -95,6 +95,8 @@ export class Board {
   private cam = { l: 0, t: 0 };
   /** The camera has been pointed at the planet's built structs once. */
   private homed = false;
+  /** The player has moved the camera themselves: stop pointing it at the planet on refreshes. */
+  private userMoved = false;
   speed: number;
   /** 'full' fits the whole field; 'close' fills the width and scrolls. */
   zoom: 'full' | 'close' = 'full';
@@ -111,7 +113,9 @@ export class Board {
     this.build();
     this.map.addEventListener('click', (e) => this.click(e));
     this.map.addEventListener('keydown', (e) => this.key(e));
-    this.map.addEventListener('focus', () => { this.wantFocus = true; if (!this.cursor) this.moveCursor(this.cells[0] ?? null); else this.cursor.classList.add('bd-cursor'); });
+    // Only keyboard focus shows the cursor: a click focuses the map too, and walking the cursor to the
+    // first tile then would scroll the camera away from where the player clicked.
+    this.map.addEventListener('focus', () => { this.wantFocus = true; if (!this.map.matches(':focus-visible')) return; if (!this.cursor) this.moveCursor(this.cells[0] ?? null); else this.cursor.classList.add('bd-cursor'); });
     this.map.addEventListener('blur', (e) => {
       this.cursor?.classList.remove('bd-cursor');
       // Focus moved somewhere else on purpose (not lost to a re-render detaching us).
@@ -120,6 +124,7 @@ export class Board {
     if (opts.stage) { this.el.classList.add('bd-stage'); this.pan(); }
     const sc = this.el.querySelector<HTMLElement>('.bd-scroll')!;
     sc.addEventListener('scroll', () => { if (this.el.isConnected) this.cam = { l: sc.scrollLeft, t: sc.scrollTop }; }, { passive: true });
+    for (const ev of ['wheel', 'touchmove'] as const) sc.addEventListener(ev, () => { this.userMoved = true; }, { passive: true });
     this.ro = new ResizeObserver(() => this.fit());
     addEventListener('resize', this.onResize);
     this.ro.observe(this.el);
@@ -256,7 +261,7 @@ export class Board {
       const dx = e.clientX - from.x, dy = e.clientY - from.y;
       if (!moved && Math.hypot(dx, dy) < 5) return;
       if (!moved && sc.scrollWidth <= sc.clientWidth && sc.scrollHeight <= sc.clientHeight) return;
-      moved = true; document.body.classList.add('is-map-panning');
+      moved = true; this.userMoved = true; document.body.classList.add('is-map-panning');
       sc.scrollLeft = from.l - dx; sc.scrollTop = from.t - dy;
     });
     addEventListener('pointerup', () => { from = null; document.body.classList.remove('is-map-panning'); });
@@ -319,7 +324,9 @@ export class Board {
     }
     this.structs = next;
     for (const s of list) this.paint(s.id);
-    if (this.framed && !this.homed) this.home();
+    // Until the planet has something built, each refresh re-aims at its slots, but never once the
+    // player has looked elsewhere: an instant jump after a click reads as the map teleporting.
+    if (this.framed && !this.homed && !this.userMoved) this.home();
   }
   get(id: string) { return this.structs.get(id); }
 
