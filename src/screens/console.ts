@@ -773,6 +773,10 @@ const screen: Screen = {
     const onTourEnd = (e: Event) => { if ((e as CustomEvent).detail === 'bridge') board?.home(true); };
     addEventListener('structs:tour-end', onTourEnd);
     offs.push(() => removeEventListener('structs:tour-end', onTourEnd));
+    // The first planet is explored on sign-in (game/settle.ts): show it as soon as the order is in.
+    const onExplored = () => { if (!isDemo) void load(); };
+    addEventListener('structs:explored', onExplored);
+    offs.push(() => removeEventListener('structs:explored', onExplored));
     // The proof card follows every hash; the advisor's proof tips follow at most every few seconds.
     let advisedAt = 0;
     const repaintAdvisor = () => { const el = root.querySelector('.ops'); if (el && d && Date.now() - advisedAt > 3000) { advisedAt = Date.now(); el.outerHTML = ops().s; } };

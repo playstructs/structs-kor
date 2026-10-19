@@ -55,6 +55,8 @@ export async function enlist(onStep: (s: EnlistStep) => void, signal: { stopped:
   }
 
   wallet.setPlayerId(0, pid);
+  // Nothing to play without a planet: explore now, alongside signing in (game/settle.ts).
+  void import('../game/settle').then((m) => m.settle(pid!));
   onStep('signin');
   await session.signIn();
   onStep('done');
