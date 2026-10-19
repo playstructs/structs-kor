@@ -82,7 +82,11 @@ export function act(name: string, value: MsgValue, index = 0): Promise<string> {
 }
 async function send(name: string, value: MsgValue, index: number): Promise<string> {
   // The dev mock is a pretend guild: nothing it shows may be signed against the real chain.
-  if (MOCK) throw new Error('모의 모드: 실제 명령은 보내지 않습니다');
+  // Dev mock: the order lands on the pretend guild's state (src/api/mock.ts), never on the chain.
+  if (MOCK) {
+    try { return (await import('./mock')).mockOrder(name, value as Record<string, unknown>, wallet.key(index).address); }
+    catch (e) { throw new Error(playerMessage((e as Error).message)); }
+  }
   const key = wallet.key(index);
   const [chain, fetched] = await Promise.all([chainId(), account(key.address)]);
   const local = nextSeq.get(key.address);

@@ -7,7 +7,6 @@
 import { difficultyAt } from './sha';
 import { prefixOf, blocksUntil } from './work';
 import { act, isSequenceError } from '../api/actions';
-import { MOCK } from '../api/http';
 import { wallet } from '../wallet/wallet';
 import { guildApi, type WorkRow } from '../api/guild';
 
@@ -119,7 +118,7 @@ class Engine {
       if (t.best.zeros >= this.required(t)) {
         if (t.status !== 'ready') changed = true;
         t.status = 'ready';
-        if (this.autoSubmit && !MOCK && wallet.state === 'unlocked') void this.submit(t.id);
+        if (this.autoSubmit && wallet.state === 'unlocked') void this.submit(t.id);
       }
     }
     // A qualifying proof is enough: free its workers for the others.

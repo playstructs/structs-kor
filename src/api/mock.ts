@@ -47,6 +47,69 @@ function signup(body: { primary_address?: string; username?: string }) {
 }
 const byId = (id: string) => Object.values(accounts()).find((x) => x.id === id);
 
+/* A recruit starts as a real fresh commander does: no planet, no structs, no alpha, only the
+ * substation's share of power. Orders (mockOrder, below) change this state the way the chain does,
+ * so a local test can play the first day: explore, first fleet build (which brings the command
+ * ship), building, finishing the work. Kept per commander in this browser. */
+interface MockStruct { id: string; type: number; operating_ambit: string; slot: number; location_type: 'planet' | 'fleet'; status: number; block_start: number }
+interface RecruitState { planet: string; alpha: number; structs: MockStruct[] }
+const T0 = Date.now();
+/** The mock's chain height: one block every 6 s of real time, so work can come due. */
+const height = () => 2_955_801 + Math.floor((Date.now() - T0) / 6000);
+const stateKey = (id: string) => `structs-kor.mock.state.${id}`;
+function recruit(id: string): RecruitState {
+  try { const v = JSON.parse(localStorage.getItem(stateKey(id)) || 'null'); if (v) return v; } catch { /* fresh */ }
+  return { planet: '', alpha: 0, structs: [] };
+}
+const saveRecruit = (id: string, st: RecruitState) => { try { localStorage.setItem(stateKey(id), JSON.stringify(st)); } catch { /* storage refused */ } };
+const recruitStructs = (id: string) => recruit(id).structs.map((x) => ({
+  id: x.id, type: x.type, owner: id, location_type: x.location_type, location_id: x.location_type === 'planet' ? recruit(id).planet : '9-' + id.split('-')[1],
+  operating_ambit: x.operating_ambit, slot: x.slot, is_destroyed: false, health: 3, status: x.status, protected_struct_id: null, defending_struct_ids: [], fuel: 0,
+}));
+/** Build work comes due in a couple of blocks here (difficulty 2), so a local test needn't wait. */
+const recruitWork = (id: string) => recruit(id).structs.filter((x) => x.status === 1).map((x) => ({ object_id: x.id, player_id: id, target_id: recruit(id).planet, category: 'BUILD', block_start: x.block_start, difficulty_target: 2 }));
+const COMMAND_SHIP = 1;
+const FLEET_TYPES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+
+/** Apply a signed order to the mock, as the chain would; returns a pretend transaction hash.
+ * Throws the chain's own kind of error message for orders the chain would refuse. */
+export function mockOrder(name: string, value: Record<string, unknown>, address: string): string {
+  const acc = accounts()[address];
+  const hash = 'MOCK' + Math.random().toString(16).slice(2, 14).toUpperCase();
+  if (!acc) return hash; // the fixture commander: accepted, nothing changes
+  const st = recruit(acc.id), h = height();
+  switch (name) {
+    case 'MsgPlanetExplore':
+      if (!st.planet) st.planet = `2-${acc.id.split('-')[1]}`;
+      break;
+    case 'MsgStructBuildInitiate': {
+      const type = Number(value.structTypeId), ambit = String(value.operatingAmbit), slot = Number(value.slot);
+      const cat: 'planet' | 'fleet' = FLEET_TYPES.has(type) ? 'fleet' : 'planet';
+      if (cat === 'planet' && !st.planet) throw new Error('planet required: player has no planet');
+      if (st.structs.some((x) => x.location_type === cat && x.operating_ambit === ambit && x.slot === slot && x.type !== COMMAND_SHIP)) throw new Error('slot already occupied');
+      st.structs.push({ id: `5-${7000 + st.structs.length + Number(acc.id.split('-')[1]) % 1000 * 10}`, type, operating_ambit: ambit, slot, location_type: cat, status: 1, block_start: h });
+      // The first ship brings the command ship with it (as on structstestnet-111).
+      if (cat === 'fleet' && !st.structs.some((x) => x.type === COMMAND_SHIP)) st.structs.push({ id: `5-${7900 + Number(acc.id.split('-')[1]) % 100}`, type: COMMAND_SHIP, operating_ambit: 'land', slot: 0, location_type: 'fleet', status: 7, block_start: h });
+      break;
+    }
+    case 'MsgStructBuildComplete': {
+      const x = st.structs.find((y) => y.id === value.structId);
+      if (!x) throw new Error('struct not found');
+      x.status = 7;
+      break;
+    }
+    case 'MsgStructActivate': case 'MsgStructDeactivate': {
+      const x = st.structs.find((y) => y.id === value.structId);
+      if (!x) throw new Error('struct not found');
+      x.status = name === 'MsgStructActivate' ? x.status | 4 : x.status & ~4;
+      break;
+    }
+    default: break; // accepted; the mock doesn't model it
+  }
+  saveRecruit(acc.id, st);
+  return hash;
+}
+
 /* /objects?ids=…: structs, fleets, substations, reactors and providers by id (object cards). */
 function objects(ids: string): { id: string; type: string; object: Record<string, unknown> }[] {
   const out: { id: string; type: string; object: Record<string, unknown> }[] = [];
@@ -80,8 +143,8 @@ const CALL = ['Vesper', 'Kestrel', 'Orrin', 'Lumen', 'Tamsin', 'Corvid', 'Halcyo
 const REPLICANTS = CALL.slice(0, 9).map((c, i) => ({ player_id: `1-${301 + i}`, address: `structs1mockrep${i + 1}`, hd_index: i + 1, username: `${c}-${i + 1}`, alpha: [2.4, 0, 0.8, 5.1, 0, 1.2, 0.3, 0, 3.3][i] * 1e6, ore: [12, 39, 0, 163, 225, 40, 61, 8, 0][i], planet_id: i === 7 ? '' : `2-${401 + i}`, capacity: 6e6, load: [2, 6.4, 3, 5.9, 1, 4, 2.5, 0, 6][i] * 1e6 }));
 
 const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] = [
-  [/^block$/, () => ({ height: 2_955_801, tip_height: 2_955_801, lag_blocks: 0, status: 'ok', updated_at: now })],
-  [/^player\/(1-\d+)$/, (m) => PLAYERS[m[1]] ?? (byId(m[1]) ? { ...player(m[1], byId(m[1])!.name, '2-' + m[1].split('-')[1], 5, 0), alpha: 5e6 } : null)],
+  [/^block$/, () => ({ height: height(), tip_height: height(), lag_blocks: 0, status: 'ok', updated_at: now })],
+  [/^player\/(1-\d+)$/, (m) => PLAYERS[m[1]] ?? (byId(m[1]) ? { ...player(m[1], byId(m[1])!.name, recruit(m[1]).planet, 0, 0), alpha: recruit(m[1]).alpha * 1e6, load: 0, structs_load: recruit(m[1]).structs.length * 150_000, capacity: 0, connection_capacity: 172_000 } : null)],
   [/^timestamp$/, () => ({ unix_timestamp: Math.floor(Date.now() / 1000) })],
   [/^auth\/login$/, () => null],
   [/^auth\/logout$/, () => null],
@@ -90,10 +153,14 @@ const ROUTES: [RegExp, (m: RegExpMatchArray, q: URLSearchParams) => unknown][] =
   [/^planet\/(2-\d+)$/, (m) => ({ id: m[1], owner: Object.values(PLAYERS).find((p) => p.planet_id === m[1])?.id ?? ME, name: m[1] === PLANET ? '테스트 행성' : `${Object.values(PLAYERS).find((p) => p.planet_id === m[1])?.username ?? '무명'}의 행성`, space_slots: 4, air_slots: 4, land_slots: 4, water_slots: 4, undiscovered_ore: 12_400 })],
   [/^planet\/(2-\d+)\/shield\/health$/, () => ({ health: 64 })],
   [/^planet\/(2-\d+)\/raid\/active$/, () => (RAID ? { planet_id: PLANET, fleet_id: '9-9', status: 'ongoing', updated_at: now, fleet_owner: '1-9' } : null)],
-  [/^fleet\/player\//, () => ({ id: '9-42', owner: ME, location_type: 'planet', location_id: PLANET, status: 'onStation', command_struct: '5-1001' })],
-  // A commander who enlisted here gets the fixture base as a starter, on their own planet and fleet.
-  [/^struct\/player\/(1-\d+)$/, (m) => (m[1] === ME ? STRUCTS : m[1] === '1-9' ? RAIDERS : byId(m[1]) ? STRUCTS.map((x) => ({ ...x, owner: m[1], location_id: x.location_type === 'planet' ? '2-' + m[1].split('-')[1] : '9-' + m[1].split('-')[1] })) : [])],
-  [/^work\/player\//, () => [{ object_id: '5-1011', player_id: ME, target_id: PLANET, category: 'REFINE', block_start: 2_953_000, difficulty_target: 2880 }, { object_id: '5-1014', player_id: ME, target_id: PLANET, category: 'BUILD', block_start: 2_955_700, difficulty_target: 700 }, { object_id: '5-1010', player_id: ME, target_id: PLANET, category: 'MINE', block_start: 2_955_200, difficulty_target: 1800 }]],
+  [/^fleet\/player\/(1-\d+)/, (m) => {
+    if (!byId(m[1])) return { id: '9-42', owner: ME, location_type: 'planet', location_id: PLANET, status: 'onStation', command_struct: '5-1001' };
+    const st = recruit(m[1]), cmd = st.structs.find((x) => x.type === COMMAND_SHIP);
+    return { id: '9-' + m[1].split('-')[1], owner: m[1], location_type: st.planet ? 'planet' : '', location_id: st.planet, status: st.planet ? 'onStation' : 'away', command_struct: cmd?.id ?? '' };
+  }],
+  // A commander who enlisted here plays their own first day (see recruit above).
+  [/^struct\/player\/(1-\d+)$/, (m) => (m[1] === ME ? STRUCTS : m[1] === '1-9' ? RAIDERS : byId(m[1]) ? recruitStructs(m[1]) : [])],
+  [/^work\/player\/(1-\d+)/, (m) => (byId(m[1]) ? recruitWork(m[1]) : [{ object_id: '5-1011', player_id: ME, target_id: PLANET, category: 'REFINE', block_start: 2_953_000, difficulty_target: 2880 }, { object_id: '5-1014', player_id: ME, target_id: PLANET, category: 'BUILD', block_start: 2_955_700, difficulty_target: 700 }, { object_id: '5-1010', player_id: ME, target_id: PLANET, category: 'MINE', block_start: 2_955_200, difficulty_target: 1800 }])],
   [/^planet-activity\//, () => [{ time: now, seq: 1, planet_id: PLANET, block_height: 2_955_800, category: 'struct_block_ore_mine_complete', detail: '+2' }, { time: now, seq: 2, planet_id: PLANET, block_height: 2_955_790, category: 'struct_attack', detail: '' }]],
   [/^leaderboard\/guild$/, () => [{ guild_id: '0-1', name: 'Slow Ninja', player_count: 41, collateral_p: '9000000000', supply_p: '10000000000', ratio: 0.9, member_capacity_p: '0', member_load_p: '0' }, { guild_id: '0-5', name: 'SN Corp', player_count: 5, collateral_p: '40000000000', supply_p: '38000000000', ratio: 1.05, member_capacity_p: '0', member_load_p: '0' }, { guild_id: '0-9', name: '흑룡단', player_count: 9, collateral_p: '3100000000', supply_p: '3000000000', ratio: 1.03, member_capacity_p: '0', member_load_p: '0' }].sort((a, b) => Number(b.collateral_p) - Number(a.collateral_p))],
   [/^leaderboard\/reactor$/, () => [{ reactor_id: '3-5', guild_id: '0-5', capacity_p: '420000000' }, { reactor_id: '3-1', guild_id: '0-1', capacity_p: '1800000000' }].sort((a, b) => Number(b.capacity_p) - Number(a.capacity_p))],
