@@ -23,7 +23,7 @@ const KEY = 'structs-kor.doctrine', LOG = 'structs-kor.duty';
 const DEFAULT: Doctrine = { enabled: true, autopilot: false, sweepAbove: 2, keep: 0.2, rally: '', roles: {}, autoSweep: false, autoReplicate: false, maxReps: 12, newRole: 'productive' };
 export const SCAN = 12;
 export const MIN_SHARE_MW = 4e6;
-export const CALLSIGNS = ['Vesper', 'Kestrel', 'Orrin', 'Lumen', 'Tamsin', 'Corvid', 'Halcyon', 'Sable', 'Wren', 'Juno', 'Ferro', 'Nox'];
+export const CALLSIGNS = ['샛별', '매', '바람', '등불', '물결', '까마귀', '물총새', '흑담비', '굴뚝새', '달빛', '강철', '그림자'];
 
 let fns: (() => void)[] = [];
 export const onOrders = (f: () => void) => { fns.push(f); return () => { fns = fns.filter((x) => x !== f); }; };

@@ -11,6 +11,7 @@ import { retireDemo } from './game/retire';
 import './game/alerts';
 import './game/settle';
 import './ui/orderbuttons';
+import { measureBlockTime } from './pow/measure';
 import './game/medals';
 import { href, onRoute, route, startRouter } from './router';
 import { applySeo } from './seo';
@@ -60,3 +61,4 @@ route('/404', () => import('./screens/notfound'));
 // A device-sealed vault opens itself, then the guild session resumes, then the screen renders.
 startDesktop();
 void wallet.restore().catch(() => null).then(() => session.resume()).finally(startRouter);
+measureBlockTime();

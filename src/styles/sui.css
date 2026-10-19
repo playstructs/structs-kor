@@ -474,10 +474,14 @@ kbd { font-family: var(--f-hud); border-radius: 0; }
 }
 
 /* 명령 (orders on their way): amber with a spinner while in flight, a tick or a cross when one ends. */
-.orders-btn { display: inline-flex; align-items: center; justify-content: center; gap: 3px; color: var(--hwang); font: 700 12px/1 var(--f-pix, sans-serif); }
+.orders-btn { width: auto !important; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 3px; color: var(--hwang); font: 700 12px/1 var(--f-pix, sans-serif); }
 .orders-btn[hidden] { display: none; }
 .orders-btn .spin { margin: 0; }
 .orders-btn.ok { color: var(--cheong-hi); }
 .orders-btn.bad { color: var(--jeok-hi, #FF6B5B); }
-.orders-btn .orders-mark { font-size: 15px; }
+.orders-btn .orders-mark { font-size: 12px; }
 #order-log li b { display: flex; align-items: center; }
+
+/* Toasts never take a click meant for what's under them, and sit low except over the bridge's command bar. */
+.toast { pointer-events: none; }
+html:not([data-mode="stage"]) .toast { bottom: 24px; }

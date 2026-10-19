@@ -58,7 +58,9 @@ document.addEventListener('keydown', (e) => {
 }, true);
 
 document.addEventListener('keydown', (e) => {
-  if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return;
+  if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey) return;
+  // Esc in a text box gives the keyboard back to the game (chat used to keep it until you clicked away).
+  if (typing(e.target)) { if (e.key === 'Escape' && !e.defaultPrevented) (e.target as HTMLElement).blur(); return; }
   const k = keyOf(e);
   // A held key fires once (arrows may repeat to move the board cursor): no auto-fire, no re-sent orders.
   if (e.repeat && !k.startsWith('Arrow')) return;

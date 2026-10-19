@@ -100,8 +100,8 @@ body.is-map-panning, body.is-map-panning * { cursor: grabbing !important; user-s
 .bd-order.failed { --od: var(--jeok-hi, #FF6B5B); }
 .bd-order.failed::before { border-style: solid; animation: none; }
 .bd-order-ghost { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .6; image-rendering: pixelated; }
-.bd-order-plate { position: absolute; left: 50%; top: -10px; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; padding: 3px 6px; background: rgba(14,13,28,.94); box-shadow: 0 0 0 2px #0E0D1C, inset 0 0 0 2px var(--od); color: #fff; font: 700 11px/1 var(--f-pix, sans-serif); white-space: nowrap; }
-.bd-order-plate em { font: 400 10px/1 var(--f-hud, monospace); font-style: normal; color: var(--od); }
+.bd-order-plate { position: absolute; left: 50%; top: -26px; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; padding: 3px 6px; background: rgba(14,13,28,.94); box-shadow: 0 0 0 2px #0E0D1C, inset 0 0 0 2px var(--od); color: #fff; font: 700 13px/1.1 var(--f-body, sans-serif); white-space: nowrap; }
+.bd-order-plate em { font: 400 12px/1 var(--f-body, sans-serif); font-style: normal; color: var(--od); }
 .bd-order-plate i { font-style: normal; color: var(--od); }
 .bd-order.sending .bd-order-plate i, .bd-order.pending .bd-order-plate i { width: 7px; height: 7px; border: 2px solid var(--od); border-right-color: transparent; border-radius: 50%; animation: bd-spin .8s linear infinite; }
 @keyframes bd-spin { to { transform: rotate(360deg); } }

@@ -54,6 +54,14 @@ const ids = (...lists: (string[] | undefined)[]) => [...new Set(lists.flatMap((l
 
 export const chainread = {
   height: () => get<{ block: { header: { height: string } } }>('/cosmos/base/tendermint/v1beta1/blocks/latest').then((r) => Number(r.block.header.height)),
+  /** Average seconds per block over the last 1,000 blocks. */
+  async blockSeconds(): Promise<number> {
+    type B = { block: { header: { height: string; time: string } } };
+    const top = await get<B>('/cosmos/base/tendermint/v1beta1/blocks/latest', 60_000);
+    const h = Number(top.block.header.height), back = Math.min(1000, h - 1);
+    const old = await get<B>(`/cosmos/base/tendermint/v1beta1/blocks/${h - back}`, 3_600_000);
+    return (Date.parse(top.block.header.time) - Date.parse(old.block.header.time)) / 1000 / back;
+  },
   playerRaw: (id: string) => get<LcdPlayer>(`/structs/player/${encodeURIComponent(id)}`),
 
   async player(id: string): Promise<PlayerRow> {

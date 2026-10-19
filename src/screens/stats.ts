@@ -56,9 +56,9 @@ const screen: Screen = {
       <div class="card-head"><h1 style="font-size:28px">은하 통계</h1><span class="label c-cheong">UNIVERSE</span></div>
       <section class="card game-panel"><h2>우주</h2><div class="stat-grid">
         <div class="stat"><small>사령관</small><strong class="mono">${sum?.players == null ? '—' : n(sum.players)}</strong></div>
-        <div class="stat"><small>활동 중</small><strong class="mono c-cheong">${sum?.active_players == null ? '—' : n(sum.active_players)}</strong></div>
+        ${sum?.active_players == null ? '' : html`<div class="stat"><small>활동 중</small><strong class="mono c-cheong">${n(sum.active_players)}</strong></div>`}
         <div class="stat"><small>행성</small><strong class="mono">${sum?.planets == null ? '—' : n(sum.planets)}</strong></div>
-        <div class="stat"><small>구조체</small><strong class="mono">${sum?.structs == null ? '—' : n(sum.structs)}</strong></div>
+        ${sum?.structs == null ? '' : html`<div class="stat"><small>구조체</small><strong class="mono">${n(sum.structs)}</strong></div>`}
         <div class="stat"><small>길드</small><strong class="mono">${sum?.guilds == null ? '—' : n(sum.guilds)}</strong></div>
         <div class="stat"><small>블록 높이</small><strong class="mono">${block ? '#' + n(block.height) : '—'}</strong></div>
       </div></section>

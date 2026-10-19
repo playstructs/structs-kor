@@ -17,11 +17,22 @@ export type EnlistStep = 'key' | 'register' | 'chain' | 'signin' | 'done';
 
 const ADJ = ['Nova', 'Comet', 'Iron', 'Silent', 'Amber', 'Lunar', 'Solar', 'Cobalt', 'Hollow', 'Swift', 'Crimson', 'Azure'];
 const NOUN = ['Falcon', 'Tiger', 'Crane', 'Otter', 'Magpie', 'Wolf', 'Heron', 'Lynx', 'Raven', 'Badger', 'Fox', 'Orca'];
-/** Latin on purpose until the guild confirms Hangul usernames (REQ-I18N-2). Changeable later. */
+/** The sign-up name stays Latin: the guild's username check counts bytes and may refuse Hangul
+ * (REQ-I18N-2). The commander gets a Korean callsign on the chain right after (koreanCallsign). */
 export function callsign(): string {
   const r = crypto.getRandomValues(new Uint32Array(3));
   return `${ADJ[r[0] % ADJ.length]}${NOUN[r[1] % NOUN.length]}-${(r[2] % 900) + 100}`;
 }
+
+const KADJ = ['은빛', '강철', '붉은', '푸른', '검은', '번개', '새벽', '황금', '서리', '불꽃', '고요한', '날쌘'];
+const KNOUN = ['매', '범', '학', '늑대', '까치', '여우', '고래', '용', '독수리', '표범', '수리', '송골매'];
+/** A Korean callsign the chain accepts (3–20 letters, digits, hyphens): 은빛매-141. */
+export function koreanCallsign(): string {
+  const r = crypto.getRandomValues(new Uint32Array(3));
+  return `${KADJ[r[0] % KADJ.length]}${KNOUN[r[1] % KNOUN.length]}-${(r[2] % 900) + 100}`;
+}
+/** The Latin sign-up names this client gives (NovaFalcon-175): replaced by a Korean one on the chain. */
+export const isSignupCallsign = (name: string) => /^[A-Z][a-z]+[A-Z][a-z]+-\d{3}$/.test(name);
 
 const POLL_MS = 3000;
 const WAIT_MS = 3 * 60_000;

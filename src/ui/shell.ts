@@ -192,7 +192,7 @@ export function shell(root: HTMLElement) {
     const failed = live.find((o) => o.phase === 'failed');
     ordersBtn.hidden = !live.length && !ordersOpen;
     ordersBtn.className = `hud-btn orders-btn ${flying ? 'busy' : failed ? 'bad' : last?.phase === 'done' ? 'ok' : ''}`;
-    ordersBtn.innerHTML = flying ? `<i class="spin" aria-hidden="true"></i><span class="orders-n">${flying}</span>` : failed ? '<span class="orders-mark">✕</span>' : '<span class="orders-mark">✓</span>';
+    ordersBtn.innerHTML = flying ? `<i class="spin" aria-hidden="true"></i><span class="orders-n">명령 ${flying}</span>` : failed ? '<span class="orders-mark">✕ 실패</span>' : '<span class="orders-mark">✓ 완료</span>';
     ordersBtn.setAttribute('aria-label', flying ? `명령 ${flying}건 처리 중` : failed ? `명령 실패: ${failed.label}` : last ? `${last.label} 완료` : '명령');
     ordersBtn.title = flying ? `명령 ${flying}건 처리 중` : failed ? `${failed.label} 실패${failed.error ? ` · ${failed.error}` : ''}` : last ? `${last.label} 완료` : '명령';
     ordersBtn.setAttribute('aria-expanded', String(ordersOpen));

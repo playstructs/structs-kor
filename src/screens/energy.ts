@@ -109,16 +109,17 @@ function view(p: PlayerRow, e: Energy, structs: StructRow[], dropKw: number, cut
         <div class="wire cheong" aria-hidden="true"></div>
         <div class="flow-col sinks">
           <span class="label">차단 순서 · 위에서부터</span>
-          ${e.allocations_out.map((a) => html`<div class="sink ${cut.has(a.id) ? 'cut' : ''}"><span class="rank mono">${a.cascade_rank}</span><div><b>${ALLOCATION_TYPE[a.allocation_type] ?? a.allocation_type} → ${entityOf(a.destination_id)} ${a.destination_id}</b><small class="mono">${a.id}</small></div><span class="mono">${a.power == null ? '—' : watts(Number(a.power))}</span></div>`)}
-          <div class="sink ${offline ? 'cut' : ''}"><span class="rank mono">${e.allocations_out.length + 1}</span><div><b>구조체 ${live.filter((s) => s.status & ONLINE).length}기 가동</b><small>정전 시 꺼짐</small></div><span class="mono">${watts(sl)}</span></div>
+          ${e.allocations_out.map((a) => html`<div class="sink ${cut.has(a.id) ? 'cut' : ''}"><span class="rank mono">${a.cascade_rank}</span><div><b title="${ALLOCATION_TYPE[a.allocation_type] ?? a.allocation_type} → ${entityOf(a.destination_id)} ${a.destination_id}">${ALLOCATION_TYPE[a.allocation_type] ?? a.allocation_type} → ${entityOf(a.destination_id)} ${a.destination_id}</b><small class="mono">${a.id}</small></div><span class="mono">${a.power == null ? '—' : watts(Number(a.power))}</span></div>`)}
+          ${live.some((s) => s.status & ONLINE) ? html`<div class="sink ${offline ? 'cut' : ''}"><span class="rank mono">${e.allocations_out.length + 1}</span><div><b>구조체 ${live.filter((s) => s.status & ONLINE).length}기 가동</b><small>정전 시 꺼짐</small></div><span class="mono">${watts(sl)}</span></div>` : ''}
+          ${!e.allocations_out.length && !live.some((s) => s.status & ONLINE) ? html`<p class="note">아직 전력을 쓰는 곳이 없습니다.</p>` : ''}
         </div>
       </div>
     </section>
 
-    <section class="card game-panel warn wargame"><h2>정전 워게임</h2>
-      <label class="field"><span style="font-size:15px;color:var(--text)">적이 내 용량 <b class="mono c-hwang" style="font-size:18px">${dropKw} kW</b>를 끊으면?</span>
+    <section class="card game-panel warn wargame"><h2>${sl <= 0 && !e.allocations_out.length ? '전력 늘리기' : '정전 워게임'}</h2>
+${sl <= 0 && !e.allocations_out.length ? '' : html`      <label class="field"><span style="font-size:15px;color:var(--text)">적이 내 용량 <b class="mono c-hwang" style="font-size:18px">${dropKw} kW</b>를 끊으면?</span>
         <input type="range" min="0" max="${Math.max(10, Math.ceil(supply / 1e6))}" value="${dropKw}" aria-label="끊길 용량 (kW)" data-act="drop" style="accent-color:var(--hwang);min-height:32px"></label>
-      <div class="verdict ${verdict[2]}"><strong>${verdict[0]}</strong><span>${verdict[1]}</span></div>
+      <div class="verdict ${verdict[2]}"><strong>${verdict[0]}</strong><span>${verdict[1]}</span></div>`}
       <div style="display:flex;flex-direction:column;gap:8px">
         <span class="label dim">권장 대응</span>
         ${isDemo ? html`

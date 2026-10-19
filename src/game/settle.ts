@@ -9,6 +9,7 @@ import { guildApi } from '../api/guild';
 import { chainread } from '../api/chainread';
 import { MOCK, invalidate } from '../api/http';
 import { actions } from '../api/actions';
+import { koreanCallsign, isSignupCallsign } from '../api/enlist';
 import { wallet } from '../wallet/wallet';
 import { notify } from './fx';
 
@@ -21,6 +22,8 @@ export async function settle(pid: string) {
   busy = true;
   try {
     // Ask the chain itself: guild reads wait for sign-in, and the indexer can trail the join.
+    // A Latin sign-up callsign becomes a Korean one on the chain (the guild's sign-up refuses Hangul).
+    if (!MOCK) void chainread.playerRaw(pid).then((r) => { if (isSignupCallsign(r.Player.name)) return actions.playerName(pid, koreanCallsign()); }).catch(() => null);
     const planet = MOCK ? (await guildApi.player(pid).catch(() => null))?.planet_id : await chainread.playerRaw(pid).then((r) => r.Player.planetId, () => undefined);
     if (planet !== '' && planet !== null) return;
     try { if (Date.now() - Number(localStorage.getItem(key(pid)) || 0) < RETRY_MS) return; localStorage.setItem(key(pid), String(Date.now())); } catch { /* no storage: still explore once this visit */ }

@@ -73,7 +73,7 @@ const screen: Screen = {
           <div><b class="mono">${n(list.reduce((s, r) => s + Number(r.ore), 0))}</b><small>보유 광석</small></div>
           <div><b class="mono ${list.filter(needsAttention).length ? 'c-warn' : ''}">${n(list.filter(needsAttention).length)}</b><small>주의 필요</small></div>
         </div>
-        <p class="note mono" style="font-size:12px">(용량 − 부하) ÷ (연결 + 1) = ${watts(gate.free)} ÷ ${n(gate.conns + 1)} = ${watts(gate.share)}</p>
+        <p class="note">변전소에 연결된 사령관 한 명당 ${watts(gate.share)}을 받습니다${gate.conns ? ` (연결 ${n(gate.conns)}명)` : ''}. 레플리칸트를 하나 더 연결하려면 한 명당 4 kW 이상이 남아야 합니다.</p>
       </section>`;
     };
 

@@ -2,6 +2,7 @@
  * Work rows come from structs-pg view.work_live: `difficulty_target` is the CalculateDifficulty
  * range (the struct type's build / ore-mining / ore-refining difficulty, or the planet's shield
  * for RAID), and a RAID row's object_id is the raiding fleet, its target_id the planet. */
+import { setBlockSeconds as setRateBlockSeconds } from '../api/rates';
 import type { WorkRow } from '../api/guild';
 
 /** The string structsd hashes with a nonce appended ("5-12BUILD3007073NONCE", "9-4@2-7RAID3001000NONCE"). */
@@ -15,8 +16,10 @@ export function blocksUntil(t: { range: number; blockStart: number }, zeros: num
   return Math.max(0, t.blockStart + age - (height + 1));
 }
 
-/** Seconds per block on the testnet, for turning block counts into wall time. */
-export const BLOCK_SECONDS = 6;
+/** Seconds per block, for turning block counts into wall time. Measured on the chain at start-up
+ * (measureBlockTime); 5.4 s until then (testnet, Oct 2026: 1,000 blocks in about 89 minutes). */
+export let BLOCK_SECONDS = 5.4;
+export function setBlockSeconds(s: number) { if (s >= 3 && s <= 10) { BLOCK_SECONDS = s; setRateBlockSeconds(s); } }
 /** About how many blocks a fresh build (or mine/refine proof) of this difficulty takes to qualify,
  * hashing at `rate` hashes/s: the chain's bar falls with age, and the best proof after N hashes has
  * about log16(N) leading hex zeros. Without hashing, the bar reaches zero at age ≈ range^(64/63). */

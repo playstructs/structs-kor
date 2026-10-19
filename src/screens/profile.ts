@@ -87,8 +87,9 @@ const screen: Screen = {
               ${wallet.deviceSealed ? html`<p class="note">주변에 화면을 보는 사람이 없는지 확인하세요.</p>` : html`<label class="field"><span>잠금 비밀번호를 다시 입력하세요</span><input class="input" name="pass" type="password" required autocomplete="current-password"></label>`}
               <button class="btn gold" ${busy ? 'disabled' : ''}>백업 코드 보기</button>
             </form>`}
-          <hr style="border:0;border-top:1px solid var(--line);width:100%">
-          <button class="btn outline-danger" data-act="forget">이 브라우저에서 계정 지우기</button>
+          <details class="danger-zone"><summary>이 브라우저에서 계정 지우기…</summary>
+            <p class="note">백업 코드를 적어 두지 않았다면 사령관을 영영 잃습니다.</p>
+            <button class="btn outline-danger" data-act="forget">지금 지우기</button></details>
         </section>
       </div>`;
     };

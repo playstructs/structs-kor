@@ -110,8 +110,9 @@ export function notify(title: string, body = '', tone: 'cheong' | 'jeok' | 'hwan
   el.innerHTML = '<b></b><span></span>';
   el.querySelector('b')!.textContent = title;
   el.querySelector('span')!.textContent = body;
-  stack.prepend(el);
-  while (stack.children.length > 4) stack.lastElementChild!.remove();
+  // Oldest on top, newest below it: the stack reads in the order things happened.
+  stack.append(el);
+  while (stack.children.length > 4) stack.firstElementChild!.remove();
   if (cue) sfx.play(cue);
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 4200);
 }

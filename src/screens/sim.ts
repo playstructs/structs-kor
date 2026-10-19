@@ -80,6 +80,8 @@ const screen: Screen = {
     // Not your vassal, not your ally.
     const raidOn = !demo.on ? null : params.get('raid') === 'void' ? demo.boss : demo.rivals().find((r) => r.id === params.get('raid') && r.vassal == null && r.id !== demo.ally?.id) ?? null;
     const mission = MISSIONS.find((m) => m.id === params.get('mission') && unlocked(m)) ?? null;
+    // A locked mission's link is not a free battle: back to the campaign, saying why.
+    if (params.get('mission') && !mission) { toast(MISSIONS.some((m) => m.id === params.get('mission')) ? '아직 잠긴 작전입니다 · 앞 작전을 먼저 완수하세요' : '없는 작전입니다', 3500); go('/campaign', true); return; }
     let raidIds: Record<string, string> = {}, loot: { ore: number; alpha?: number; promoted?: { id: string; type: number; rank: number; name?: string }[] } | null = null;
     // The war room's estimate for this strike: wins out of plays, filled in a battle at a time.
     let odds: { won: number; played: number } | null = null, stopOdds: (() => void) | null = null;
@@ -282,7 +284,8 @@ const screen: Screen = {
       career.bump('simBattles');
       career.bump('kills', stats.computer.lost);
       if (d.peer) d.h2h = recordH2H(d.peer.id, w === 'player' ? 'w' : w === 'computer' ? 'l' : 'd');
-      xpWon = (w === 'player' ? 120 : 0) + stats.computer.lost * 5 + streakXp;
+      // XP only for winning: a lost practice fight paid for its kills, so losing on purpose farmed rank.
+      xpWon = w === 'player' ? 120 + stats.computer.lost * 5 + streakXp : 0;
       if (w === 'player') {
         career.bump('simWins');
         sfx.play('victory');
@@ -541,7 +544,7 @@ const screen: Screen = {
         } else {
           sfx.play('defeat');
           banner({ kicker: `${blocks}턴`, title: w === 'computer' ? '패배' : '무승부', sub: w === 'computer' ? '지휘함을 잃었습니다' : '양측 모두 버텼습니다', tone: 'jeok', ms: 2600 });
-          xpWon = stats.computer.lost * 5 + streakXp;
+          xpWon = 0;
           if (xpWon) setTimeout(() => career.award(xpWon, '교전 경험'), 1200);
         }
         if (mission && w === 'player') {
@@ -777,7 +780,18 @@ const screen: Screen = {
         if (!run || run.over) run = { round: 1, fleet: layout('difficult', seed).filter((u) => u.side === 'player'), seed, offers: null, over: false, won: false };
         diff = GAUNTLET_ROUNDS[run.round - 1].difficulty;
         units = [...run.fleet, ...gauntletEnemy(run.round, run.seed, run.fleet.length)];
-      } else { run = null; units = layout(preset, seed); }
+      } else {
+        run = null; units = layout(preset, seed);
+        // The preset fleet must fit its own points budget, or 전투 시작 is blocked before the player
+        // touches anything: drop the costliest non-command ships until it fits.
+        if (mode === 'single' && !mission) {
+          while (spent() > budget()) {
+            const mine = units.filter((u) => u.side === 'player' && u.type !== COMMAND_SHIP_ID).sort((x, y) => cost(y.type) - cost(x.type));
+            if (!mine.length) break;
+            units.splice(units.indexOf(mine[0]), 1);
+          }
+        }
+      }
       chain = null; phase = 'deploy';
       newBoard().setStructs(units.map(toBoard));
       paint();

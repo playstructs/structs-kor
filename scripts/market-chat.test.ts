@@ -1,10 +1,13 @@
 /* Power-market units and the chat client's sign-in guards: `pnpm test`. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { perKwDay, chainRate, MIN_PER_KW_DAY } from '../src/api/rates';
+import { perKwDay, chainRate, MIN_PER_KW_DAY, setBlockSeconds } from '../src/api/rates';
 import { Matrix } from '../src/chat/matrix';
 import { guildApi } from '../src/api/guild';
 import { wallet } from '../src/wallet/wallet';
+
+// The rates follow the measured block time; pin it to 6 s here so the arithmetic is round.
+setBlockSeconds(6);
 
 test('market: a chain rate reads as whole units per kW·day', () => {
   // 1 µα per mW·block = 1e6 mW/kW × 14,400 blocks/day = 1.44e10 µα = 14,400 α per kW·day.

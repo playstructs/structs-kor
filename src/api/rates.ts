@@ -1,11 +1,12 @@
 /* Power-market units. On chain a provider's rate is a whole number of micro-units of its denom
  * (ualpha, uguild.*) per mW per block; players think in whole units per kW per day. The chain's
- * smallest rate, 1 µ per mW·block, is already 14,400 per kW·day, so lower asks cannot be listed. */
+ * smallest rate, 1 µ per mW·block, is already about 16,000 per kW·day, so lower asks cannot be listed. */
 
 /** mW per kW. */
 export const KW = 1e6;
-/** ~6 s blocks (structs-ai: charge grows about one a block, every 6 s). */
-export const BLOCKS_PER_DAY = 14_400;
+/** Blocks in a day at the measured block time (pow/work.ts measures it; 5.4 s until then). */
+export let BLOCKS_PER_DAY = Math.round(86_400 / 5.4);
+export function setBlockSeconds(s: number) { BLOCKS_PER_DAY = Math.round(86_400 / s); MIN_PER_KW_DAY = perKwDay(1) / 1e6; }
 
 /** A chain rate (µ per mW·block) as micro-units per kW·day (show with micro()). */
 export const perKwDay = (rateAmount: number | string) => Number(rateAmount) * KW * BLOCKS_PER_DAY;
@@ -19,4 +20,4 @@ export function chainRate(askPerKwDay: number): { amount: string; listed: number
 }
 
 /** The smallest listable price, in whole units per kW·day. */
-export const MIN_PER_KW_DAY = perKwDay(1) / 1e6;
+export let MIN_PER_KW_DAY = perKwDay(1) / 1e6;

@@ -34,7 +34,7 @@ import { estimateBlocks, BLOCK_SECONDS } from '../pow/work';
 import { runTour, tourSeen, BRIDGE_TOUR } from '../game/tour';
 import { dailyOrders, claimDaily, claimDailyBonus, DAILY_XP, DAILY_BONUS } from '../game/daily';
 
-const DESTROYED = 32, ONLINE = 4;
+const DESTROYED = 32, ONLINE = 4, REFINERY = 15;
 const isFleetType = (t: number) => t <= 13;
 /** mW → kW; a missing reading (a fresh commander, no power row yet) is 0, never NaN. */
 const kw = (mw: unknown) => (Number(mw) || 0) / 1e6;
@@ -315,8 +315,8 @@ const screen: Screen = {
         const sent = isDemo ? undefined : orders.of(`slot:${cat}|${ambit}|${slot}`);
         const sending = !!sent && (sent.phase === 'sending' || sent.phase === 'pending');
         return html`<div class="ab-head" data-free="${String(free)}">건설 · ${AMBIT[ambit]} ${slot + 1}<span class="chip">${cat === 'planet' ? '행성 슬롯' : '함대 슬롯'}</span>${sending ? html`<span class="chip hwang order-chip"><i class="spin" aria-hidden="true"></i>${STRUCT_TYPE[sent!.typeId ?? 0] ?? ''} 착공 ${sent!.phase === 'sending' ? '전송 중' : '처리 중'}</span>` : budgetHtml(free)}</div>
-          <div class="ab-row"><div class="ab-btns">${buildOptions(ambit, cat).map((t, i) => {
-            const need = (t.passiveDraw * 1.2) / 1e6, ok = !sending && (!isDemo || need <= free);
+          <div class="ab-row"><div class="ab-btns">${buildOptions(ambit, cat).length ? '' : html`<p class="ab-empty">${AMBIT[ambit]} 영역에는 ${cat === 'planet' ? '행성 시설' : '함선'}을 지을 수 없습니다 · 다른 영역의 슬롯을 고르세요</p>`}${buildOptions(ambit, cat).map((t, i) => {
+            const need = (t.passiveDraw * 1.2) / 1e6, ok = !sending && need <= free;
             // A cartridge: the unit on a tile of the slot's ambit, its name, and its draw as pips of the free power.
             const name = STRUCT_TYPE[t.id] ?? t.type, short = need > free;
             const on = free > 0 ? Math.min(5, Math.ceil((need / free) * 5)) : 5;
@@ -351,7 +351,7 @@ const screen: Screen = {
         const sw = dead || building != null || busy ? 'disabled' : online ? 'on' : 'off';
         return html`<div class="ab-head ${mode ? 'inv' : ''}">${head}<span class="sub">${s.id} · ${AMBIT[s.operating_ambit] ?? ''} ${s.slot + 1}</span></div>
           <div class="ab-row">
-            <div class="ab-switch"><button type="button" data-act="power" data-id="${s.id}" data-state="${sw}" ${sw === 'disabled' || !canSign ? 'disabled' : ''} aria-label="${online ? '전원 끄기' : '전원 켜기'} (F)" title="${online ? '전원 끄기' : '전원 켜기'} (F)"></button><kbd>F</kbd></div>
+            <div class="ab-switch"><button type="button" data-act="power" data-id="${s.id}" data-state="${sw}" aria-pressed="${online}" ${sw === 'disabled' || !canSign ? 'disabled' : ''} aria-label="${online ? '전원 끄기' : '전원 켜기'} (F)" title="${online ? '전원 끄기' : '전원 켜기'} (F)"></button><kbd>F</kbd></div>
             <div class="ab-props scr">
               <span title="내구도"><i class="si icon-armour"></i><b class="${dead ? 'bad' : ''}">${dead ? '파괴' : `${s.health}/${max}`}</b></span>
               <span title="전력 소비"><i class="si icon-unpowered"></i>${watts(t?.passiveDraw)}</span>
@@ -383,12 +383,19 @@ const screen: Screen = {
             <span title="알파 매터 (약탈되지 않음)" class="gold"><i class="si icon-refine"></i><b>${micro(d.player.alpha)}</b>g</span>
             <span title="광석 (약탈 위험)"><i class="si icon-ore-ready"></i><b>${n(Math.floor(Number(d.player.ore ?? 0)))}</b></span>
             <span title="전력 부하" class="${use > 0.95 ? 'bad' : use > 0.8 ? 'warn' : ''}"><i class="si icon-unpowered"></i><b>${Math.round(use * 100)}%</b></span>
-            <span title="남은 광맥"><i class="si icon-undiscovered-ore"></i><b>${n(d.planet?.undiscovered_ore)}</b></span>
+            <span title="이 행성에 남은 광맥 (다 캐면 새 행성을 탐사합니다)"><i class="si icon-undiscovered-ore"></i><b>${n(d.planet?.undiscovered_ore ?? 0)}</b>광맥</span>
           </div>
           <div class="ab-btns">
             ${!isDemo && !d.player.planet_id ? (orders.busy(`explore:${pid}`) ? sbtn({ act: 'explore', label: '탐사 중', icon: 'undiscovered-ore', tone: 'gold', sub: '행성 찾는 중…', dis: true, title: '정착할 행성을 찾고 있습니다' }) : sbtn({ act: 'explore', label: '탐사', icon: 'undiscovered-ore', tone: 'gold', sub: '첫 행성', title: '행성 탐사: 정착할 행성을 찾습니다' })) : ''}
             ${sbtn({ act: 'buildNext', label: '건설', key: 'E', icon: 'deploy', sub: '빈 슬롯' })}
-            ${sbtn({ act: 'refineAll', label: '정제', key: 'Q', icon: 'refine', tone: 'gold', sub: isDemo ? `+${demo.rates().alpha.toFixed(2)}α` : '알파' })}
+            ${(() => {
+              if (isDemo) return sbtn({ act: 'refineAll', label: '정제', key: 'Q', icon: 'refine', tone: 'gold', sub: `+${demo.rates().alpha.toFixed(2)}g` });
+              // Refining runs by itself on a refinery: the button says where it stands, and glows only when it helps.
+              const ref = d.structs.filter((x) => x.type === REFINERY && !(x.status & DESTROYED));
+              const ore = Math.floor(Number(d.player.ore ?? 0));
+              const sub = !ref.length ? '정제소 없음' : !ore ? '광석 없음' : ref.some((x) => x.status & ONLINE) ? '진행 중' : '정제소 꺼짐';
+              return sbtn({ act: 'refineAll', label: '정제', key: 'Q', icon: 'refine', tone: (!ref.length && d.player.planet_id) || (ore && !ref.some((x) => x.status & ONLINE)) ? 'gold' : '', sub, title: '정제: 광석을 알파로 바꿉니다 (알파는 약탈되지 않습니다)' });
+            })()}
             ${sbtn({ act: 'infuse', label: '주입', key: 'I', icon: 'send-alpha', sub: isDemo ? '1g→1kW' : '리액터' })}
             ${abil}
             ${sbtn({ act: 'nav', label: '전력망', key: 'G', icon: 'unpowered', tone: use > 0.9 ? 'warn' : '', sub: `${Math.round(use * 100)}%`, data: { to: '/energy' } })}
@@ -682,7 +689,20 @@ const screen: Screen = {
       },
       buildNext: () => { if (!isDemo && d && !d.player.planet_id) { sfx.play('error'); toast('아직 행성이 없습니다 · 탐사로 첫 행성을 받으세요', 4000); return; } const p = firstEmpty(); panel = p; if (p?.kind === 'build' && board) { board.ping(p.key); board.reveal(p.key); } else if (!panel) toast('빈 행성 슬롯이 없습니다'); paint(); },
       refineAll: () => {
-        if (!isDemo) { go('/energy'); return; }
+        if (!isDemo) {
+          if (!d) return;
+          const ref = d.structs.filter((x) => x.type === REFINERY && !(x.status & DESTROYED));
+          if (!ref.length) {
+            if (!d.player.planet_id) { toast('아직 행성이 없습니다', 3000); return; }
+            const land = firstEmpty();
+            panel = land; if (land?.kind === 'build' && board) { board.ping(land.key); board.reveal(land.key); }
+            toast('정제소가 없습니다 · 빈 슬롯에 정제소를 건설하세요', 3500); paint(); return;
+          }
+          const off = ref.find((x) => !(x.status & ONLINE) && (x.status & 2));
+          if (off) { panel = { kind: 'struct', id: off.id }; board?.select(off.id); toast('꺼진 정제소입니다 · 전원을 켜면 정제가 시작됩니다', 3500); paint(); return; }
+          toast(Number(d.player.ore ?? 0) >= 1 ? '정제소가 광석을 알파로 바꾸는 중입니다 · 작업 탭에서 진행을 보세요' : '정제할 광석이 없습니다 · 채굴이 끝나면 정제소가 이어서 정제합니다', 3500);
+          return;
+        }
         const off = demo.state.structs.filter((x) => x.type === 15 && !x.online && x.building == null && x.hp > 0);
         if (!off.length) {
           if (!demo.state.structs.some((x) => x.type === 15 && x.hp > 0)) { panel = firstEmpty(); toast('정제소가 없습니다 — 지상 슬롯에 정제소를 건설하세요', 3500); paint(); return; }

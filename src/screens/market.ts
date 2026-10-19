@@ -46,10 +46,10 @@ function buy(s: State): Safe {
     <section class="card flush game-panel">
       <div class="card-head" style="padding:16px"><h1 style="font-size:26px">전력 판매 목록</h1><span class="dim" style="font-size:13px">kW·일 기준</span>
         <span class="end mkt-filters">
-          <select class="input" data-act="sort" data-on="change" aria-label="정렬"><option value="price" ${s.sort === 'price' ? 'selected' : ''}>저렴한 순</option><option value="alpha" ${s.sort === 'alpha' ? 'selected' : ''}>알파 환산 순</option><option value="cap" ${s.sort === 'cap' ? 'selected' : ''}>용량 큰 순</option></select>
+          <select class="input" data-act="sort" data-on="change" aria-label="정렬"><option value="price" ${s.sort === 'price' ? 'selected' : ''}>저렴한 순 (알파 기준)</option><option value="cap" ${s.sort === 'cap' ? 'selected' : ''}>용량 큰 순</option></select>
           <select class="input" data-act="policy" data-on="change" aria-label="접근"><option value="">모든 제안</option><option value="open" ${s.policy === 'open' ? 'selected' : ''}>공개 시장</option><option value="guild" ${s.policy === 'guild' ? 'selected' : ''}>길드 전용</option></select>
         </span></div>
-      <div class="scroll-x"><table class="t" style="min-width:700px"><thead><tr><th>공급자</th><th class="r">요율 / kW·일</th><th class="r">알파 환산</th><th class="r">용량</th><th class="r">기간</th><th>접근</th><th class="r">24시간</th><th></th></tr></thead><tbody>
+      <div class="scroll-x"><table class="t" style="min-width:700px"><thead><tr><th>공급자</th><th class="r">요율 / kW·일</th><th class="r">알파 환산</th><th class="r">용량</th><th class="r">기간</th><th>접근</th>${s.stats.size ? html`<th class="r">24시간</th>` : ''}</tr></thead><tbody>
       ${list.length ? list.map((x) => {
         const i = s.providers.indexOf(x), st = s.stats.get(x.id), ch = st?.rate_change_24h_pct, eq = alphaEq(s, x);
         return html`<tr class="${i === s.sel ? 'sel' : ''}" style="cursor:pointer;background:${i === s.sel ? 'var(--cheong-bg)' : 'transparent'}" data-act="pick" data-i="${i}">
@@ -59,9 +59,8 @@ function buy(s: State): Safe {
           <td class="r mono">${n(Number(x.capacity_minimum) / KW, 1)}–${n(Number(x.capacity_maximum) / KW, 1)} kW</td>
           <td class="r mono">${n(Number(x.duration_minimum) / BLOCKS_PER_DAY, 1)}–${n(Number(x.duration_maximum) / BLOCKS_PER_DAY, 1)}일</td>
           <td>${POLICY[x.access_policy] ?? x.access_policy}</td>
-          <td class="r mono" style="color:${ch == null ? 'var(--text-faint)' : ch > 0 ? 'var(--jeok)' : ch < 0 ? 'var(--down)' : 'var(--text-dim)'}">${ch == null ? '—' : `${ch > 0 ? '▲' : ch < 0 ? '▼' : ''} ${n(Math.abs(ch), 1)}%`}</td>
-          <td><button class="hud-btn" data-act="shareOffer" data-i="${i}" title="이 제안 공유" aria-label="${x.id} 공유"><i class="si icon-link-out"></i></button></td></tr>`;
-      }) : html`<tr><td colspan="8" class="empty">판매 중인 전력이 없습니다.</td></tr>`}
+          ${s.stats.size ? html`<td class="r mono" style="color:${ch == null ? 'var(--text-faint)' : ch > 0 ? 'var(--jeok)' : ch < 0 ? 'var(--down)' : 'var(--text-dim)'}">${ch == null ? '—' : `${ch > 0 ? '▲' : ch < 0 ? '▼' : ''} ${n(Math.abs(ch), 1)}%`}</td>` : ''}</tr>`;
+      }) : html`<tr><td colspan="7" class="empty">판매 중인 전력이 없습니다.</td></tr>`}
       </tbody></table></div>
     </section>
     <section class="card accent game-panel">
@@ -75,8 +74,12 @@ function buy(s: State): Safe {
           <span style="display:flex;justify-content:space-between;align-items:baseline"><span>선결제 총액</span><b class="mono c-hwang">${s.q ? micro(s.q.total, 4) : '—'} <span style="font-size:13px">${denomName(p.rate_denom)}</span></b></span>
           ${s.q?.errors.map((e) => html`<span class="c-jeok" style="font-size:13px">${e}</span>`)}
         </div>
-        <p class="note">총액은 개설 시 에스크로로 전액 결제되고, 공급자에게 조금씩 나눠 지급됩니다. 중도 해지 시 위약금 ${p.consumer_cancellation_penalty != null ? n(Number(p.consumer_cancellation_penalty) * 100, 1) + '%' : '[n]%'}.</p>
-        <button class="btn primary lg" data-act="open" ${!s.q?.valid || s.busy || !unlocked() ? 'disabled' : ''}>${s.q ? `${micro(s.q.total, 2)} ${denomName(p.rate_denom)} 결제하고 개설` : '계약 개설'}</button>
+        <p class="note">계약할 때 총액을 미리 내고, 공급자는 전력을 보내는 만큼 나눠 받습니다. 중간에 끊으면 남은 금액의 ${p.consumer_cancellation_penalty != null ? n(Number(p.consumer_cancellation_penalty) * 100, 1) + '%' : '일부'}를 잃습니다.</p>
+        ${(() => {
+          // Can't pay: say so on the button instead of letting the chain refuse it.
+          const have = Number(s.coins.find((c) => c.denom === p.rate_denom)?.amount ?? 0), short = !!s.q && have < Number(s.q.total);
+          return html`<button class="btn primary lg" data-act="open" ${!s.q?.valid || short || s.busy || !unlocked() ? 'disabled' : ''}>${short ? `${denomName(p.rate_denom)} 부족 · 보유 ${micro(have, 2)}` : s.q ? `${micro(s.q.total, 2)} ${denomName(p.rate_denom)} 내고 계약` : '계약하기'}</button>`;
+        })()}
         <button class="btn ghost" data-act="shareOffer" data-i="${s.sel}">이 제안을 길드에 공유</button>
         ${unlocked() ? '' : html`<p class="note">계정 잠금을 해제하세요.</p>`}` : html`<p class="empty">공급자를 선택하세요.</p>`}
     </section></div>`;
@@ -228,7 +231,7 @@ const screen: Screen = {
     };
     const resort = () => {
       const cur = s.providers[s.sel]?.id;
-      s.providers.sort((a, b) => s.sort === 'cap' ? Number(b.capacity_maximum) - Number(a.capacity_maximum) : s.sort === 'alpha' ? (alphaEq(s, a) ?? Infinity) - (alphaEq(s, b) ?? Infinity) : perKwDay(a) - perKwDay(b));
+      s.providers.sort((a, b) => s.sort === 'cap' ? Number(b.capacity_maximum) - Number(a.capacity_maximum) : (alphaEq(s, a) ?? Infinity) - (alphaEq(s, b) ?? Infinity));
       s.sel = Math.max(0, s.providers.findIndex((p) => p.id === cur));
     };
     const tabs = (): Safe => html`<div class="tabs" role="tablist">${TABS.map(([t, l]) => html`<button class="tab ${s.tab === t ? 'on' : ''}" role="tab" aria-selected="${s.tab === t}" data-act="tab" data-t="${t}">${l}</button>`)}</div>`;
