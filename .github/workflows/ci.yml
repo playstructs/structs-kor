@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  # game-layer is tested and built by pages.yml as it deploys.
   push:
+    branches-ignore: [game-layer]
   pull_request:
 
 jobs:

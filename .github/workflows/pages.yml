@@ -1,0 +1,64 @@
+# Builds the static site and publishes it to GitHub Pages.
+#
+# One-time setup: Settings › Pages › Source: "GitHub Actions". The page and its
+# assets use absolute paths (/js, /img, /lottie, as structs-webapp does), so the
+# site must be served from the root of its domain: a custom domain, not
+# <owner>.github.io/structs-kor/.
+#
+# Optional repository variables (Settings › Secrets and variables › Actions ›
+# Variables) set the build's KO_* values; see README.md › Which guild.
+name: Pages
+
+on:
+  push:
+    branches: [game-layer]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - uses: actions/configure-pages@v5
+
+      - run: npm test
+
+      - run: npm run build
+        env:
+          KO_GUILD_ID: ${{ vars.KO_GUILD_ID }}
+          KO_LCD_URL: ${{ vars.KO_LCD_URL }}
+          KO_GUILD_API: ${{ vars.KO_GUILD_API }}
+          KO_GRASS_URL: ${{ vars.KO_GRASS_URL }}
+          KO_CHAIN_WS: ${{ vars.KO_CHAIN_WS }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
