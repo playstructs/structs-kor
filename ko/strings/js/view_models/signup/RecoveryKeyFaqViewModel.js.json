@@ -1,0 +1,14 @@
+{
+  "pageHeader.pageLabel = 'About Recovery Keys';": "pageHeader.pageLabel = '복구 키 안내';",
+  ">What is a Recovery Key?</div>": ">복구 키란 무엇인가요?</div>",
+  "<div>Your recovery key is the 12-word secrect code that was given to you created your account.</div>": "<div>복구 키는 계정을 만들 때 받은 12단어 비밀 코드입니다.</div>",
+  ">Why do I need my Recovery Key?</div>": ">복구 키는 왜 필요한가요?</div>",
+  "<div>In the event that you lose access to your account, you can use your Recovery Key to log in.</div>": "<div>계정에 접근할 수 없게 되었을 때 복구 키로 로그인할 수 있습니다.</div>",
+  ">How can I protect my Recovery Key?</div>": ">복구 키는 어떻게 보호하나요?</div>",
+  "<div>It is important to write down your Recovery Key and keep it in a safe place. You may also consider saving your Recovery Key to a password manager. We do not store Recovery Keys and cannot help you retrieve your Key if you lose it.</div>": "<div>복구 키를 적어서 안전한 곳에 보관하는 것이 중요합니다. 비밀번호 관리자에 저장해 두는 것도 좋습니다. 저희는 복구 키를 저장하지 않으므로, 키를 잃어버리면 찾아 드릴 수 없습니다.</div>",
+  ">I want to log in on a new device. Do I need my recovery Key?</div>": ">새 기기에서 로그인하려고 합니다. 복구 키가 필요한가요?</div>",
+  "<div>No. If you currently have access to a logged-in device, you can log in a new device by using the <a": "<div>아니요. 지금 로그인된 기기를 쓸 수 있다면 <a",
+  ">Login From Another Device</a> option.<br>": ">다른 기기에서 로그인</a> 옵션으로 새 기기에 로그인할 수 있습니다.<br>",
+  "Note: this option is only available if the logged-in device has Account Management permissions.<br>": "참고: 이 옵션은 로그인된 기기에 기기 관리 권한이 있을 때만 쓸 수 있습니다.<br>",
+  "If you have no currently logged-in devices with Account Management permissions, you will need to use your Recovery Key to log in again.": "기기 관리 권한이 있는 로그인된 기기가 없다면 복구 키로 다시 로그인해야 합니다."
+}

@@ -1,0 +1,10 @@
+{
+  "MenuPage.setPageTemplateHeaderBtn('Guild Status');": "MenuPage.setPageTemplateHeaderBtn('길드 현황');",
+  "<span class=\"sui-text-header\">Alpha Reactor</span>": "<span class=\"sui-text-header\">알파 리액터</span>",
+  "\">${alphaInfused} Alpha Infused</div>": "\">알파 ${alphaInfused} 주입</div>",
+  "<span class=\"sui-text-header\">Guild Profile</span>": "<span class=\"sui-text-header\">길드 프로필</span>",
+  "<span class=\"sui-text-header\">Member Roster</span>": "<span class=\"sui-text-header\">길드원 명단</span>",
+  "\">${memberCount} Members</div>": "\">길드원 ${memberCount}명</div>",
+  "<span class=\"sui-text-header\">Guilds Directory</span>": "<span class=\"sui-text-header\">길드 목록</span>",
+  "\">${guildCount} Guilds</div>": "\">길드 ${guildCount}개</div>"
+}

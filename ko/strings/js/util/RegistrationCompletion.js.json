@@ -1,0 +1,6 @@
+{
+  "$keep": [
+    "Device registration consent is no longer usable",
+    "[RegistrationCompletion] current association unavailable:"
+  ]
+}

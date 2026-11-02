@@ -1,0 +1,6 @@
+{
+  "MenuPage.setPageTemplateHeaderBtn('Amount',": "MenuPage.setPageTemplateHeaderBtn('수량',",
+  "<div>How much Alpha Matter do you want to send?</div>": "<div>알파 매터를 얼마나 보낼까요?</div>",
+  "sui-mod-disabled\" disabled>Next</button>": "sui-mod-disabled\" disabled>다음</button>",
+  "$keep": ["[AccountTransferAmount] funds unavailable:"]
+}

@@ -1,0 +1,31 @@
+/*
+ * Hangul for structs-webapp's fonts.
+ *
+ * DirectiveZero and ExtremeHazard are Latin-only. Rather than restyle every
+ * rule that uses them, each family gains a second face that covers only the
+ * Korean ranges, set in Galmuri (SIL OFL 1.1), a Korean pixel font. The
+ * browser takes Hangul from it and everything else from webapp's own fonts.
+ */
+
+@font-face {
+  font-family: DirectiveZero;
+  src: url(/ko/fonts/Galmuri11.woff2) format('woff2');
+  unicode-range: U+1100-11FF, U+3000-303F, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF01-FF60;
+}
+
+/*
+ * webapp sets ExtremeHazard, a small-caps pixel face, at 8px for buttons,
+ * tabs and labels: too small for Hangul. At 150% its Hangul is 12px, the
+ * size Galmuri11 is drawn for.
+ */
+@font-face {
+  font-family: ExtremeHazard;
+  src: url(/ko/fonts/Galmuri11-Bold.woff2) format('woff2');
+  unicode-range: U+1100-11FF, U+3000-303F, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF01-FF60;
+  size-adjust: 150%;
+}
+
+/* Korean breaks between words, not inside them. */
+html:lang(ko) body {
+  word-break: keep-all;
+}

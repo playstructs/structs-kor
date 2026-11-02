@@ -1,0 +1,15 @@
+{
+  "let html = 'Non-Player Address';": "let html = '플레이어 외 계정';",
+  ": 'Name Redacted';": ": '이름 비공개';",
+  "? `Player Details` : 'Recipient Details';": "? `플레이어 정보` : '받는 사람 정보';",
+  "<div>Guild</div>": "<div>길드</div>",
+  "            Player ID\n": "            플레이어 ID\n",
+  "data-sui-tooltip=\"The unique in-game identifier for the player.\"": "data-sui-tooltip=\"게임 안에서 플레이어를 구별하는 고유 번호입니다.\"",
+  "            Blockchain Address\n": "            계정 주소\n",
+  "data-sui-tooltip=\"The public wallet address for the player.\"": "data-sui-tooltip=\"플레이어의 공개 계정 주소입니다.\"",
+  "MenuPage.setPageTemplateHeaderBtn('Recipient',": "MenuPage.setPageTemplateHeaderBtn('받는 사람',",
+  ">Select This Player</a>": ">이 플레이어 선택</a>",
+  "$keep": [
+    "플레이어 ID"
+  ]
+}

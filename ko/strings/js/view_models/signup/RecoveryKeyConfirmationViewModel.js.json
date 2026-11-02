@@ -1,0 +1,7 @@
+{
+  "pageHeader.pageLabel = 'Confirm Recovery Key';": "pageHeader.pageLabel = '복구 키 확인';",
+  "<div>To confirm your Recovery Key, enter each word, in order, separated by spaces.</div>": "<div>복구 키를 확인하려면 각 단어를 순서대로 띄어 써서 입력하세요.</div>",
+  "<span>Confirm Recovery Key</span>": "<span>복구 키 확인</span>",
+  "placeholder=\"word word word ...\"": "placeholder=\"단어 단어 단어 ...\"",
+  ">Next</button>": ">다음</button>"
+}

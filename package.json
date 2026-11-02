@@ -1,39 +1,19 @@
 {
   "name": "structs-kor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "구조체 STRUCTS — the Korean web and desktop client for Structs. A static site that reads the game through the Guild API.",
-  "type": "module",
+  "description": "구조체 — the structs-webapp game client, built from the structs-webapp submodule with its text in Korean.",
+  "license": "Apache-2.0",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/spa-fallback.mjs",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p playtest",
-    "test": "tsx --test scripts/*.test.ts playtest/*.test.ts",
-    "balance": "tsx scripts/campaign-balance.ts",
-    "soak": "tsx scripts/economy-soak.ts",
-    "playtest": "tsx playtest/all.ts",
-    "playtest:sim": "tsx playtest/sim/run.ts",
-    "playtest:browser": "tsx playtest/browser/run.ts",
-    "playtest:ai": "tsx playtest/ai/run.ts",
-    "playtest:report": "tsx playtest/report/build.ts"
-  },
-  "dependencies": {
-    "@noble/curves": "^2.4.0",
-    "@noble/hashes": "^2.4.0",
-    "@scure/base": "^2.4.0",
-    "@scure/bip32": "^2.4.0",
-    "@scure/bip39": "^2.4.0",
-    "lottie-web": "5.12.2"
+    "postinstall": "npm --prefix structs-webapp/src ci --no-audit --no-fund",
+    "dev": "webpack serve --mode=development",
+    "build": "webpack --mode=production",
+    "audit:ko": "node ko/audit.cjs",
+    "test": "node ko/audit.cjs --strict"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.135.0",
-    "@types/node": "^26.6.4",
-    "axe-core": "^4.14.0",
-    "playwright": "^1.64.1",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.4"
-  },
-  "packageManager": "pnpm@9.15.9"
+    "webpack": "^5.109.2",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.0"
+  }
 }

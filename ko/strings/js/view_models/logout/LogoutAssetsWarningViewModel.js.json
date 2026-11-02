@@ -1,0 +1,10 @@
+{
+  "view.headerBtnLabel = 'Manage Device';": "view.headerBtnLabel = '기기 관리';",
+  "view.messageHeaderText = 'IMPORTANT';": "view.messageHeaderText = '중요';",
+  "The following assets are associated with this device. If this device is logged out, these assets will be swept to your": "다음 자원이 이 기기에 연결되어 있습니다. 이 기기를 로그아웃하면 이 자원은",
+  "data-sui-tooltip=\"The Player Account holds your funds independently of any signing device.\"": "data-sui-tooltip=\"플레이어 계정은 어느 기기와도 상관없이 자원을 보관합니다.\"",
+  ">Player Account.</a>": ">플레이어 계정</a>으로 옮겨집니다.",
+  "data-sui-tooltip=\"Alpha Matter\"": "data-sui-tooltip=\"알파 매터\"",
+  "view.confirmBtn1Label = 'Stay Logged In';": "view.confirmBtn1Label = '로그인 유지';",
+  "view.confirmBtn2Label = 'Log Out Now';": "view.confirmBtn2Label = '지금 로그아웃';"
+}

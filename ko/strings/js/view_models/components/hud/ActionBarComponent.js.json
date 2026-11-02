@@ -1,0 +1,15 @@
+{
+  "class=\"sui-screen-info\">Executing</div>": "class=\"sui-screen-info\">진행 중</div>",
+  "const header = ambitOrTileLabel.toUpperCase();": "const header = __ko.t(ambitOrTileLabel.toUpperCase());",
+  "title=\"Deploy\"": "title=\"배치\"",
+  "alt=\"panel switch\"": "alt=\"전원 스위치\"",
+  "prompt: 'Select Target',": "prompt: '목표 선택',",
+  "prompt: 'Select Tile',": "prompt: '칸 선택',",
+  "prompt: 'Select Struct',": "prompt: '구조체 선택',",
+  "|| 'Primary Weapon'}": "|| '주 무기'}",
+  "|| 'Secondary Weapon'}": "|| '보조 무기'}",
+  "title=\"Stealth Mode\"": "title=\"은신 모드\"",
+  "title=\"Move\"": "title=\"이동\"",
+  "title=\"Defend\"": "title=\"방어\"",
+  "title=\"Consume Alpha\"": "title=\"알파 소모\""
+}

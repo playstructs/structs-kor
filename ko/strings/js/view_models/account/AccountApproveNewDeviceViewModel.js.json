@@ -1,0 +1,13 @@
+{
+  "MenuPage.setPageTemplateHeaderBtn('Activate New Device');": "MenuPage.setPageTemplateHeaderBtn('새 기기 등록');",
+  "<div>The following device is requesting access to your account:</div>": "<div>다음 기기가 계정 접근을 요청하고 있습니다:</div>",
+  "sui-text-primary\">New Device</div>": "sui-text-primary\">새 기기</div>",
+  "<div>${userAgent.getBrowser()} Browser</div>": "<div>${userAgent.getBrowser()} 브라우저</div>",
+  "<div class=\"sui-text-header\">Device Seal</div>": "<div class=\"sui-text-header\">기기 인장</div>",
+  "sui-text-hint\">Ensure this image matches the one shown on the device to be activated.</div>": "sui-text-hint\">등록할 기기에 표시된 이미지와 같은지 확인하세요.</div>",
+  "<div>Set permissions for the new device:</div>": "<div>새 기기의 권한을 설정하세요:</div>",
+  "\">Manage Devices</label>": "\">기기 관리</label>",
+  "\">Transfer Assets</label>": "\">자원 보내기</label>",
+  ">Approve Device</a>": ">기기 승인</a>",
+  ">Deny</a>": ">거부</a>"
+}

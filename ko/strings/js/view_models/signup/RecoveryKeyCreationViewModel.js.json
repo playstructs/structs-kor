@@ -1,0 +1,11 @@
+{
+  "<span>Display Recovery Key</span>": "<span>복구 키 보기</span>",
+  "'Create Recovery Key',": "'복구 키 만들기',",
+  "<div>Write down your 12-word Recovery Key and keep it in a safe place. You will need this Key to recover your account if you log out or clear your browser cache.</div>": "<div>12단어 복구 키를 적어서 안전한 곳에 보관하세요. 로그아웃하거나 브라우저 캐시를 지운 뒤 계정을 되찾으려면 이 키가 필요합니다.</div>",
+  ">Learn More About Recovery Keys</a>": ">복구 키 자세히 알아보기</a>",
+  "`I've Written It Down`": "`적어 두었습니다`",
+  "'Confirm Recovery Key',": "'복구 키 확인',",
+  ">Incorrect Recovery Key</span>": ">복구 키가 맞지 않습니다</span>",
+  "<div>Please review the exact spelling and order of your 12-word Recovery Key below, then try again.</div>": "<div>아래 12단어 복구 키의 철자와 순서를 정확히 확인한 뒤 다시 시도하세요.</div>",
+  "`Try Again`": "`다시 시도`"
+}

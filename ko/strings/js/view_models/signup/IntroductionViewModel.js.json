@@ -1,0 +1,15 @@
+{
+  "'A slow Ninja presentation'": "'Slow Ninja 제공'",
+  "'Thousands of years ago, the inhabitants of the Milky Way discovered a dangerously unstable new element -- Alpha Matter, the fuel of galactic civilization.'": "'수천 년 전, 은하수의 주민들은 위험할 만큼 불안정한 새 원소를 발견했습니다. 바로 은하 문명의 연료, 알파 매터입니다.'",
+  "'In 3029, a catastrophic Alpha mining accident obliterated the Hoag star system, extinguishing 2 billion souls. The galaxy teetered on the brink of civil war.'": "'3029년, 참혹한 알파 채굴 사고로 호그 항성계가 사라지고 20억 명이 목숨을 잃었습니다. 은하는 내전의 문턱에 섰습니다.'",
+  "'The Alpha Star Council decreed only Structs, mysterious machines of unknown origin, could be trusted to mine Alpha Matter.'": "'알파 항성 위원회는 기원을 알 수 없는 수수께끼의 기계, 구조체에게만 알파 매터 채굴을 맡길 수 있다고 선포했습니다.'",
+  "'The year is 402X.'": "'때는 402X년.'",
+  "'Alpha-seeded Worlds controlled by Structs:'": "'구조체가 지배하는 알파 매장 행성:'",
+  "'Alpha-seeded Worlds controlled by Organics:'": "'유기체가 지배하는 알파 매장 행성:'",
+  ">Play Me</a>": ">재생</a>",
+  "Press <span class=\"tutorial-highlight\">ENTER</span> to Skip": "<span class=\"tutorial-highlight\">ENTER</span> 키를 눌러 건너뛰기",
+  "$keep": [
+    "Slow Ninja 제공",
+    "ENTER"
+  ]
+}

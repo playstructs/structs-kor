@@ -1,0 +1,8 @@
+{
+  "'Connecting...'": "'연결 중...'",
+  "alt=\"Computer connecting to SN.C\"": "alt=\"SN.C에 연결 중인 컴퓨터\"",
+  "`Please wait while your Employee Record is confirmed...`": "`직원 기록을 확인하는 중입니다. 잠시 기다려 주십시오...`",
+  "$keep": [
+    "SN.C에 연결 중인 컴퓨터"
+  ]
+}

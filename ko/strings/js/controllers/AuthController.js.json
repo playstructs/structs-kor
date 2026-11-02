@@ -1,0 +1,10 @@
+{
+  "'Skip Tutorial?'": "'전투 훈련 건너뛰기'",
+  "'Are you sure you want to skip the tutorial? You can revisit the tutorial later from the menu.'": "'정말 전투 훈련을 건너뛰시겠습니까? 나중에 메뉴에서 다시 진행할 수 있습니다.'",
+  "'Skip Tutorial',": "'건너뛰기',",
+  "menuWaitingOptions.headerBtnLabel = 'Logout';": "menuWaitingOptions.headerBtnLabel = '로그아웃';",
+  "menuWaitingOptions.waitingMessage = 'Logging out.';": "menuWaitingOptions.waitingMessage = '로그아웃하는 중입니다.';",
+  "$keep": [
+    "Auth"
+  ]
+}

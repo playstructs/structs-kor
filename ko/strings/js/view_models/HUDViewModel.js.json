@@ -1,0 +1,7 @@
+{
+  "$keep": [
+    "Fleet",
+    "Guild",
+    "Account"
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "this.cancelBtnLabel = 'Cancel';": "this.cancelBtnLabel = '취소';",
+  "this.confirmBtnLabel = 'Confirm';": "this.confirmBtnLabel = '확인';"
+}

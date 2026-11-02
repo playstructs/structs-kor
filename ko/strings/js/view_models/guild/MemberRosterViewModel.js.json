@@ -1,0 +1,8 @@
+{
+  "          Address ${playerSearchResultDTO.address}\n": "          주소 ${playerSearchResultDTO.address}\n",
+  ": 'Name Redacted'": ": '이름 비공개'",
+  ">View</a>": ">보기</a>",
+  "`<div>Guild has no members yet.</div>`": "`<div>아직 길드원이 없습니다.</div>`",
+  "MenuPage.setPageTemplateHeaderBtn('Member Roster',": "MenuPage.setPageTemplateHeaderBtn('길드원 명단',",
+  "$keep": ["PID #"]
+}

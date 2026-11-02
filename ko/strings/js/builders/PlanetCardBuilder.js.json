@@ -1,0 +1,20 @@
+{
+  "alt=\"3 dots loading animation\"": "alt=\"불러오는 중\"",
+  "primaryBtnLabel = 'Command';": "primaryBtnLabel = '지휘';",
+  "alphaBaseCard.alertMessage = 'All Alpha extracted.';": "alphaBaseCard.alertMessage = '알파를 모두 채굴했습니다.';",
+  "secondaryBtnLabel = 'Depart';": "secondaryBtnLabel = '출발';",
+  "alphaBaseCard.alertMessage = 'Depart planet?';": "alphaBaseCard.alertMessage = '행성을 떠날까요?';",
+  "`Fleet will travel to an undiscovered world.`": "`함대가 미지의 행성으로 이동합니다.`",
+  "primaryBtnLabel = 'Confirm';": "primaryBtnLabel = '확인';",
+  "secondaryBtnLabel = 'Cancel';": "secondaryBtnLabel = '취소';",
+  "`Fleet has arrived at ${this.gameState.keyPlayers[PLAYER_TYPES.PLAYER].planet.name}.`": "`함대가 ${this.gameState.keyPlayers[PLAYER_TYPES.PLAYER].planet.name}에 도착했습니다.`",
+  "primaryBtnLabel = 'View';": "primaryBtnLabel = '보기';",
+  "secondaryBtnLabel = 'Dismiss';": "secondaryBtnLabel = '닫기';",
+  "raidCard.generalMessage = 'No Raid active.';": "raidCard.generalMessage = '진행 중인 습격이 없습니다.';",
+  "secondaryBtnLabel = 'Scan';": "secondaryBtnLabel = '스캔';",
+  "raidCard.alertMessage = 'No CMD Ship.';": "raidCard.alertMessage = '지휘함이 없습니다.';",
+  "`Fleet has begun raid on ${this.gameState.keyPlayers[PLAYER_TYPES.RAID_ENEMY].getUsername()}.`": "`함대가 ${this.gameState.keyPlayers[PLAYER_TYPES.RAID_ENEMY].getUsername()} 습격을 시작했습니다.`",
+  "secondaryBtnLabel = 'Retreat';": "secondaryBtnLabel = '후퇴';",
+  "raidCard.alertMessage = 'Abandon raid?';": "raidCard.alertMessage = '습격을 포기할까요?';",
+  "`Fleet will return to Alpha Base.`": "`함대가 알파 기지로 돌아갑니다.`"
+}

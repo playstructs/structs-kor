@@ -1,0 +1,8 @@
+{
+  "'Incoming Call'": "'수신 통화'",
+  "alt=\"A silhouette of the HR Bot\"": "alt=\"HR 봇의 실루엣\"",
+  "<strong>Alert:</strong> Priority Call": "<strong>경보:</strong> 긴급 통화",
+  "$keep": [
+    "HR 봇의 실루엣"
+  ]
+}

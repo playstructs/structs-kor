@@ -1,0 +1,5 @@
+{
+  "MenuPage.setPageTemplateHeaderBtn('Account',": "MenuPage.setPageTemplateHeaderBtn('계정',",
+  "<span class=\"sui-text-header\">Send Alpha</span>": "<span class=\"sui-text-header\">알파 보내기</span>",
+  "<span class=\"sui-text-header\">Transaction History</span>": "<span class=\"sui-text-header\">기록</span>"
+}

@@ -1,0 +1,6 @@
+{
+  "MenuPage.setPageTemplateHeaderBtn('Activate New Device');": "MenuPage.setPageTemplateHeaderBtn('새 기기 등록');",
+  "            Device Approved\n": "            기기 승인됨\n",
+  "<div>The new device has been activated.</div>": "<div>새 기기가 등록되었습니다.</div>",
+  "sui-mod-primary\">Return to Account</button>": "sui-mod-primary\">계정으로 돌아가기</button>"
+}

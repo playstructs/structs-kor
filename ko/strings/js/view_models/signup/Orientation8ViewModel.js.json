@@ -1,0 +1,10 @@
+{
+  "alt=\"ST-21 Spearpoint CMD Ship\"": "alt=\"ST-21 Spearpoint 지휘함\"",
+  "<span class=\"sui-text-display\">CMD SHIP</span>": "<span class=\"sui-text-display\">지휘함</span>",
+  "`You have been issued a ST-21 \"Spearpoint\" CMD Ship to explore the uncharted regions for Alpha-seeded worlds.`": "`알파가 매장된 행성을 찾아 미개척 지역을 탐사할 수 있도록 ST-21 \"Spearpoint\" 지휘함이 지급되었습니다.`",
+  "$keep": [
+    "ST-21 \"Spearpoint\"",
+    "ST-21 Spearpoint 지휘함",
+    "알파가 매장된 행성을 찾아 미개척 지역을 탐사할 수 있도록 ST-21 \"Spearpoint\" 지휘함이 지급되었습니다."
+  ]
+}

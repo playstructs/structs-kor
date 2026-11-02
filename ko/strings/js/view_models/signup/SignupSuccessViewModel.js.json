@@ -1,0 +1,6 @@
+{
+  "pageHeader.pageLabel = 'Success!';": "pageHeader.pageLabel = '성공!';",
+  ">Success!</span>": ">성공!</span>",
+  "<div>Your account has been created. Keep your Recovery Key safe; you will need it if you lose access to your account.</div>": "<div>계정이 생성되었습니다. 계정에 접근할 수 없게 되면 복구 키가 필요하니 안전하게 보관하세요.</div>",
+  ">Return To Game</button>": ">게임으로 돌아가기</button>"
+}

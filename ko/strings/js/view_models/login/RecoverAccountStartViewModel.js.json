@@ -1,0 +1,9 @@
+{
+  "'Recover Account'": "'계정 복구'",
+  "waitingOptions.waitingMessage = 'Recovering your account.';": "waitingOptions.waitingMessage = '계정을 복구하는 중입니다.';",
+  "<div>Please enter the 12-word Recovery Key associated with your account.</div>": "<div>계정에 연결된 12단어 복구 키를 입력하세요.</div>",
+  ">What is my Recovery Key?</a>": ">복구 키가 무엇인가요?</a>",
+  "<span>Recovery Key</span>": "<span>복구 키</span>",
+  "placeholder=\"word word word ...\"": "placeholder=\"단어 단어 단어 ...\"",
+  ">Next</button>": ">다음</button>"
+}

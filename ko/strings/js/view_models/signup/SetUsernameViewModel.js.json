@@ -1,0 +1,9 @@
+{
+  "Only <strong>letters</strong>, <strong>numbers</strong>, <strong>-</strong> and <strong>_</strong> are allowed. <strong>Length</strong> must be between <strong>3</strong> and <strong>20</strong> characters.": "<strong>글자</strong>, <strong>숫자</strong>, <strong>-</strong>, <strong>_</strong>만 쓸 수 있습니다. <strong>길이</strong>는 <strong>3</strong>~<strong>20</strong>자여야 합니다.",
+  "<div class=\"set-username-profile-created\">Profile Created</div>": "<div class=\"set-username-profile-created\">프로필 생성 완료</div>",
+  "`Welcome, ${this.gameState.signupRequest.username}.`": "`환영합니다, ${this.gameState.signupRequest.username} 님.`",
+  "<span>Display Name</span>": "<span>이름</span>",
+  "placeholder=\"Your Name\"": "placeholder=\"이름 입력\"",
+  ">Submit</button>": ">확인</button>",
+  "`To begin, please confirm your identity.`": "`시작하기 전에 신원을 확인해 주십시오.`"
+}

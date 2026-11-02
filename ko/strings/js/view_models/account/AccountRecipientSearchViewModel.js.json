@@ -1,0 +1,13 @@
+{
+  "        'Find Recipient',\n": "        '받는 사람 찾기',\n",
+  "<div>Who do you want to send to?</div>": "<div>누구에게 보낼까요?</div>",
+  "<span>Player Search</span>": "<span>플레이어 검색</span>",
+  "placeholder=\"Name, PID, or Address\"": "placeholder=\"이름, PID 또는 주소\"",
+  "<span>Filter By Guild</span>": "<span>길드로 거르기</span>",
+  "<option value=\"\">Any Guild</option>": "<option value=\"\">모든 길드</option>",
+  "sui-mod-disabled\" disabled>Search</button>": "sui-mod-disabled\" disabled>검색</button>",
+  "sui-input-text-warning\">Enter at least 3 characters, using only letters, numbers, '-' and '_'.</div>": "sui-input-text-warning\">글자, 숫자, '-', '_'만 써서 3자 이상 입력하세요.</div>",
+  "$keep": [
+    "이름, PID 또는 주소"
+  ]
+}

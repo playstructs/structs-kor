@@ -1,0 +1,5 @@
+{
+  "<span class=\"sui-text-header\">Raid Log</span>": "<span class=\"sui-text-header\">습격 기록</span>",
+  "MenuPage.setPageTemplateHeaderBtn('Fleet Status');": "MenuPage.setPageTemplateHeaderBtn('함대 현황');",
+  "<span class=\"sui-text-header\">Base Log</span>": "<span class=\"sui-text-header\">기지 기록</span>"
+}

@@ -1,0 +1,5 @@
+{
+  ">Victory!</strong> The enemy\\'s planetary shield has been defeated.'": ">승리!</strong> 적의 행성 방어막을 무너뜨렸습니다.'",
+  "`You recovered <strong class=\"sui-text-primary\">${this.alphaOreRecovered} Alpha Ore</strong> from the enemy base.`": "`적 기지에서 <strong class=\"sui-text-primary\">알파 광석 ${this.alphaOreRecovered}</strong>(을)를 회수했습니다.`",
+  "'Your fleet will now return to base.'": "'이제 함대가 기지로 귀환합니다.'"
+}

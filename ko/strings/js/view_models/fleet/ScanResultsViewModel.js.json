@@ -1,0 +1,9 @@
+{
+  "sui-mod-warning\">On Station</span>": "sui-mod-warning\">주둔 중</span>",
+  "sui-mod-destructive\">Under Attack</span>": "sui-mod-destructive\">공격받는 중</span>",
+  "sui-mod-default\">Fleet Away</span>": "sui-mod-default\">출격 중</span>",
+  ">View</a>": ">보기</a>",
+  "`<div>No results found. Please try a different search term.</div>`": "`<div>결과가 없습니다. 다른 검색어로 찾아 보세요.</div>`",
+  "MenuPage.setPageTemplateHeaderBtn('Scan Results',": "MenuPage.setPageTemplateHeaderBtn('스캔 결과',",
+  "$keep": ["PID #", "Fleet"]
+}

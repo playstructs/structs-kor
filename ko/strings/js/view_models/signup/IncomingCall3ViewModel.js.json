@@ -1,0 +1,10 @@
+{
+  "<strong>SN.CORP:</strong> Greetings, SN.CORPORATION employee. I am your designated Synthetic Resources Officer.": "<strong>SN.CORP:</strong> SN.CORPORATION 직원님, 반갑습니다. 저는 귀하에게 배정된 합성자원 담당관입니다.",
+  "I have been tasked with assisting you as you complete your <a": "저는 귀하가 <a",
+  "data-sui-tooltip=\"Failure to complete Employee Orientation may result in serious injury or death.\"": "data-sui-tooltip=\"직원 오리엔테이션을 마치지 않으면 심각한 부상이나 사망에 이를 수 있습니다.\"",
+  "Employee Orientation.</a>`": "직원 오리엔테이션</a>을 마칠 수 있도록 돕는 임무를 맡았습니다.`",
+  "$keep": [
+    "SN.CORP:",
+    "SN.CORPORATION 직원님, 반갑습니다. 저는 귀하에게 배정된 합성자원 담당관입니다."
+  ]
+}

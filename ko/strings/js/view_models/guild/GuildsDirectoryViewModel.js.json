@@ -1,0 +1,9 @@
+{
+  "alt=\"Guild ${guildSearchResultDTO.name}'s logo\"": "alt=\"${guildSearchResultDTO.name} 길드 로고\"",
+  ": `Guild #${guildSearchResultDTO.guild_id}`;": ": `길드 #${guildSearchResultDTO.guild_id}`;",
+  "'Number of members in the guild',": "'길드원 수',",
+  "'Alpha infused with the guild',": "'길드에 주입된 알파',",
+  ">View</a>": ">보기</a>",
+  "`<div>Guild has no members yet.</div>`": "`<div>아직 길드가 없습니다.</div>`",
+  "MenuPage.setPageTemplateHeaderBtn(\"Guild's Directory\",": "MenuPage.setPageTemplateHeaderBtn(\"길드 목록\","
+}

@@ -1,0 +1,15 @@
+{
+  "`Alpha will be removed from your inventory and added to the reactor.`": "`보유한 알파를 꺼내 리액터에 주입합니다.`",
+  "`Alpha will be removed from the reactor and put on cooldown.`": "`알파를 리액터에서 회수하며, 회수한 알파는 냉각에 들어갑니다.`",
+  "The Guild Minimum is ${this.joinInfusionMinimum} Alpha Matter.": "길드 최소 주입량은 알파 매터 ${this.joinInfusionMinimum}입니다.",
+  "? 'Infusing...' : 'Defusing...';": "? '주입 중...' : '회수 중...';",
+  "'The change continues if you leave this screen.'": "'이 화면을 떠나도 변경은 계속 진행됩니다.'",
+  "'Confirmed on chain. The reactor display has not caught up yet; check it again shortly.'": "'변경이 완료되었습니다. 리액터 화면에는 아직 반영되지 않았으니 잠시 후 다시 확인하세요.'",
+  "MenuPage.setPageTemplateHeaderBtn('Manage Alpha',": "MenuPage.setPageTemplateHeaderBtn('알파 관리',",
+  "alt=\"alpha reactor\"": "alt=\"알파 리액터\"",
+  "'Alpha to infuse',": "'주입할 알파',",
+  "'Expected energy supply',": "'예상 에너지 공급량',",
+  "sui-mod-secondary\">Cancel</a>": "sui-mod-secondary\">취소</a>",
+  "sui-mod-primary\">Save Changes</a>": "sui-mod-primary\">변경 저장</a>",
+  "$keep": ["[ManageAlpha] reactor state unavailable:"]
+}

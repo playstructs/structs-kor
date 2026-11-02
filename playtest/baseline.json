@@ -1,5 +1,0 @@
-{
-  "_doc": "Known issues found by the playtest harness and accepted for now. Hard gates ignore these so CI catches new bugs; delete an entry once it is fixed and the gate will guard it. Each has the date it was found and where it lives.",
-  "violations": [],
-  "crashes": []
-}

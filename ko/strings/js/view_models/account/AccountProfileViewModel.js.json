@@ -1,0 +1,31 @@
+{
+  "MenuPage.setPageTemplateHeaderBtn('Profile',": "MenuPage.setPageTemplateHeaderBtn('프로필',",
+  "MenuPage.setPageTemplateHeaderBtn('Guild Profile',": "MenuPage.setPageTemplateHeaderBtn('플레이어 프로필',",
+  "alt=\"3 dots loading animation\"": "alt=\"불러오는 중\"",
+  "sui-text-header\">Player Details</div>": "sui-text-header\">플레이어 정보</div>",
+  "<div>Guild</div>": "<div>길드</div>",
+  "                  Player ID\n": "                  플레이어 ID\n",
+  "data-sui-tooltip=\"The unique in-game identifier for the player.\"": "data-sui-tooltip=\"게임 안에서 플레이어를 구별하는 고유 번호입니다.\"",
+  "                  Blockchain Address\n": "                  계정 주소\n",
+  "data-sui-tooltip=\"The public wallet address for the player.\"": "data-sui-tooltip=\"플레이어의 공개 계정 주소입니다.\"",
+  "                  Copy Address\n": "                  주소 복사\n",
+  "sui-text-header\">Power</div>": "sui-text-header\">전력</div>",
+  "<div>Alpha Matter</div>": "<div>알파 매터</div>",
+  "'Alpha Matter',": "'알파 매터',",
+  "<div>Alpha Infused</div>": "<div>주입한 알파</div>",
+  "'Alpha Infused',": "'주입한 알파',",
+  "<div>Energy Usage</div>": "<div>에너지 사용량</div>",
+  "'Energy usage',": "'에너지 사용량',",
+  "sui-text-header\">Statistics</div>": "sui-text-header\">통계</div>",
+  "<div>Planets Completed</div>": "<div>완료한 행성</div>",
+  "<div>Raids Launched</div>": "<div>습격 횟수</div>",
+  "<div>Ore Mined</div>": "<div>채굴한 광석</div>",
+  "'Ore Mined',": "'채굴한 광석',",
+  "<div>Ore Stolen</div>": "<div>약탈한 광석</div>",
+  "'Ore Stolen',": "'약탈한 광석',",
+  "<div>Ore Lost</div>": "<div>빼앗긴 광석</div>",
+  "'Ore Lost',": "'빼앗긴 광석',",
+  "$keep": [
+    "플레이어 ID"
+  ]
+}

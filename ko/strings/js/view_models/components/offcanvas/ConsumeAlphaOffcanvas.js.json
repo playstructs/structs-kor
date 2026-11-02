@@ -1,0 +1,7 @@
+{
+  "<div>Spend Alpha Matter to generate energy.</div>": "<div>알파 매터를 소모해 에너지를 생산합니다.</div>",
+  "              Projected<br>\n              Supply:": "              예상<br>\n              공급량:",
+  "'Project Energy Supply'": "'예상 에너지 공급량'",
+  "disabled>Consume Alpha</button>": "disabled>알파 소모</button>",
+  "setHeader('Consume Alpha')": "setHeader('알파 소모')"
+}

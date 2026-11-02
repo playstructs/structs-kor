@@ -1,0 +1,13 @@
+{
+  "options.headerBtnLabel = 'Transferring...';": "options.headerBtnLabel = '보내는 중...';",
+  "'The transfer continues if you leave this screen.'": "'이 화면을 떠나도 보내기는 계속됩니다.'",
+  "'Confirmed on chain. Your transfer history has not caught up yet; check it again shortly.'": "'보내기가 완료되었습니다. 기록에는 아직 반영되지 않았으니 잠시 후 다시 확인하세요.'",
+  "let html = 'Non-Player Address';": "let html = '플레이어 외 계정';",
+  ": 'Name Redacted';": ": '이름 비공개';",
+  "MenuPage.setPageTemplateHeaderBtn('Confirm Transfer',": "MenuPage.setPageTemplateHeaderBtn('보내기 확인',",
+  "sui-text-header\">Transaction Details</div>": "sui-text-header\">보내기 정보</div>",
+  "<div>Amount</div>": "<div>수량</div>",
+  "<div>Recipient</div>": "<div>받는 사람</div>",
+  ">Cancel</a>": ">취소</a>",
+  ">Transfer Now</a>": ">지금 보내기</a>"
+}

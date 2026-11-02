@@ -1,0 +1,7 @@
+{
+  "'Recover Account'": "'계정 복구'",
+  "Invalid Recovery Key": "잘못된 복구 키",
+  "<div>The Recovery Key provided did not match any known account. Please ensure each word is spelled correctly and is entered in the correct order.</div>": "<div>입력한 복구 키와 일치하는 계정이 없습니다. 각 단어의 철자와 순서가 정확한지 확인하세요.</div>",
+  ">Try Again</button>": ">다시 시도</button>",
+  "Log In From Another Device": "다른 기기에서 로그인"
+}

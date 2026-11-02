@@ -1,0 +1,8 @@
+{
+  "\"This device doesn't have permission to change the display name. Sign in on a device with management permissions to update it.\"": "\"이 기기에는 이름을 바꿀 권한이 없습니다. 기기 관리 권한이 있는 기기로 로그인해서 바꾸세요.\"",
+  "'Change Display Name',": "'이름 변경',",
+  "\"Name must be 3\\u201320 characters and only include letters, numbers, '-' and '_'.\"": "\"이름은 3\\u201320자이며 글자, 숫자, '-', '_'만 쓸 수 있습니다.\"",
+  "<span>Display Name</span>": "<span>이름</span>",
+  "placeholder=\"Type your new display name\"": "placeholder=\"새 이름을 입력하세요\"",
+  "sui-mod-disabled\" disabled>Submit</button>": "sui-mod-disabled\" disabled>확인</button>"
+}

@@ -1,0 +1,15 @@
+{
+  "href=\"javascript:void(0)\">Player #${this.transaction.counterparty_player_id}</a>": "href=\"javascript:void(0)\">플레이어 #${this.transaction.counterparty_player_id}</a>",
+  ">Back To Account</a>": ">계정으로 돌아가기</a>",
+  "? 'Recipient' : 'Sender';": "? '받는 사람' : '보낸 사람';",
+  "MenuPage.setPageTemplateHeaderBtn('Transaction Details',": "MenuPage.setPageTemplateHeaderBtn('기록 상세',",
+  "            This transaction was completed successfully.\n": "            보내기가 완료되었습니다.\n",
+  "sui-text-header\">Player Details</div>": "sui-text-header\">상세 정보</div>",
+  "<div>Transaction ID</div>": "<div>기록 ID</div>",
+  "<div>Date</div>": "<div>날짜</div>",
+  "<div>Amount</div>": "<div>수량</div>",
+  "'Alpha Matter',": "'알파 매터',",
+  "$keep": [
+    "기록 ID"
+  ]
+}

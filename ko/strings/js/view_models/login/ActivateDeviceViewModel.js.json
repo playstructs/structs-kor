@@ -1,0 +1,10 @@
+{
+  "'Activation Code is invalid or has expired.'": "'등록 코드가 잘못되었거나 만료되었습니다.'",
+  "'Activate Device'": "'기기 등록'",
+  "<div>To receive an activation code, go to <span class=\"sui-text-secondary\">Account > Devices</span> on any logged in device.</div>": "<div>등록 코드를 받으려면 로그인된 기기에서 <span class=\"sui-text-secondary\">계정 > 기기</span>로 이동하세요.</div>",
+  "<span>Activation Code</span>": "<span>등록 코드</span>",
+  "placeholder=\"Enter Code\"": "placeholder=\"코드 입력\"",
+  ">Submit</button>": ">확인</button>",
+  "<div>Not logged in anywhere else?</div>": "<div>로그인된 다른 기기가 없나요?</div>",
+  "Log In With Recovery Key": "복구 키로 로그인"
+}

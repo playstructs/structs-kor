@@ -1,0 +1,23 @@
+{
+  "MenuPage.setPageTemplateHeaderBtn('Guild Reactor',": "MenuPage.setPageTemplateHeaderBtn('길드 리액터',",
+  "alt=\"alpha reactor\"": "alt=\"알파 리액터\"",
+  "sui-text-secondary\">ALPHA MATTER</div>": "sui-text-secondary\">알파 매터</div>",
+  "<div class=\"sui-text-hint\">Alpha Infused</div>": "<div class=\"sui-text-hint\">주입한 알파</div>",
+  "'Alpha infused with the guild',": "'길드에 주입한 알파',",
+  "                      Cooldown\n": "                      냉각\n",
+  "data-sui-tooltip=\"When removed from a Reactor, Alpha Matter must cool down before use.\"": "data-sui-tooltip=\"리액터에서 회수한 알파 매터는 냉각을 마쳐야 쓸 수 있습니다.\"",
+  "'Alpha removed from the reactor that must cooldown before reuse',": "'리액터에서 회수해 다시 쓰기 전에 냉각 중인 알파',",
+  "sui-text-secondary\">ENERGY</div>": "sui-text-secondary\">에너지</div>",
+  "<div class=\"sui-text-hint\">Total Supply</div>": "<div class=\"sui-text-hint\">총 공급량</div>",
+  "'Expected supply of power',": "'예상 전력 공급량',",
+  ">Manage Alpha</a>": ">알파 관리</a>",
+  "sui-text-header\">Reactor Details</div>": "sui-text-header\">리액터 정보</div>",
+  "                  Guild Minimum\n": "                  길드 최소 주입량\n",
+  "data-sui-tooltip=\"The minimum Alpha Matter that must be infused for Guild Membership.\"": "data-sui-tooltip=\"길드원이 되려면 주입해야 하는 최소 알파 매터입니다.\"",
+  "'Minimum alpha required to join guild',": "'길드 가입에 필요한 최소 알파',",
+  "                  Reactor Efficiency\n": "                  리액터 효율\n",
+  "data-sui-tooltip=\"The amount of Energy supplied for each additional Alpha Matter infused.\"": "data-sui-tooltip=\"알파 매터를 1 더 주입할 때마다 공급되는 에너지입니다.\"",
+  "                  Commission\n": "                  수수료\n",
+  "data-sui-tooltip=\"The percentage of Energy taken by the guild.\"": "data-sui-tooltip=\"길드가 가져가는 에너지 비율입니다.\"",
+  "'The guild\\'s cut',": "'길드 몫',"
+}

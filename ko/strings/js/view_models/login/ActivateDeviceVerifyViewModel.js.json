@@ -1,0 +1,10 @@
+{
+  "'Activate Device'": "'기기 등록'",
+  "<div>Is this your account?</div>": "<div>본인의 계정이 맞습니까?</div>",
+  ">Player ID</div>": ">플레이어 ID</div>",
+  ">This Isn't Me</button>": ">제 계정이 아닙니다</button>",
+  ">Yes, This Is Me</button>": ">네, 제 계정입니다</button>",
+  "$keep": [
+    "플레이어 ID"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "'Unknown OS'": "'알 수 없는 OS'",
+  "\"Chrome Based\"": "\"Chrome 계열\"",
+  "'Unrecognized'": "'알 수 없는'",
+  "$keep": [
+    "Edge",
+    "Firefox",
+    "Opera",
+    "Safari",
+    "Samsung",
+    "알 수 없는 OS",
+    "Chrome 계열"
+  ]
+}

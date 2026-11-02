@@ -1,0 +1,8 @@
+{
+  "              Transaction #${transaction.id}\n": "              기록 #${transaction.id}\n",
+  "<span class=\"sui-badge sui-mod-default\">Completed</span>": "<span class=\"sui-badge sui-mod-default\">완료</span>",
+  ">View</a>": ">보기</a>",
+  "`<div>No confirmed alpha transactions yet.</div>`": "`<div>아직 완료된 알파 보내기 기록이 없습니다.</div>`",
+  "MenuPage.setPageTemplateHeaderBtn('Transaction History',": "MenuPage.setPageTemplateHeaderBtn('기록',",
+  "$keep": ["Account"]
+}

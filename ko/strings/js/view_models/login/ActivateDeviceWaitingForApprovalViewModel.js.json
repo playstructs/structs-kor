@@ -1,0 +1,9 @@
+{
+  "'Activate Device'": "'기기 등록'",
+  "alt=\"3 dots loading animation\"": "alt=\"불러오는 중 애니메이션\"",
+  "<span>Please review and confirm the activation request on your logged-in device.</span>": "<span>로그인된 기기에서 등록 요청을 확인하고 승인하세요.</span>",
+  ">Do not close this screen.</span>": ">이 화면을 닫지 마세요.</span>",
+  ">DEVICE SEAL</div>": ">기기 인장</div>",
+  "data-sui-tooltip=\"Ensure this matches the new device's seal on your other device.\"": "data-sui-tooltip=\"다른 기기에 표시된 새 기기의 인장과 같은지 확인하세요.\"",
+  ">What's this?</a>": ">이게 뭔가요?</a>"
+}

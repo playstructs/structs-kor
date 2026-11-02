@@ -1,0 +1,8 @@
+{
+  "      'Activate New Device',\n": "      '새 기기 등록',\n",
+  "sui-mod-primary\">Generate Activation Code</button>": "sui-mod-primary\">등록 코드 만들기</button>",
+  "sui-mod-primary\">Activation Code</div>": "sui-mod-primary\">등록 코드</div>",
+  "sui-mod-primary\">Generate New Code</button>": "sui-mod-primary\">새 코드 만들기</button>",
+  "<div class=\"sui-text-warning\">Do not close this screen until activation is complete.</div>": "<div class=\"sui-text-warning\">등록이 끝날 때까지 이 화면을 닫지 마세요.</div>",
+  "<div>Enter the above code on the Returning Player screen on your new device to activate it.</div>": "<div>새 기기의 기존 플레이어 화면에 위 코드를 입력하면 등록됩니다.</div>"
+}

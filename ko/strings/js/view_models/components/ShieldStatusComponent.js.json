@@ -1,0 +1,6 @@
+{
+  "'Vulnerable'": "'취약'",
+  "'Secure'": "'안전'",
+  "?? 'N/A';": "?? '없음';",
+  "alt=\"${status}\"": "alt=\"${__ko.t(status)}\""
+}

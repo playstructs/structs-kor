@@ -1,0 +1,17 @@
+{
+  "options.headerBtnLabel = 'Manage Device';": "options.headerBtnLabel = '기기 관리';",
+  "options.waitingMessage = 'Saving changes.';": "options.waitingMessage = '변경 사항을 저장하는 중입니다.';",
+  "location = `[PRIMARY DEVICE]<br>${location}`;": "location = `[주 기기]<br>${location}`;",
+  "sui-text-secondary\">Primary Device Logout</div>": "sui-text-secondary\">주 기기 로그아웃</div>",
+  "sui-text-ticker\">Remote logout is not available for primary devices. Please log out using the primary device itself.</div>": "sui-text-ticker\">주 기기는 원격으로 로그아웃할 수 없습니다. 주 기기에서 직접 로그아웃하세요.</div>",
+  ">Log Out</a>": ">로그아웃</a>",
+  "        'Manage Device',\n": "        '기기 관리',\n",
+  "<div>${userAgent.getBrowser()} Browser</div>": "<div>${userAgent.getBrowser()} 브라우저</div>",
+  "<div>Device permissions:</div>": "<div>기기 권한:</div>",
+  "\">\n                Manage Devices\n": "\">\n                기기 관리\n",
+  "data-sui-tooltip=\"The ability to logout other devices or change their permissions.\"": "data-sui-tooltip=\"다른 기기를 로그아웃시키거나 권한을 바꿀 수 있습니다.\"",
+  "\">\n                Transfer Assets\n": "\">\n                자원 보내기\n",
+  "data-sui-tooltip=\"The ability to send Alpha to other accounts.\"": "data-sui-tooltip=\"다른 계정에 알파를 보낼 수 있습니다.\"",
+  ">Cancel</a>": ">취소</a>",
+  ">Save</a>": ">저장</a>"
+}

@@ -1,0 +1,9 @@
+{
+  "location = `[Primary Device]<br>${location}`;": "location = `[주 기기]<br>${location}`;",
+  "deviceInfoList.push('This Device');": "deviceInfoList.push('이 기기');",
+  "deviceInfoList.push(`${userAgent.getBrowser()} Browser`);": "deviceInfoList.push(`${userAgent.getBrowser()} 브라우저`);",
+  "deviceInfoList.push(`Last Activity: ${lastActivity}`);": "deviceInfoList.push(`최근 활동: ${lastActivity}`);",
+  ">Manage</a>": ">관리</a>",
+  "        'Devices',\n": "        '기기',\n",
+  "sui-mod-primary\">Activate New Device</button>": "sui-mod-primary\">새 기기 등록</button>"
+}
