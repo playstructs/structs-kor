@@ -102,5 +102,8 @@
   "SHORE": "해안",
   "secure": "안전",
   "vulnerable": "취약",
-  "breached": "돌파됨"
+  "breached": "돌파됨",
+  "Strong Counter-Attack": "강력 반격",
+  "Ultimate Deterrent": "궁극 억지력",
+  "Reduces all incoming DMG to 1.": "받는 모든 피해를 1로 줄입니다."
 }

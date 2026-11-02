@@ -199,6 +199,17 @@ if (fs.existsSync(STRINGS_DIR) && !filters.length) {
   }
 }
 
+// Art redrawn from upstream frames (ko/art/banners.py): stale once upstream redraws them.
+const ART_RECORD = path.join(__dirname, 'art/banners.json');
+if (fs.existsSync(ART_RECORD) && !filters.length) {
+  const crypto = require('node:crypto');
+  for (const [file, hash] of Object.entries(JSON.parse(fs.readFileSync(ART_RECORD, 'utf8')))) {
+    const upstream = path.join(UPSTREAM_SRC, file);
+    const now = fs.existsSync(upstream) && crypto.createHash('sha256').update(fs.readFileSync(upstream)).digest('hex');
+    if (now !== hash) report.stale.push({file, text: 'redrawn upstream: run ko/art/banners.py again'});
+  }
+}
+
 if (asJson) {
   console.log(JSON.stringify(report, null, 2));
 } else {

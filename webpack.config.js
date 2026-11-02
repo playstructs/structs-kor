@@ -24,10 +24,16 @@ const PUBLIC_DIRS = [
 // rules and the bundles committed from upstream builds (ours replace them).
 const SKIP = /^(index\.php|\.htaccess|data\/|js\/(index|test)\.|js\/manifest\.json|js\/workers\/)|(^|\/)\.DS_Store$/;
 
-// The guild these defaults name is the one structs-webapp's beta serves.
-const DEV_GUILD = 'https://beta.playstructs.com';
-const DEV_GRASS = 'wss://beta.playstructs.com:1443';
-const DEV_CHAIN_WS = 'wss://public.testnet.structs.network:26657';
+// Where the page finds its guild (ko/runtime/guild.js). The defaults are
+// the chain's public node and SN Corp, the guild structs-webapp's beta serves.
+const DEFAULT_GUILD_ID = '0-5';
+const DEFAULT_LCD = 'https://public.testnet.structs.network';
+// Used only when no guild on chain can be read and none was read before.
+const FALLBACK = {
+  api: 'https://beta.playstructs.com/api',
+  grass: 'wss://beta.playstructs.com:1443',
+  chainWs: 'wss://public.testnet.structs.network:26657',
+};
 
 function walk(dir, base = dir, out = []) {
   for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
@@ -77,22 +83,16 @@ class KoSitePlugin {
   }
 }
 
-/** Keeps the guild's session cookie on localhost, as webapp's own host would. */
-function relayCookies(proxyRes) {
-  const cookies = proxyRes.headers['set-cookie'];
-  if (cookies) {
-    proxyRes.headers['set-cookie'] = cookies.map(cookie => cookie
-      .replace(/;\s*Secure/gi, '')
-      .replace(/;\s*SameSite=None/gi, '; SameSite=Lax')
-      .replace(/;\s*Domain=[^;]+/gi, ''));
-  }
-}
-
 module.exports = (env, argv) => {
-  const serving = Boolean(process.env.WEBPACK_SERVE);
-  const guild = process.env.KO_GUILD_ORIGIN || DEV_GUILD;
-  const grass = process.env.KO_GRASS_URL ?? (serving ? DEV_GRASS : '');
-  const chainWs = process.env.KO_CHAIN_WS ?? (serving ? DEV_CHAIN_WS : '');
+  const config = {
+    guildId: process.env.KO_GUILD_ID || DEFAULT_GUILD_ID,
+    lcd: process.env.KO_LCD_URL || DEFAULT_LCD,
+    // Set, these override what the guild publishes.
+    api: (process.env.KO_GUILD_API || '').replace(/\/+$/, ''),
+    grass: process.env.KO_GRASS_URL || '',
+    chainWs: process.env.KO_CHAIN_WS || '',
+    fallback: FALLBACK,
+  };
 
   const plugins = upstream.plugins
     .filter(plugin => plugin.constructor.name !== 'AssetManifestPlugin')
@@ -129,8 +129,7 @@ module.exports = (env, argv) => {
     plugins: [
       ...plugins,
       new webpack.DefinePlugin({
-        __KO_GRASS_URL__: JSON.stringify(grass),
-        __KO_CHAIN_WS__: JSON.stringify(chainWs),
+        __KO_CONFIG__: JSON.stringify(config),
       }),
       new KoSitePlugin(),
     ],
@@ -141,13 +140,6 @@ module.exports = (env, argv) => {
       hot: false,
       liveReload: true,
       client: {overlay: {errors: true, warnings: false}},
-      proxy: [{
-        context: ['/api'],
-        target: guild,
-        changeOrigin: true,
-        secure: true,
-        onProxyRes: relayCookies,
-      }],
     },
   };
 };

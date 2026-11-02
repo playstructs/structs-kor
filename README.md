@@ -8,8 +8,9 @@ repository adds is the Korean overlay in [`ko/`](ko/README.md), applied while
 webpack reads webapp's sources. Nothing in the submodule is edited, so a newer
 structs-webapp builds with the same overlay.
 
-Only the client side is used. The PHP side of structs-webapp (the guild API) is
-whatever guild the page talks to.
+Only the client side is used. This site hosts no guild API of its own: the page
+talks straight to a guild's API, its GRASS feed and its chain node, wherever the
+guild runs them.
 
 ## Setup
 
@@ -19,15 +20,33 @@ npm install          # also installs structs-webapp/src's own dependencies
 npm run dev          # http://localhost:5180
 ```
 
-`npm run dev` relays `/api` to a guild (by default beta.playstructs.com, the
-guild structs-webapp's beta serves), keeping the guild's session cookie on
-localhost, and connects to that guild's GRASS feed and chain node.
+## Which guild
 
-| Variable | Default with `npm run dev` | Default for `npm run build` |
+Before webapp's code starts, the page picks a guild using the chain's public
+node (`ko/runtime/guild.js`):
+
+1. `?guild=<id>` in the address,
+2. else the guild of the player saved in this browser,
+3. else the guild last used here,
+4. else the default guild (`KO_GUILD_ID`, SN Corp `0-5`).
+
+It reads that guild's `guild.json` (the endpoint the guild set on chain) for its
+`guild_api`, `grass_nats_websocket` and `client_websocket`. If the guild can't
+be reached, it uses what it last read for it, then any other guild on chain that
+publishes an API. Requests carry a bearer token from the guild's
+`/api/auth/token` (the same signed login as `/api/auth/login`), since a guild's
+session cookie would be third-party here.
+
+A player who recovers an account with a recovery key is moved to their own
+guild as soon as the key names them. An activation code from another device is
+looked up on the other guilds if the current one doesn't have it.
+
+| Variable (build time) | Default | |
 |---|---|---|
-| `KO_GUILD_ORIGIN` | `https://beta.playstructs.com` (the `/api` relay) | — |
-| `KO_GRASS_URL` | `wss://beta.playstructs.com:1443` | webapp's own: `ws://<page host>:1443` |
-| `KO_CHAIN_WS` | `wss://public.testnet.structs.network:26657` | webapp's own: `ws://<page host>:26657` |
+| `KO_GUILD_ID` | `0-5` | the guild for new players |
+| `KO_LCD_URL` | `https://public.testnet.structs.network` | the chain node guilds are found on |
+| `KO_GUILD_API` | — | a fixed guild API (a local guild), skipping the search |
+| `KO_GRASS_URL`, `KO_CHAIN_WS` | — | override what the guild publishes |
 
 ## Building and serving
 
@@ -36,10 +55,8 @@ npm run build        # dist/
 ```
 
 `dist/` is a static site: `index.html` (webapp's game page), the bundles in
-`js/` and webapp's `css/`, `img/`, `lottie/` and fonts. Like structs-webapp, the
-page expects the guild API at `/api` on its own origin (its session cookie is
-first-party), so serve `dist/` from the guild's host or behind a reverse proxy
-that sends `/api` to the guild.
+`js/` and webapp's `css/`, `img/`, `lottie/` and fonts. Serve it from any
+static host; it needs nothing on its own domain.
 
 ## Updating structs-webapp
 

@@ -6,9 +6,10 @@ it is built. Nothing in the submodule is edited.
 | Path | What it is |
 |---|---|
 | `strings/<upstream path>.json` | Korean for one upstream file: `{"exact source text": "replacement"}` |
-| `patches.cjs` | Changes that are not text (endpoints, translating game data where it is read) |
-| `runtime/` | `__ko.t()`, loaded before webapp's entry, and `terms.json`, Korean for game data from the guild API |
-| `public/` | Static files served next to webapp's: `ko.css` (Hangul faces for webapp's fonts) and Galmuri |
+| `patches.cjs` | Changes that are not text: the guild connection, translating struct-type data where it is read |
+| `runtime/` | Loaded before webapp's entry: `__ko.t()` with `terms.json` (Korean for game data from the guild API) and `__ko.guild` (`guild.js`, which guild the page plays through) |
+| `public/` | Static files served over webapp's: `ko/ko.css` (Hangul faces for webapp's fonts), Galmuri, and the Korean banner frames in `lottie/` |
+| `art/banners.py` | Draws those banner frames from webapp's (needs Pillow); `banners.json` records which upstream frames they replace |
 | `page.cjs` | Renders webapp's Twig page (`templates/`) to `index.html` |
 | `loader.cjs`, `translate.cjs` | Apply `patches.cjs` then `strings/` to each source file webpack reads |
 | `audit.cjs` | Reports stale entries and English still on screen |
@@ -45,6 +46,12 @@ Check a file as you go:
 node ko/audit.cjs js/view_models/signup/IncomingCall1ViewModel.js
 ```
 
+## Game data
+
+`runtime/terms.json` follows the struct-type text guilds serve (structs-pg's
+`struct_type` migrations). When a guild sends wording it doesn't have, the
+page shows the English and logs `[ko] no Korean for game data …` once.
+
 ## After updating structs-webapp
 
 ```bash
@@ -53,5 +60,6 @@ npm run audit:ko
 ```
 
 `stale` lines are entries whose upstream text changed: fix the key (or the
-translation). `untranslated` lines are new English. `npm test` fails while
-either remains. The build shows the same stale entries as warnings.
+translation), or for banner frames run `python3 ko/art/banners.py` again.
+`untranslated` lines are new English. `npm test` fails while either remains.
+The build shows the same stale text entries as warnings.
