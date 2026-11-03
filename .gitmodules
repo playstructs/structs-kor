@@ -1,4 +1,4 @@
 [submodule "structs-webapp"]
 	path = structs-webapp
 	url = https://github.com/playstructs/structs-webapp.git
-	branch = 0.22.0-migration
+	branch = main

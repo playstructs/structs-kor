@@ -1,8 +1,8 @@
 # 구조체 — Structs in Korean
 
 The [structs-webapp](https://github.com/playstructs/structs-webapp) game
-client, in Korean. structs-webapp is a git submodule (`structs-webapp/`, branch
-`0.22.0-migration`) and its client is built as it is: its own JavaScript, page,
+client, in Korean. structs-webapp is a git submodule (`structs-webapp/`, following its
+`main`) and its client is built as it is: its own JavaScript, page,
 styles and art, with its webpack configuration as the starting point. What this
 repository adds is the Korean overlay in [`ko/`](ko/README.md), applied while
 webpack reads webapp's sources. Nothing in the submodule is edited, so a newer
