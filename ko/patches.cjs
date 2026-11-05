@@ -48,6 +48,8 @@ module.exports = {
     ],
   ],
   'js/telemetry/OnboardingTelemetry.js': [
+    // Guilds accept only ASCII here (RegexPattern::SLUG): 구조체, romanized.
+    ["ONBOARDING_INTERFACE_NAME = 'structs-webapp'", "ONBOARDING_INTERFACE_NAME = 'gujoche'"],
     ['fetch(ENDPOINT, {', 'fetch(`${__ko.guild.api}/onboarding/events`, {'],
     ['navigator.sendBeacon(ENDPOINT, body)', 'navigator.sendBeacon(`${__ko.guild.api}/onboarding/events`, body)'],
   ],
