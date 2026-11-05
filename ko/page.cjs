@@ -12,6 +12,15 @@ const BASE = 'templates/base.html.twig';
 const GAME = 'templates/game/index.html.twig';
 const BLOCK = /{%\s*block\s+(\w+)\s*%}([\s\S]*?){%\s*endblock\s*%}/g;
 
+// Google Tag Manager, high in <head> as Google asks.
+const TRACKING = `<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-TBMW388T"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+        </script>
+        `;
+
 function read(rel, stale) {
   const result = translate(rel, fs.readFileSync(path.join(UPSTREAM_SRC, rel), 'utf8'));
   result.stale.forEach(text => stale.push(`${rel} no longer contains ${JSON.stringify(text)}`));
@@ -33,6 +42,7 @@ function renderPage(indexBundle) {
   let html = read(BASE, stale)
     .replace(BLOCK, (match, name, fallback) => blocks[name] ?? fallback)
     .replace(/{{\s*asset\('js\/index\.js',\s*'webpack'\)\s*}}/g, '/' + indexBundle)
+    .replace('<title>', TRACKING + '<title>')
     .replace('</head>', '    <link rel="stylesheet" href="/ko/ko.css">\n    </head>');
 
   const leftover = html.match(/{[{%][\s\S]*?[}%]}/);
