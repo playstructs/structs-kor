@@ -21,8 +21,8 @@ const PUBLIC_DIRS = [
 ];
 
 // Upstream's public/ is served by PHP: skip the front controller, Apache's
-// rules and the bundles committed from upstream builds (ours replace them).
-const SKIP = /^(index\.php|\.htaccess|data\/|js\/(index|test)\.|js\/manifest\.json|js\/workers\/)|(^|\/)\.DS_Store$/;
+// rules and anything a local upstream build left there (ours replace them).
+const SKIP = /^(index\.php|\.htaccess|data\/|js\/(index|test|vendors-)|js\/manifest\.json|js\/workers\/)|(^|\/)\.DS_Store$/;
 
 // Where the page finds its guild (ko/runtime/guild.js). The defaults are
 // the chain's public node and SN Corp, the guild structs-webapp's beta serves.
