@@ -1,6 +1,8 @@
 {
   "MenuPage.setPageTemplateHeaderBtn('Activate New Device');": "MenuPage.setPageTemplateHeaderBtn('새 기기 등록');",
-  "            Activation Cancelled\n": "            등록 취소됨\n",
-  "<div>This device has not been activated.</div>": "<div>이 기기는 등록되지 않았습니다.</div>",
-  "sui-mod-primary\">Return to Account</button>": "sui-mod-primary\">계정으로 돌아가기</button>"
+  "sui-mod-primary\">Return to Account</button>": "sui-mod-primary\">계정으로 돌아가기</button>",
+  "'Activation Failed'": "'등록 실패'",
+  "'Activation Cancelled'": "'등록 취소됨'",
+  "'The approval did not go through, so the new device has not been activated. Nothing on your account has changed.'": "'승인이 완료되지 않아 새 기기가 등록되지 않았습니다. 계정에는 아무것도 바뀌지 않았습니다.'",
+  "'The new device has not been activated.'": "'새 기기가 등록되지 않았습니다.'"
 }

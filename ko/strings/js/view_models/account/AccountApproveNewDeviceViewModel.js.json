@@ -9,5 +9,6 @@
   "\">Manage Devices</label>": "\">기기 관리</label>",
   "\">Transfer Assets</label>": "\">자원 보내기</label>",
   ">Approve Device</a>": ">기기 승인</a>",
-  ">Deny</a>": ">거부</a>"
+  ">Deny</a>": ">거부</a>",
+  ">This device can only grant permissions it has itself.</div>": ">이 기기는 자신이 가진 권한만 줄 수 있습니다.</div>"
 }

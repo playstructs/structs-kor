@@ -13,5 +13,8 @@
   "\">\n                Transfer Assets\n": "\">\n                자원 보내기\n",
   "data-sui-tooltip=\"The ability to send Alpha to other accounts.\"": "data-sui-tooltip=\"다른 계정에 알파를 보낼 수 있습니다.\"",
   ">Cancel</a>": ">취소</a>",
-  ">Save</a>": ">저장</a>"
+  ">Save</a>": ">저장</a>",
+  "This is the only device that can manage devices, so it must keep this permission.\n              Give Manage Devices to another device first.": "기기를 관리할 수 있는 기기는 이 기기뿐이라 이 권한을 유지해야 합니다.\n              먼저 다른 기기에 기기 관리 권한을 주세요.",
+  "The primary device always keeps full access, so its permissions cannot be changed.": "주 기기는 항상 모든 권한을 가지므로 권한을 바꿀 수 없습니다.",
+  ">Your changes were not saved. Please try again.</div>": ">변경 사항이 저장되지 않았습니다. 다시 시도해 주세요.</div>"
 }

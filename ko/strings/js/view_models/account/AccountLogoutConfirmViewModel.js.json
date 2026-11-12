@@ -1,0 +1,9 @@
+{
+  "view.headerBtnLabel = 'Log Out';": "view.headerBtnLabel = '로그아웃';",
+  "view.messageHeaderText = 'Log out of this device?';": "view.messageHeaderText = '이 기기에서 로그아웃할까요?';",
+  "This device's key will be removed from this browser. To play here again you will need your": "이 브라우저에서 이 기기의 로그인 정보가 삭제됩니다. 여기서 다시 플레이하려면",
+  "data-sui-tooltip=\"The words you saved when you created your account.\"": "data-sui-tooltip=\"계정을 만들 때 적어 둔 단어들입니다.\"",
+  ">Recovery Key</a>\n      or approval from another device.": ">복구 키</a>나\n      다른 기기의 승인이 필요합니다.",
+  "view.confirmBtn1Label = 'Stay Logged In';": "view.confirmBtn1Label = '로그인 유지';",
+  "view.confirmBtn2Label = 'Log Out';": "view.confirmBtn2Label = '로그아웃';"
+}

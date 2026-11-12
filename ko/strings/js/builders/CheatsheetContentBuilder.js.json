@@ -34,8 +34,8 @@
   "'Deploy'": "'배치'",
   "`Choose a Struct to deploy.`": "`배치할 구조체를 고르세요.`",
   "'Energy Supply'": "'에너지 공급'",
-  "`Insufficient Energy. Deactivate Structs to reduce Energy draw.`": "`에너지가 부족합니다. 구조체를 정지해 에너지 사용량을 줄이세요.`",
-  "`Energy Supply normal.`": "`에너지 공급이 정상입니다.`",
+  "`Insufficient Energy. Deactivate Structs to reduce Energy draw.${": "`에너지가 부족합니다. 구조체를 정지해 에너지 사용량을 줄이세요.${",
+  "`Energy Supply normal.${": "`에너지 공급이 정상입니다.${",
   "'Planetary Beacon'": "'행성 비컨'",
   "'Planetary Structs can be deployed to this location.'": "'이 위치에는 행성 구조체를 배치할 수 있습니다.'",
   "'Blocked'": "'막힘'",
@@ -60,6 +60,9 @@
   "`Ore cannot be mined or refined while enemy forces are present.`": "`적군이 있는 동안에는 광석을 채굴하거나 정제할 수 없습니다.`",
   "'Defend'": "'방어'",
   "`Blocks incoming damage and counter-attacks on behalf of another Struct.`": "`다른 구조체 대신 들어오는 피해와 반격을 막아 냅니다.`",
+  "`${this.numberFormatter.formatGrouped(headroom)} available.`": "`${this.numberFormatter.formatGrouped(headroom)} 남음.`",
+  "`${this.numberFormatter.formatGrouped(-headroom)} over.`": "`${this.numberFormatter.formatGrouped(-headroom)} 초과.`",
+  "`<br>Using ${this.numberFormatter.formatGrouped(load)} of ${this.numberFormatter.formatGrouped(capacity)} Energy. ${balance}`": "`<br>에너지 사용량 ${this.numberFormatter.formatGrouped(load)} / ${this.numberFormatter.formatGrouped(capacity)}. ${balance}`",
   "$keep": [
     "kW"
   ]
