@@ -1,6 +1,7 @@
 {
   "$keep": [
     "Device registration consent is no longer usable",
-    "[RegistrationCompletion] current association unavailable:"
+    "[RegistrationCompletion] current association unavailable:",
+    "Device activation request is no longer pending"
   ]
 }

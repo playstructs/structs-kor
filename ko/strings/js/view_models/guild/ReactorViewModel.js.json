@@ -1,5 +1,5 @@
 {
-  "MenuPage.setPageTemplateHeaderBtn('Guild Reactor',": "MenuPage.setPageTemplateHeaderBtn('길드 리액터',",
+  "MenuPage.setPageTemplateHeaderBtn('Alpha Reactor',": "MenuPage.setPageTemplateHeaderBtn('알파 리액터',",
   "alt=\"alpha reactor\"": "alt=\"알파 리액터\"",
   "sui-text-secondary\">ALPHA MATTER</div>": "sui-text-secondary\">알파 매터</div>",
   "<div class=\"sui-text-hint\">Alpha Infused</div>": "<div class=\"sui-text-hint\">주입한 알파</div>",

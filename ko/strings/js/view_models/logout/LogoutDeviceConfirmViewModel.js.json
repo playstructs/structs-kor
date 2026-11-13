@@ -1,0 +1,9 @@
+{
+  "data-sui-tooltip=\"The words you saved when you created your account.\"": "data-sui-tooltip=\"계정을 만들 때 적어 둔 단어들입니다.\"",
+  ">Recovery Key</a>`;": ">복구 키</a>`;",
+  "view.messageHeaderText = 'Log out of this device?';": "view.messageHeaderText = '이 기기에서 로그아웃할까요?';",
+  "This device's key will be removed from this browser. To play here again you will need your": "이 브라우저에서 이 기기의 로그인 정보가 삭제됩니다. 여기서 다시 플레이하려면",
+  "view.messageHeaderText = 'Log out this device?';": "view.messageHeaderText = '이 기기를 로그아웃할까요?';",
+  "It will lose access to your account. To play on it again you will need your": "이 기기는 계정에 더 이상 접근할 수 없게 됩니다. 이 기기에서 다시 플레이하려면",
+  "${recoveryKey}\n        or approval from another device.": "${recoveryKey}나\n        다른 기기의 승인이 필요합니다."
+}

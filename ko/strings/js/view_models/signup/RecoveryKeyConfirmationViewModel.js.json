@@ -3,5 +3,8 @@
   "<div>To confirm your Recovery Key, enter each word, in order, separated by spaces.</div>": "<div>복구 키를 확인하려면 각 단어를 순서대로 띄어 써서 입력하세요.</div>",
   "<span>Confirm Recovery Key</span>": "<span>복구 키 확인</span>",
   "placeholder=\"word word word ...\"": "placeholder=\"단어 단어 단어 ...\"",
-  ">Next</button>": ">다음</button>"
+  ">Next</button>": ">다음</button>",
+  "submitBtn.textContent = 'Signing Up...';": "submitBtn.textContent = '가입하는 중...';",
+  "submitBtn.textContent = 'Try Again';": "submitBtn.textContent = '다시 시도';",
+  "We couldn't complete your signup. The guild may be temporarily unavailable. Please try again in a moment.": "가입을 완료하지 못했습니다. 길드가 잠시 응답하지 않는 것 같습니다. 조금 뒤에 다시 시도해 주세요."
 }

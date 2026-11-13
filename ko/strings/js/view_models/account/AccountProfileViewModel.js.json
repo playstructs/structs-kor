@@ -1,6 +1,6 @@
 {
   "MenuPage.setPageTemplateHeaderBtn('Profile',": "MenuPage.setPageTemplateHeaderBtn('프로필',",
-  "MenuPage.setPageTemplateHeaderBtn('Guild Profile',": "MenuPage.setPageTemplateHeaderBtn('플레이어 프로필',",
+  "MenuPage.setPageTemplateHeaderBtn('Player Profile',": "MenuPage.setPageTemplateHeaderBtn('플레이어 프로필',",
   "alt=\"3 dots loading animation\"": "alt=\"불러오는 중\"",
   "sui-text-header\">Player Details</div>": "sui-text-header\">플레이어 정보</div>",
   "<div>Guild</div>": "<div>길드</div>",

@@ -3,5 +3,6 @@
   "Activation Cancelled": "등록 취소됨",
   "<div>This device has not been logged in.</div>": "<div>이 기기는 로그인되지 않았습니다.</div>",
   ">Try Again</button>": ">다시 시도</button>",
-  "Log In With Recovery Key": "복구 키로 로그인"
+  "Log In With Recovery Key": "복구 키로 로그인",
+  "'<div>Your logged-in device denied this request, or could not approve it.</div>'": "'<div>로그인된 기기가 이 요청을 거절했거나 승인하지 못했습니다.</div>'"
 }
