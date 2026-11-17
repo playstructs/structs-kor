@@ -91,6 +91,12 @@ with it.
 | Settings | 설정 |
 | Directory | 목록 |
 | Leaderboard | 순위표 |
+| Sector, Sector Map | 섹터, 섹터 지도 |
+| Sector Blitz (event), Operation: Sector Blitz | 섹터 블리츠, 섹터 블리츠 작전 |
+| Influence Points (IP) | 영향력 포인트 (IP) |
+| King of the Hill / KOTH Bonus | 점령 유지 보너스 |
+| Event Rules / Results | 이벤트 규칙 / 결과 |
+| Rival (guild, faction) | 경쟁 (길드, 세력) |
 | Task, Executing | 작업, 진행 중 |
 | Signal Jamming | 신호 교란 |
 | Smart / Ballistic Weapon | 스마트 / 탄도 무기 |

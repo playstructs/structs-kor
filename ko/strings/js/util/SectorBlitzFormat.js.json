@@ -1,0 +1,10 @@
+{
+  "`${days}D ${hours}H ${minutes}M`": "`${days}일 ${hours}시간 ${minutes}분`",
+  "?? `Sector ${": "?? `섹터 ${",
+  "`Guild ${guildId}`": "`길드 ${guildId}`",
+  "`${items[0]} and ${items[1]}`": "`${items[0]}, ${items[1]}`",
+  "`${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`": "`${items.join(', ')}`",
+  "$keep": [
+    "PID #"
+  ]
+}

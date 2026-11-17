@@ -37,6 +37,10 @@ module.exports = {
       + '    );',
     ],
   ],
+  // Sector Blitz contests are read from the same guild's /api/influence.
+  'js/api/InfluenceAPI.js': [
+    ["this.apiUrl = '/api/influence';", "Object.defineProperty(this, 'apiUrl', {get: () => `${__ko.guild.api}/influence`, enumerable: true});"],
+  ],
   'js/framework/JsonAjaxer.js': [
     ["headers: {\n        'Content-Type': 'application/json'\n      },", "headers: {\n        'Content-Type': 'application/json',\n        ...__ko.guild.headers()\n      },"],
   ],

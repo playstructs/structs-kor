@@ -1,0 +1,23 @@
+{
+  ">No Activity in Sector</div>": ">이 섹터에는 아직 활동이 없습니다</div>",
+  "data-sui-tooltip=\"Influence Points\"": "data-sui-tooltip=\"영향력 포인트\"",
+  "'Leaderboard Position'": "'순위'",
+  "'Earned from Raids'": "'습격으로 얻은 포인트'",
+  "'KOTH Bonus'": "'점령 유지 보너스'",
+  "'Sector Score'": "'섹터 점수'",
+  "'Total Event Score'": "'이벤트 총점'",
+  ">View</a>": ">보기</a>",
+  "'Tied First'": "'공동 1위'",
+  "'Second Place'": "'2위'",
+  "'Third Place'": "'3위'",
+  "'Fourth Place'": "'4위'",
+  ">Top Guild</div>": ">1위 길드</div>",
+  ">Top Player</div>": ">1위 플레이어</div>",
+  ">Sector Results</div>": ">섹터 결과</div>",
+  ">Your Performance</div>": ">내 성적</div>",
+  ">Guild Leaderboard</div>": ">길드 순위표</div>",
+  ">Player Leaderboard</div>": ">플레이어 순위표</div>",
+  "$keep": [
+    "Fleet"
+  ]
+}

@@ -3,12 +3,9 @@
   "sui-text-header\">Search By Status</div>": "sui-text-header\">상태로 찾기</div>",
   "Min. Vulnerable Ore&nbsp;": "최소 노출 광석&nbsp;",
   "data-sui-tooltip=\"Extracted Ore that has not been refined is vulnerable to theft.\"": "data-sui-tooltip=\"채굴한 뒤 정제하지 않은 광석은 약탈당할 수 있습니다.\"",
-  "<span>Filter By Guild</span>": "<span>길드로 거르기</span>",
   "<option value=\"\">Any Guild</option>": "<option value=\"\">모든 길드</option>",
   "<span>Fleet Status</span>": "<span>함대 상태</span>",
-  "\">Fleet Away</label>": "\">출격 중</label>",
   "<span>Raid Status</span>": "<span>습격 상태</span>",
-  "\">Not Under Attack</label>": "\">공격받지 않는 중</label>",
   "sui-mod-primary\"\n              >Search</button>": "sui-mod-primary\"\n              >검색</button>",
   "sui-text-header\">Search By Player</div>": "sui-text-header\">플레이어로 찾기</div>",
   "Player Search&nbsp;": "플레이어 검색&nbsp;",
@@ -16,5 +13,15 @@
   "placeholder=\"Name, PID, or Address\"": "placeholder=\"이름, PID 또는 주소\"",
   "sui-mod-disabled\" disabled>Search</button>": "sui-mod-disabled\" disabled>검색</button>",
   "sui-input-text-warning\">Enter at least 3 characters, using only letters, numbers, '-' and '_'.</div>": "sui-input-text-warning\">글자, 숫자, '-', '_'만 써서 3자 이상 입력하세요.</div>",
-  "$keep": ["이름, PID 또는 주소"]
+  "this.isContest ? 'Guild' : 'Filter By Guild';": "this.isContest ? '길드' : '길드로 거르기';",
+  ">Rival Guilds Only</option>": ">경쟁 길드만</option>",
+  ">All Guilds</option>": ">모든 길드</option>",
+  "<span>Filters</span>": "<span>필터</span>",
+  "'Fleet Away'": "'출격 중'",
+  "'Undefeated',": "'미습격',",
+  "`Planets that have not yet been Raided by your Guild in ${SECTOR_BLITZ.NAME}.`": "`${SECTOR_BLITZ.NAME}에서 길드가 아직 습격하지 않은 행성입니다.`",
+  "'Not Under Attack'": "'공격받지 않는 중'",
+  "$keep": [
+    "이름, PID 또는 주소"
+  ]
 }

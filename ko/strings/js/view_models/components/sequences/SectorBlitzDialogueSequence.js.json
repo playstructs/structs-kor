@@ -1,0 +1,12 @@
+{
+  "`${highlight('Priority Alert:')} Rival factions have launched a series of Raids against our assets in an effort to destabilize key ${highlight('Galactic Sectors')}.`": "`${highlight('긴급 경보:')} 경쟁 세력이 주요 ${highlight('은하 섹터')}를 흔들기 위해 우리 자산을 상대로 연이어 습격을 감행했습니다.`",
+  "`This cannot go unanswered. You are being re-tasked to ${highlight('Operation: Sector Blitz')}.`": "`이대로 두고 볼 수는 없습니다. 사령관님은 ${highlight('섹터 블리츠 작전')}에 재배치됩니다.`",
+  "`Your objective is to secure our influence in each Sector by launching ${highlight('Raids')} against rival factions.`": "`임무는 경쟁 세력을 상대로 ${highlight('습격')}을 개시해 각 섹터에서 우리의 영향력을 확보하는 것입니다.`",
+  "`You can launch Raids and track our progress from the ${highlight('Fleet Menu')}. Click your Profile Picture to access the menu.`": "`습격 개시와 진행 상황 확인은 ${highlight('함대 메뉴')}에서 할 수 있습니다. 프로필 사진을 누르면 메뉴가 열립니다.`",
+  "`${numbers.length === 2 ? 'sectors' : 'sector'} ${SectorBlitzFormat.list(numbers)}`": "`섹터 ${SectorBlitzFormat.list(numbers)}`",
+  "used the opportunity to establish a firm grasp on key galactic sectors, securing ${sectorList(winner.sectors)}.`": "길드가 이 기회를 살려 주요 은하 섹터를 확고히 장악하고 ${sectorList(winner.sectors)}의 지배권을 확보했습니다.`",
+  "secured ${sectorList(other.sectors)}`": "길드는 ${sectorList(other.sectors)}`",
+  "used the opportunity to establish a firm grasp on galactic ${sectorList(first.sectors)} while ${SectorBlitzFormat.list(otherClauses)}.`": "길드가 이 기회를 살려 은하 ${sectorList(first.sectors)}의 지배권을 확고히 장악했고, ${SectorBlitzFormat.list(otherClauses)}의 지배권을 확보했습니다.`",
+  "`${highlight('Update:')} Operation: Sector Blitz has ended. Activity in the disputed systems is returning to normal.`": "`${highlight('상황 보고:')} 섹터 블리츠 작전이 끝났습니다. 분쟁 항성계의 활동이 정상으로 돌아오고 있습니다.`",
+  "'A complete report can be viewed in the Fleet Menu.'": "'전체 보고서는 함대 메뉴에서 볼 수 있습니다.'"
+}
