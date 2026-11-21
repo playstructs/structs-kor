@@ -41,6 +41,12 @@ module.exports = {
   'js/api/InfluenceAPI.js': [
     ["this.apiUrl = '/api/influence';", "Object.defineProperty(this, 'apiUrl', {get: () => `${__ko.guild.api}/influence`, enumerable: true});"],
   ],
+  // The public leaderboard and spectating read the guild's public API, with
+  // nobody signed in. The leaderboard page asks before the guild is known.
+  'js/api/PublicSectorBlitzAPI.js': [
+    ["this.apiUrl = '/api/public/sector-blitz';", "Object.defineProperty(this, 'apiUrl', {get: () => `${__ko.guild.api}/public/sector-blitz`, enumerable: true});"],
+    ['    const response = await fetch(', '    await __ko.guild.ready;\n    const response = await fetch('],
+  ],
   'js/framework/JsonAjaxer.js': [
     ["headers: {\n        'Content-Type': 'application/json'\n      },", "headers: {\n        'Content-Type': 'application/json',\n        ...__ko.guild.headers()\n      },"],
   ],

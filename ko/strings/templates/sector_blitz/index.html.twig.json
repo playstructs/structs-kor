@@ -1,0 +1,15 @@
+{
+  "<html class=\"no-js\" lang=\"en-us\">": "<html class=\"no-js\" lang=\"ko\">",
+  "<title>Sector Blitz Leaderboard | Structs</title>": "<title>섹터 블리츠 순위표 | 구조체</title>",
+  "content=\"Live standings for Sector Blitz, the Structs sector control event.\"": "content=\"구조체의 섹터 장악 이벤트, 섹터 블리츠의 실시간 순위입니다.\"",
+  "sui-mod-active\" href=\"{{ path('app_sector_blitz') }}\">Sector Blitz</a>": "sui-mod-active\" href=\"{{ path('app_sector_blitz') }}\">섹터 블리츠</a>",
+  "href=\"{{ path('app_game') }}\">Play Now</a>": "href=\"{{ path('app_game') }}\">게임 시작</a>",
+  "alt=\"3 dots loading animation\"": "alt=\"불러오는 중\"",
+  "$keep": [
+    "id=\"public-leaderboard\"",
+    "class=\"sui-page-body-screen-content\"",
+    "data-sector=\"{{ sector ?? '' }}\"",
+    "data-home-url=\"{{ path('app_sector_blitz') }}\"",
+    "data-play-url=\"{{ path('app_game') }}\""
+  ]
+}

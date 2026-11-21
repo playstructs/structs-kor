@@ -1,0 +1,21 @@
+{
+  "emptyHTML(message = 'No Activity')": "emptyHTML(message = '활동 없음')",
+  "\n          Other\n": "\n          기타\n",
+  "'No Winner'": "'우승 길드 없음'",
+  ">Winning Guild</div>": ">우승 길드</div>",
+  "data-sui-tooltip=\"Influence Points\"": "data-sui-tooltip=\"영향력 포인트\"",
+  "sui-mod-default\">Defender</span>": "sui-mod-default\">방어자</span>",
+  "sui-mod-destructive\">Attacker</span>": "sui-mod-destructive\">습격자</span>",
+  "'Tied First'": "'공동 1위'",
+  "'Second Place'": "'2위'",
+  "'Third Place'": "'3위'",
+  "'Fourth Place'": "'4위'",
+  ">Top Guild</div>": ">1위 길드</div>",
+  ">Top Player</div>": ">1위 플레이어</div>",
+  ">Sector Results</div>": ">섹터 결과</div>",
+  "emptyHTML('No Activity in Sector')": "emptyHTML('이 섹터에는 아직 활동이 없습니다')",
+  "$keep": [
+    "PID #",
+    "VS"
+  ]
+}

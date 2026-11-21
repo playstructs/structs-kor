@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const webpack = require('webpack');
 const {UPSTREAM_SRC} = require('./ko/translate.cjs');
-const {renderPage} = require('./ko/page.cjs');
+const {renderPage, hasLeaderboard, leaderboardSectors, renderLeaderboardPage} = require('./ko/page.cjs');
 
 const upstreamConfigFile = path.join(UPSTREAM_SRC, 'webpack.config.js');
 if (!fs.existsSync(upstreamConfigFile)) {
@@ -22,7 +22,10 @@ const PUBLIC_DIRS = [
 
 // Upstream's public/ is served by PHP: skip the front controller, Apache's
 // rules and anything a local upstream build left there (ours replace them).
-const SKIP = /^(index\.php|\.htaccess|data\/|js\/(index|test|vendors-)|js\/manifest\.json|js\/workers\/)|(^|\/)\.DS_Store$/;
+const SKIP = /^(index\.php|\.htaccess|data\/|js\/(index|test|sectorBlitz|vendors-)|js\/manifest\.json|js\/workers\/)|(^|\/)\.DS_Store$/;
+
+// The Korean runtime runs first in every page's bundle.
+const KO_RUNTIME = path.join(__dirname, 'ko/runtime/index.js');
 
 // Where the page finds its guild (ko/runtime/guild.js). The defaults are
 // the chain's public node and SN Corp, the guild structs-webapp's beta serves.
@@ -69,15 +72,29 @@ class KoSitePlugin {
           }
         }
 
-        const files = compilation.entrypoints.get('index').getFiles().filter(file => file.endsWith('.js'));
-        if (files.length !== 1) {
-          throw new Error('Expected one JavaScript bundle for index');
-        }
-        const {html, stale, dependencies} = renderPage(files[0]);
-        dependencies.forEach(file => compilation.fileDependencies.add(file));
+        const bundle = name => {
+          const files = compilation.entrypoints.get(name).getFiles().filter(file => file.endsWith('.js'));
+          if (files.length !== 1) {
+            throw new Error(`Expected one JavaScript bundle for ${name}`);
+          }
+          return files[0];
+        };
+        const emitPage = (file, {html, stale, dependencies}) => {
+          dependencies.forEach(dependency => compilation.fileDependencies.add(dependency));
+          stale.forEach(message => compilation.warnings.push(new WebpackError(`ko: ${message}`)));
+          compilation.emitAsset(file, new sources.RawSource(html), {minimized: true});
+        };
         compilation.contextDependencies.add(path.join(__dirname, 'ko/strings/templates'));
-        stale.forEach(message => compilation.warnings.push(new WebpackError(`ko: ${message}`)));
-        compilation.emitAsset('index.html', new sources.RawSource(html), {minimized: true});
+
+        emitPage('index.html', renderPage(bundle('index')));
+        // The public leaderboard at /sector-blitz and /sector-blitz/{sector}.
+        if (compilation.entrypoints.has('sectorBlitz')) {
+          const leaderboard = bundle('sectorBlitz');
+          emitPage('sector-blitz/index.html', renderLeaderboardPage(leaderboard));
+          for (const sector of leaderboardSectors()) {
+            emitPage(`sector-blitz/${sector}/index.html`, renderLeaderboardPage(leaderboard, sector));
+          }
+        }
       });
     });
   }
@@ -104,7 +121,12 @@ module.exports = (env, argv) => {
   return {
     ...upstream,
     context: UPSTREAM_SRC,
-    entry: {index: [path.join(__dirname, 'ko/runtime/index.js'), upstream.entry.index]},
+    entry: {
+      index: [KO_RUNTIME, upstream.entry.index],
+      ...(upstream.entry.sectorBlitz && hasLeaderboard()
+        ? {sectorBlitz: [KO_RUNTIME, upstream.entry.sectorBlitz]}
+        : {}),
+    },
     output: {
       ...upstream.output,
       path: path.resolve(__dirname, 'dist'),

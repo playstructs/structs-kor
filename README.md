@@ -54,9 +54,10 @@ looked up on the other guilds if the current one doesn't have it.
 npm run build        # dist/
 ```
 
-`dist/` is a static site: `index.html` (webapp's game page), the bundles in
-`js/` and webapp's `css/`, `img/`, `lottie/` and fonts. Serve it from any
-static host; it needs nothing on its own domain.
+`dist/` is a static site: `index.html` (webapp's game page),
+`sector-blitz/index.html` and one page per sector (the public Sector Blitz
+leaderboard), the bundles in `js/` and webapp's `css/`, `img/`, `lottie/` and
+fonts. Serve it from any static host; it needs nothing on its own domain.
 
 ## Updating structs-webapp
 

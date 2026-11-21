@@ -1,0 +1,18 @@
+{
+  ">Event Leaderboard</h1>": ">이벤트 순위표</h1>",
+  "${SectorBlitzFormat.sectorLabel(this.sector)} Leaderboard</h1>": "${SectorBlitzFormat.sectorLabel(this.sector)} 순위표</h1>",
+  "return 'N/A';": "return '없음';",
+  "'Sector data is currently unavailable.'": "'지금은 섹터 정보를 불러올 수 없습니다.'",
+  "'Event Results'": "'이벤트 결과'",
+  "`${this.remainingText(summary)} Remaining`": "`남은 시간 ${this.remainingText(summary)}`",
+  "alt=\"Structs\"": "alt=\"구조체\"",
+  "public-leaderboard-play-btn\">Play Now</a>": "public-leaderboard-play-btn\">게임 시작</a>",
+  "`${SectorBlitzFormat.sectorLabel(this.sector)} Statistics`": "`${SectorBlitzFormat.sectorLabel(this.sector)} 통계`",
+  "emptyHTML('Currently unavailable')": "emptyHTML('지금은 불러올 수 없습니다')",
+  "'Top Guilds'": "'상위 길드'",
+  "'Top Players'": "'상위 플레이어'",
+  "'No Activity'": "'활동 없음'",
+  "public-battle-spectate-btn\">Spectate</a>": "public-battle-spectate-btn\">관전</a>",
+  "'Current Battles'": "'진행 중인 전투'",
+  "'No Battles in Progress'": "'진행 중인 전투가 없습니다'"
+}

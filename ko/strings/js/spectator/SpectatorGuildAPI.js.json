@@ -1,0 +1,8 @@
+{
+  "$keep": [
+    "Struct",
+    "Player",
+    "The fleet of player",
+    "Planet"
+  ]
+}

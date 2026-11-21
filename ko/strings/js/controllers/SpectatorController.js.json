@@ -1,0 +1,17 @@
+{
+  "title: 'Spectating',": "title: '관전 중',",
+  "'Connecting to the battle...'": "'전투에 연결하는 중...'",
+  "'This battle could not be loaded. It may have just ended. Try again from the Event Leaderboard.'": "'이 전투를 불러오지 못했습니다. 방금 끝났을 수 있습니다. 이벤트 순위표에서 다시 시도하세요.'",
+  "'This battle is over. Pick another from Current Battles on the Event Leaderboard.'": "'이 전투는 끝났습니다. 이벤트 순위표의 진행 중인 전투에서 다른 전투를 고르세요.'",
+  "'Sector Blitz is not running right now, so there are no battles to watch.'": "'지금은 섹터 블리츠가 진행 중이 아니라 관전할 전투가 없습니다.'",
+  "|| 'The defender')": "|| '방어자')",
+  "|| 'The attacker')": "|| '습격자')",
+  "`${attacker} won the raid.`": "`${attacker}의 습격이 성공했습니다.`",
+  "`${defender} defended the planet.`": "`${defender}의 행성 방어가 성공했습니다.`",
+  "`${attacker} retreated. ${defender} keeps the planet.`": "`${attacker}의 함대가 후퇴해 ${defender}의 행성이 지켜졌습니다.`",
+  "`${defender}'s planet was demilitarized.`": "`${defender}의 행성이 비무장화되었습니다.`",
+  "`Battle over. ${": "`전투 종료. ${",
+  "$keep": [
+    "Spectator"
+  ]
+}
