@@ -66,6 +66,21 @@ The guild's motto, "상사 말씀은 언제나 옳습니다." ("The boss is alwa
 replaces SN Corp's "We know better." under its badge in sign-up, and 우주상사
 replaces SN Corp wherever sign-up and the tutorial name the company.
 
+## Sign-up and the player's key
+
+Sign-up has no recovery key section: once the player has chosen their name,
+the page makes their account's key (a mnemonic) and creates the account
+straight away, with nothing shown, explained or confirmed, and goes on to the
+success screen. If the guild can't create it, the player sees why and can try
+again (다시 시도) with the same key (`ko/runtime/account.js`).
+
+The Account page has **플레이어 다운로드** (Download Player) where webapp has
+Log Out: a text file, `<name>-<player id>.structs-player.txt`, holding the
+mnemonic this browser signs with. After sign-up that is the account's own key;
+after an account recovery or a device activation it is this browser's device
+key, which can recover the player too, for as long as that device stays
+registered.
+
 ## Building and serving
 
 ```bash

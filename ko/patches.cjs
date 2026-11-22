@@ -60,6 +60,26 @@ module.exports = {
       + '    const guildId = this.gameState.thisGuild.id;',
     ],
   ],
+  // No recovery key section in sign-up (runtime/account.js): once the player
+  // has chosen their name the key is made and the account created, with
+  // nothing shown, explained or confirmed, and sign-up goes on to Success
+  // (whose text no longer mentions the key: strings/.../SignupSuccessViewModel).
+  'js/controllers/AuthController.js': [
+    [
+      '  signupRecoveryKeyIntro() {\n    const viewModel = new RecoveryKeyIntroViewModel();\n    viewModel.render();\n  }',
+      '  signupRecoveryKeyIntro() {\n    __ko.account.createAccount(this, MenuPage);\n  }',
+    ],
+  ],
+  // The Account page: Download Player (a file holding the mnemonic) in place
+  // of Log Out.
+  'js/view_models/account/AccountIndexViewModel.js': [
+    ['<button id="${this.logoutBtnId}" class="sui-screen-btn sui-mod-destructive">Log Out</button>',
+      '${__ko.account.downloadButtonHTML(this)}'],
+    [
+      "    document.getElementById(this.logoutBtnId).addEventListener('click', () => {\n      MenuPage.router.goto('Account', 'logoutConfirm');\n    });\n",
+      "    __ko.account.bindDownload(this);\n",
+    ],
+  ],
   'js/telemetry/OnboardingTelemetry.js': [
     // Guilds accept only ASCII here (RegexPattern::SLUG): 구조체, romanized.
     ["ONBOARDING_INTERFACE_NAME = 'structs-webapp'", "ONBOARDING_INTERFACE_NAME = 'gujoche'"],

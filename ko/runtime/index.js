@@ -8,9 +8,12 @@
 //
 // __ko.guild is the guild this page plays through (guild.js), and
 // __ko.recovery moves a recovered player of another guild into it (recovery.js).
+// __ko.account creates the account at sign-up without showing its recovery
+// key, and offers Download Player in place of Log Out (account.js).
 import terms from './terms.json';
 import {guild} from './guild.js';
 import {recovery} from './recovery.js';
+import {account} from './account.js';
 
 const lookup = new Map(Object.entries(terms));
 const reported = new Set();
@@ -20,6 +23,8 @@ globalThis.__ko = Object.freeze({
   guild,
 
   recovery,
+
+  account,
 
   /**
    * @param {*} text English game data
