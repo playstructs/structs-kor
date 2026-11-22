@@ -22,31 +22,49 @@ npm run dev          # http://localhost:5180
 
 ## Which guild
 
-Before webapp's code starts, the page picks a guild using the chain's public
-node (`ko/runtime/guild.js`):
+The site is 우주상사's (`우상`, guild `0-12`), the Korean players' own guild.
+Its id is fixed in `webpack.config.js` (`GUILD_ID`) and never looked up.
+Webapp normally asks its guild API which guild it is (`/guild/this`), but
+우주상사 shares SN Corp's API, so the page asks for `/guild/0-12` instead.
 
-1. `?guild=<id>` in the address,
-2. else the guild of the player saved in this browser,
-3. else the guild last used here,
-4. else the default guild (`KO_GUILD_ID`, SN Corp `0-5`).
-
-It reads that guild's `guild.json` (the endpoint the guild set on chain) for its
-`guild_api`, `grass_nats_websocket` and `client_websocket`. If the guild can't
-be reached, it uses what it last read for it, then any other guild on chain that
-publishes an API. Requests carry a bearer token from the guild's
+Before webapp's code starts, the page reads `0-12`'s `guild.json` (the endpoint
+the guild set on chain, `https://구조체.com/guild.json`, which this site serves
+from [`ko/public/guild.json`](ko/public/guild.json)) for its `guild_api`,
+`grass_nats_websocket` and `client_websocket` (`ko/runtime/guild.js`). If it
+can't be read, it uses what it last read, then the fallback in
+`webpack.config.js`. Requests carry a bearer token from the guild's
 `/api/auth/token` (the same signed login as `/api/auth/login`), since a guild's
 session cookie would be third-party here.
 
-A player who recovers an account with a recovery key is moved to their own
-guild as soon as the key names them. An activation code from another device is
-looked up on the other guilds if the current one doesn't have it.
+Account recovery asks the chain which guild the key's player is in before it
+calls the guild API, since a shared API may log in another guild's player. A
+player of another guild is moved here first: the key signs
+`MsgGuildMembershipJoin` for this guild (allowed when its join minimum is 0),
+and recovery goes on once the chain shows the move and the guild API knows the
+player. Recovery stops instead when the player owns their guild, the guild asks
+a join minimum, or the chain can't be read (`ko/runtime/recovery.js`).
 
 | Variable (build time) | Default | |
 |---|---|---|
-| `KO_GUILD_ID` | `0-5` | the guild for new players |
-| `KO_LCD_URL` | `https://public.testnet.structs.network` | the chain node guilds are found on |
-| `KO_GUILD_API` | — | a fixed guild API (a local guild), skipping the search |
+| `KO_LCD_URL` | `https://public.testnet.structs.network` | the chain node the guild is read from |
+| `KO_GUILD_API` | — | a fixed guild API (a local guild in development), skipping guild.json |
 | `KO_GRASS_URL`, `KO_CHAIN_WS` | — | override what the guild publishes |
+
+### On chain
+
+| | |
+|---|---|
+| Guild | `0-12` 우주상사, owned by founder player `1-14674` (`structs14n84fae09c5gkgp0hhtvekmy8hgcttce3mdj9d`) |
+| Primary reactor | `3-5` LuckyStar |
+| Entry substation | `4-23`, fed by allocation `6-73` from the guild's own stake |
+| Joining | open: join minimum 0, invite bypass permissioned |
+| Endpoint | `https://xn--2e0b952cv5c.com/guild.json` (구조체.com) |
+| Sign-up (TSA) | player `1-14675` (`structs184whazg53m84xv479zrlqjlcgqkpqq6c99mv4m`), the host's proxy-join signer: 512 (GuildMembership) on `0-12`, 1024 (SubstationConnection) on `4-23` |
+| Bank denom | `ramyeon` / `myeon` (in guild.json) |
+
+The guild's motto, "상사 말씀은 언제나 옳습니다." ("The boss is always right"),
+replaces SN Corp's "We know better." under its badge in sign-up, and 우주상사
+replaces SN Corp wherever sign-up and the tutorial name the company.
 
 ## Building and serving
 
@@ -57,7 +75,10 @@ npm run build        # dist/
 `dist/` is a static site: `index.html` (webapp's game page),
 `sector-blitz/index.html` and one page per sector (the public Sector Blitz
 leaderboard), the bundles in `js/` and webapp's `css/`, `img/`, `lottie/` and
-fonts. Serve it from any static host; it needs nothing on its own domain.
+fonts, plus `guild.json` and the guild's badge in `ko/img/`. It uses absolute
+paths, so serve it from the root of 구조체.com; `guild.json` must be readable
+cross-origin (`Access-Control-Allow-Origin: *`), since other clients read it.
+GitHub Pages sends that header for every file.
 
 ## Updating structs-webapp
 

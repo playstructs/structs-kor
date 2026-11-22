@@ -8,8 +8,9 @@ it is built. Nothing in the submodule is edited.
 | `strings/<upstream path>.json` | Korean for one upstream file: `{"exact source text": "replacement"}` |
 | `patches.cjs` | Changes that are not text: the guild connection, translating struct-type data where it is read |
 | `runtime/` | Loaded before webapp's entry: `__ko.t()` with `terms.json` (Korean for game data from the guild API) and `__ko.guild` (`guild.js`, which guild the page plays through) |
-| `public/` | Static files served over webapp's: `ko/ko.css` (Hangul faces for webapp's fonts), Galmuri, and the Korean banner frames in `lottie/` |
+| `public/` | Static files served over webapp's: `ko/ko.css` (Hangul faces for webapp's fonts), Galmuri, the Korean banner frames in `lottie/`, 우주상사's badge and logo in `ko/img/` and its `guild.json` (guild `0-12`'s on-chain endpoint, `https://구조체.com/guild.json`) |
 | `art/banners.py` | Draws those banner frames from webapp's (needs Pillow); `banners.json` records which upstream frames they replace |
+| `art/logo.py` | Draws 우주상사's badge and logo in Galmuri, after webapp's SN Corp badge (needs Pillow, fonttools, brotli) |
 | `page.cjs` | Renders webapp's Twig page (`templates/`) to `index.html` |
 | `loader.cjs`, `translate.cjs` | Apply `patches.cjs` then `strings/` to each source file webpack reads |
 | `audit.cjs` | Reports stale entries and English still on screen |

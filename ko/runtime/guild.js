@@ -1,24 +1,22 @@
-// Which guild this page plays through, and where that guild's services are.
+// The guild this page plays through, and where that guild's services are.
 //
 // structs-webapp is served by its guild and finds everything on that host:
-// the guild API at /api, GRASS and the chain node beside it. This page can be
-// served from anywhere and hosts none of them, so before webapp's entry runs
-// it works the guild out from the chain:
+// the guild API at /api, GRASS and the chain node beside it, and it asks the
+// API which guild it is (/guild/this). This page is 우주상사's (0-12, fixed
+// at build time as CONFIG.guildId) and hosts none of them. Its guild API is
+// shared with other guilds, so the API's own guild is not this page's: the
+// guild id is never looked up, only the guild's services are.
 //
-//   ?guild=<id>, else the saved player's own guild, else the guild last used
-//   here, else the default guild;
-//
-// then reads that guild's guild.json (the endpoint the guild set on chain)
-// for its API, GRASS and chain websocket. A guild that can't be reached falls
-// back to what was last read for it, then to any guild on chain that
-// publishes an API. Requests carry a bearer token from the guild's
-// /auth/token, since a session cookie would be third-party here.
+// Before webapp's entry runs, the page reads the guild's guild.json (the
+// endpoint the guild set on chain) for its API, GRASS and chain websocket. If
+// it can't be read, what was last read is used, then CONFIG.fallback.
+// Requests carry a bearer token from the guild's /auth/token, since a session
+// cookie would be third-party here.
 const CONFIG = __KO_CONFIG__;
 const STORAGE_KEY = 'ko.guild';
 const TIMEOUT_MS = 8000;
 
-const current = {id: null, api: '', grass: '', chainWs: ''};
-const switchListeners = [];
+const current = {id: CONFIG.guildId, api: '', grass: '', chainWs: ''};
 let token = null;
 
 async function getJson(url) {
@@ -29,38 +27,37 @@ async function getJson(url) {
   return response.json();
 }
 
-const chain = path => getJson(CONFIG.lcd.replace(/\/+$/, '') + path);
+/** Reads the chain's public node (its REST API). */
+export const chain = path => getJson(CONFIG.lcd.replace(/\/+$/, '') + path);
 
-/** @return {{last?: string, guilds: Object<string, object>}} */
+/** @return {object|null} the services last read for this guild */
 function stored() {
   try {
-    return {guilds: {}, ...JSON.parse(localStorage.getItem(STORAGE_KEY))};
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return saved?.id === CONFIG.guildId ? saved : null;
   } catch {
-    return {guilds: {}};
+    return null;
   }
 }
 
 function remember(services) {
   try {
-    const saved = stored();
-    saved.last = services.id;
-    saved.guilds[services.id] = services;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(services));
   } catch {
     // Private windows and blocked storage only lose the shortcut.
   }
 }
 
 /** The guild's services as its guild.json lists them. */
-async function readServices(guildId) {
-  const {Guild} = await chain(`/structs/guild/${encodeURIComponent(guildId)}`);
+async function readServices() {
+  const {Guild} = await chain(`/structs/guild/${encodeURIComponent(CONFIG.guildId)}`);
   const {guild} = await getJson(Guild.endpoint);
   const services = guild?.services ?? {};
   if (!services.guild_api) {
-    throw new Error(`guild ${guildId} publishes no guild API`);
+    throw new Error(`guild ${CONFIG.guildId} publishes no guild API`);
   }
   return {
-    id: guildId,
+    id: CONFIG.guildId,
     api: services.guild_api.replace(/\/+$/, ''),
     grass: services.grass_nats_websocket ?? '',
     // webapp's RPC client adds /websocket itself.
@@ -68,114 +65,32 @@ async function readServices(guildId) {
   };
 }
 
-async function resolve(guildId) {
-  try {
-    const services = await readServices(guildId);
-    remember(services);
-    return services;
-  } catch (error) {
-    console.warn(`[ko] guild ${guildId} unavailable: ${error.message}`);
-    return stored().guilds[guildId] ?? null;
-  }
-}
-
-/** @return {Promise<string[]>} every guild on chain */
-async function guildIds() {
-  try {
-    const {Guild = []} = await chain('/structs/guild?pagination.limit=500');
-    return Guild.map(guild => guild.id);
-  } catch (error) {
-    console.warn(`[ko] guild list unavailable: ${error.message}`);
-    return [];
-  }
-}
-
-async function playerGuildId(playerId) {
-  const {Player} = await chain(`/structs/player/${encodeURIComponent(playerId)}`);
-  return Player?.guildId || null;
-}
-
-function savedPlayerId() {
-  try {
-    return JSON.parse(localStorage.getItem('gameState'))?.thisPlayerId ?? null;
-  } catch {
-    return null;
-  }
-}
-
 function apply(services) {
-  current.id = services.id;
-  current.api = CONFIG.api || services.api;
+  current.api = CONFIG.api || services.api || CONFIG.fallback.api;
   current.grass = CONFIG.grass || services.grass || CONFIG.fallback.grass;
   current.chainWs = CONFIG.chainWs || services.chainWs || CONFIG.fallback.chainWs;
 }
 
-async function choose() {
-  const candidates = [];
-  const asked = new URLSearchParams(location.search).get('guild');
-  if (asked) {
-    candidates.push(asked);
-  }
-  const playerId = savedPlayerId();
-  if (playerId) {
-    try {
-      candidates.push(await playerGuildId(playerId));
-    } catch (error) {
-      console.warn(`[ko] guild of player ${playerId} unknown: ${error.message}`);
-    }
-  }
-  candidates.push(stored().last, CONFIG.guildId);
-
-  const tried = new Set();
-  const first = async guildIds => {
-    for (const guildId of guildIds) {
-      if (!guildId || tried.has(guildId)) continue;
-      tried.add(guildId);
-      const services = await resolve(guildId);
-      if (services) return services;
-    }
-    return null;
-  };
-  // The rest of the guilds on chain are asked for only once the likely ones fail.
-  return await first(candidates)
-    ?? await first(await guildIds())
-    ?? {id: CONFIG.guildId, api: CONFIG.fallback.api, grass: '', chainWs: ''};
-}
-
 const ready = (async () => {
   if (CONFIG.api) {
-    // A fixed guild API (a local guild in development): nothing to find.
-    apply({id: null, api: CONFIG.api, grass: '', chainWs: ''});
+    // A fixed guild API (a local guild in development): nothing to read.
+    apply({});
     return;
   }
-  apply(await choose());
+  let services;
+  try {
+    services = await readServices();
+    remember(services);
+  } catch (error) {
+    console.warn(`[ko] guild ${CONFIG.guildId} unavailable: ${error.message}`);
+    services = stored() ?? {};
+  }
+  apply(services);
   console.info(`[ko] playing through guild ${current.id} at ${current.api}`);
 })().catch(error => {
-  console.warn('[ko] guild could not be chosen:', error);
-  apply({id: CONFIG.guildId, api: CONFIG.fallback.api, grass: '', chainWs: ''});
+  console.warn('[ko] guild services could not be read:', error);
+  apply({});
 });
-
-/**
- * Switches to another guild for the rest of the visit, and for the next one.
- *
- * @return {Promise<boolean>} whether the guild changed
- */
-async function use(guildId) {
-  if (CONFIG.api || !guildId || guildId === current.id) {
-    return false;
-  }
-  const services = await resolve(guildId);
-  if (!services) {
-    return false;
-  }
-  token = null;
-  apply(services);
-  console.info(`[ko] switched to guild ${current.id} at ${current.api}`);
-  for (const listener of switchListeners) {
-    await listener(current.id);
-  }
-  return true;
-}
 
 export const guild = Object.freeze({
   ready,
@@ -192,62 +107,5 @@ export const guild = Object.freeze({
 
   setToken(value) {
     token = value || null;
-  },
-
-  /** @param {function(string): Promise<void>|void} listener called after each switch */
-  onSwitch(listener) {
-    switchListeners.push(listener);
-  },
-
-  use,
-
-  /**
-   * Follows a signing address to its player's guild.
-   *
-   * @return {Promise<boolean>} whether the guild changed
-   */
-  async followAddress(address) {
-    try {
-      const {playerId} = await chain(`/structs/address/${encodeURIComponent(address)}`);
-      return playerId ? await use(await playerGuildId(playerId)) : false;
-    } catch (error) {
-      console.warn(`[ko] guild of ${address} unknown: ${error.message}`);
-      return false;
-    }
-  },
-
-  /**
-   * Makes a guild request on this guild and, if it isn't found here, on each
-   * other guild until one has it; that guild becomes the current one.
-   *
-   * @param {function(): Promise<*>} request reads guild.api when it runs
-   * @param {function(*): boolean} found
-   * @return {Promise<*>} the answer that was found, else this guild's
-   */
-  async findOnGuilds(request, found) {
-    const here = await request();
-    if (found(here) || CONFIG.api) {
-      return here;
-    }
-    const home = {...current};
-    for (const guildId of await guildIds()) {
-      if (guildId === home.id) continue;
-      const services = await resolve(guildId);
-      if (!services) continue;
-      current.api = services.api;
-      try {
-        const answer = await request();
-        if (found(answer)) {
-          Object.assign(current, home);
-          await use(guildId);
-          return answer;
-        }
-      } catch (error) {
-        console.debug(`[ko] guild ${guildId}: ${error.message}`);
-      } finally {
-        if (current.id === home.id) Object.assign(current, home);
-      }
-    }
-    return here;
   },
 });

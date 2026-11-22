@@ -41,12 +41,12 @@
   "CMD_SHIP_ARRIVING: `Fortunately, your new CMD Ship is arriving now.`": "CMD_SHIP_ARRIVING: `다행히 새 지휘함이 지금 도착하고 있습니다.`",
   "DEFENSES_SECURE: `With a new CMD Ship on-station, your Planetary Defenses are once again ${hl('Secure')}. This concludes your Combat Training.`": "DEFENSES_SECURE: `새 지휘함이 주둔하면서 행성 방어력이 다시 ${hl('안전')} 상태가 되었습니다. 이것으로 전투 훈련을 마칩니다.`",
   "COMPLETED: `You have successfully completed Combat Training. ${hl('Performance Grade:')} C-`": "COMPLETED: `전투 훈련을 성공적으로 마쳤습니다. ${hl('성과 등급:')} C-`",
-  "CERTIFIED: `SN.CORP certifies that you now meet the minimum requirements to operate the ST-21 \"Spearpoint\" CMD Ship. Productive travels, employee.`": "CERTIFIED: `SN.CORP는 귀하가 ST-21 \"Spearpoint\" 지휘함 운용에 필요한 최소 요건을 충족했음을 인증합니다. 생산적인 여정이 되기를 바랍니다, 사원님.`",
+  "CERTIFIED: `SN.CORP certifies that you now meet the minimum requirements to operate the ST-21 \"Spearpoint\" CMD Ship. Productive travels, employee.`": "CERTIFIED: `우주상사는 귀하가 ST-21 \"Spearpoint\" 지휘함 운용에 필요한 최소 요건을 충족했음을 인증합니다. 생산적인 여정이 되기를 바랍니다, 사원님.`",
   "FTL_JUMP: `FTL Jump in Progress.`": "FTL_JUMP: `FTL 도약 중입니다.`",
   "$keep": [
     "HUD 요소 대부분은 길게 눌러",
     "배터리 충전량이 충분해지면 탱크가 SAM 발사대를",
-    "SN.CORP는 귀하가 ST-21 \"Spearpoint\" 지휘함 운용에 필요한 최소 요건을 충족했음을 인증합니다. 생산적인 여정이 되기를 바랍니다, 사원님.",
+    "우주상사는 귀하가 ST-21 \"Spearpoint\" 지휘함 운용에 필요한 최소 요건을 충족했음을 인증합니다. 생산적인 여정이 되기를 바랍니다, 사원님.",
     "FTL 도약 중입니다."
   ]
 }

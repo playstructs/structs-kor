@@ -1,5 +1,7 @@
 {
   "username: 'Trainee',": "username: '훈련생',",
   "username: 'Raider',": "username: '습격자',",
-  "name: 'Training Grounds',": "name: '훈련장',"
+  "name: 'Training Grounds',": "name: '훈련장',",
+  "'SN.Corporation'": "'우주상사'",
+  "tag: 'SNC',": "tag: '우상',"
 }

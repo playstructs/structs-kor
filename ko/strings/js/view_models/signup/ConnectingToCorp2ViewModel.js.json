@@ -1,8 +1,7 @@
 {
-  "alt=\"SNC logo\"": "alt=\"SNC 로고\"",
-  ">WE KNOW BETTER.</h2>": ">우리가 더 잘 압니다.</h2>",
+  "alt=\"SNC logo\"": "alt=\"우주상사 로고\"",
+  ">WE KNOW BETTER.</h2>": ">상사 말씀은 언제나 옳습니다.</h2>",
   "`Connection Successful.`": "`연결 성공.`",
-  "$keep": [
-    "SNC 로고"
-  ]
+  "'SN.Corporation'": "'우주상사'",
+  "src=\"/img/logo-snc.gif\"": "src=\"/ko/img/uju-badge.png\""
 }

@@ -5,5 +5,6 @@
   "<span>Display Name</span>": "<span>이름</span>",
   "placeholder=\"Your Name\"": "placeholder=\"이름 입력\"",
   ">Submit</button>": ">확인</button>",
-  "`To begin, please confirm your identity.`": "`시작하기 전에 신원을 확인해 주십시오.`"
+  "`To begin, please confirm your identity.`": "`시작하기 전에 신원을 확인해 주십시오.`",
+  "'SN.Corporation'": "'우주상사'"
 }

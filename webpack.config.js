@@ -27,11 +27,12 @@ const SKIP = /^(index\.php|\.htaccess|data\/|js\/(index|test|sectorBlitz|vendors
 // The Korean runtime runs first in every page's bundle.
 const KO_RUNTIME = path.join(__dirname, 'ko/runtime/index.js');
 
-// Where the page finds its guild (ko/runtime/guild.js). The defaults are
-// the chain's public node and SN Corp, the guild structs-webapp's beta serves.
-const DEFAULT_GUILD_ID = '0-5';
+// The guild this site serves, 우주상사, fixed: never looked up, nor set per
+// build (ko/runtime/guild.js). Its services are read from its guild.json on
+// the chain's public node.
+const GUILD_ID = '0-12';
 const DEFAULT_LCD = 'https://public.testnet.structs.network';
-// Used only when no guild on chain can be read and none was read before.
+// Used only when the guild's guild.json can't be read and none was read before.
 const FALLBACK = {
   api: 'https://beta.playstructs.com/api',
   grass: 'wss://beta.playstructs.com:1443',
@@ -102,7 +103,7 @@ class KoSitePlugin {
 
 module.exports = (env, argv) => {
   const config = {
-    guildId: process.env.KO_GUILD_ID || DEFAULT_GUILD_ID,
+    guildId: GUILD_ID,
     lcd: process.env.KO_LCD_URL || DEFAULT_LCD,
     // Set, these override what the guild publishes.
     api: (process.env.KO_GUILD_API || '').replace(/\/+$/, ''),

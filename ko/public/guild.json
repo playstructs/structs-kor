@@ -1,0 +1,40 @@
+{
+  "guild": {
+    "schema_version": 1,
+    "id": "0-12",
+    "name": "우주상사",
+    "description": "상사 말씀은 언제나 옳습니다.",
+    "tag": "우상",
+    "logo": "https://xn--2e0b952cv5c.com/ko/img/uju-logo.png",
+    "webapp": "xn--2e0b952cv5c.com",
+    "website": "https://xn--2e0b952cv5c.com",
+    "recruiting": {
+      "status": "open"
+    },
+    "socials": {
+      "bluesky": "",
+      "facebook": "",
+      "farcaster": "",
+      "instagram": "",
+      "twitch": "",
+      "x": "",
+      "youtube": "",
+      "discord_contact": "",
+      "discord_server": "",
+      "telegram_contact": "",
+      "telegram_channel": ""
+    },
+    "denom": {
+      "6": "ramyeon",
+      "0": "myeon"
+    },
+    "services": {
+      "guild_api": "https://beta.playstructs.com/api/",
+      "reactor_api": "https://public.testnet.structs.network/",
+      "client_websocket": "wss://public.testnet.structs.network:26657/websocket",
+      "grass_nats_websocket": "wss://beta.playstructs.com:1443",
+      "matrix": "https://matrix.beta.playstructs.com",
+      "explorer": ""
+    }
+  }
+}

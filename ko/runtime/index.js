@@ -6,9 +6,11 @@
 // what webapp's code compares against. Such text is translated where it is
 // shown, by overlay entries that call these helpers, never where it is read.
 //
-// __ko.guild is the guild this page plays through (guild.js).
+// __ko.guild is the guild this page plays through (guild.js), and
+// __ko.recovery moves a recovered player of another guild into it (recovery.js).
 import terms from './terms.json';
 import {guild} from './guild.js';
+import {recovery} from './recovery.js';
 
 const lookup = new Map(Object.entries(terms));
 const reported = new Set();
@@ -16,6 +18,8 @@ const reported = new Set();
 globalThis.__ko = Object.freeze({
 
   guild,
+
+  recovery,
 
   /**
    * @param {*} text English game data
