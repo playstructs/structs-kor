@@ -95,6 +95,7 @@ with it.
 | Sector Blitz (event), Operation: Sector Blitz | 섹터 블리츠, 섹터 블리츠 작전 |
 | Influence Points (IP) | 영향력 포인트 (IP) |
 | King of the Hill / KOTH Bonus | 점령 유지 보너스 |
+| Sectors Controlled | 점령한 섹터 |
 | Event Rules / Results | 이벤트 규칙 / 결과 |
 | Rival (guild, faction) | 경쟁 (길드, 세력) |
 | Task, Executing | 작업, 진행 중 |
