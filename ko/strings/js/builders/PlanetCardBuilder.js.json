@@ -1,6 +1,8 @@
 {
   "alt=\"3 dots loading animation\"": "alt=\"불러오는 중\"",
   "primaryBtnLabel = 'Command';": "primaryBtnLabel = '지휘';",
+  "'Insufficient Energy. Deactivate Structs to reduce Energy draw.'": "'에너지가 부족합니다. 구조체를 정지해 에너지 사용량을 줄이세요.'",
+  "alphaBaseCard.alertMessage = 'Failed to depart.';": "alphaBaseCard.alertMessage = '출발하지 못했습니다.';",
   "alphaBaseCard.alertMessage = 'All Alpha extracted.';": "alphaBaseCard.alertMessage = '알파를 모두 채굴했습니다.';",
   "secondaryBtnLabel = 'Depart';": "secondaryBtnLabel = '출발';",
   "alphaBaseCard.alertMessage = 'Depart planet?';": "alphaBaseCard.alertMessage = '행성을 떠날까요?';",
